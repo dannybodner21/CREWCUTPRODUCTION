@@ -274,7 +274,6 @@ export const chatMessage: StateCreator<
     if (!activeId) return;
 
     const messages = messagesReducer(chatSelectors.activeBaseChats(get()), payload);
-
     const nextMap = { ...get().messagesMap, [chatSelectors.currentChatKey(get())]: messages };
 
     if (isEqual(nextMap, get().messagesMap)) return;
@@ -295,6 +294,8 @@ export const chatMessage: StateCreator<
 
   internal_updateMessageContent: async (id, content, extra) => {
     const { internal_dispatchMessage, refreshMessages, internal_transformToolCalls } = get();
+
+    // Updating message content
 
     // Due to the async update method and refresh need about 100ms
     // we need to update the message content at the frontend to avoid the update flick
@@ -323,6 +324,7 @@ export const chatMessage: StateCreator<
       provider: extra?.provider,
       imageList: extra?.imageList,
     });
+
     await refreshMessages();
   },
 

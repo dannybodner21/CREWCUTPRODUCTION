@@ -9,10 +9,26 @@ import { safeParseJSON } from '@/utils/safeParseJSON';
 
 const ToolRender = memo(() => {
   const messageId = useChatStore(chatPortalSelectors.toolMessageId);
+  const identifier = useChatStore(chatPortalSelectors.toolUIIdentifier);
   const message = useChatStore(chatSelectors.getMessageById(messageId || ''), isEqual);
 
   // make sure the message and id is valid
   if (!messageId || !message) return;
+
+  // Check if this is a builtin tool (has identifier but message might not have plugin structure)
+  if (identifier && BuiltinToolsPortals[identifier]) {
+    const Render = BuiltinToolsPortals[identifier];
+    
+    return (
+      <Render
+        apiName={identifier}
+        arguments={{}}
+        identifier={identifier}
+        messageId={messageId}
+        state={undefined}
+      />
+    );
+  }
 
   const { plugin, pluginState } = message;
 

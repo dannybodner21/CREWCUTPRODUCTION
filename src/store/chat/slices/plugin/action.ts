@@ -115,14 +115,22 @@ export const chatPlugin: StateCreator<
       internal_updateMessageContent,
       internal_updatePluginError,
     } = get();
+
     const params = JSON.parse(payload.arguments);
+    console.log('🔧 TOOL DEBUG: invokeBuiltinTool called with:', {
+      identifier: payload.identifier,
+      apiName: payload.apiName,
+      params
+    });
+
     internal_togglePluginApiCalling(true, id, n('invokeBuiltinTool/start') as string);
     let data;
     try {
       data = await useToolStore.getState().transformApiArgumentsToAiState(payload.apiName, params);
+      console.log('🔧 TOOL DEBUG: transformApiArgumentsToAiState result:', data);
     } catch (error) {
       const err = error as Error;
-      console.error(err);
+      console.error('Tool execution failed:', err);
 
       const tool = builtinTools.find((tool) => tool.identifier === payload.identifier);
       const schema = tool?.manifest?.api.find((api) => api.name === payload.apiName)?.parameters;
@@ -145,7 +153,13 @@ export const chatPlugin: StateCreator<
 
     await internal_updateMessageContent(id, data);
 
-    // run tool api call
+    // For custom API tools, the data is already processed and ready to display
+    // No need to look for additional actions in the chat store
+    if (payload.identifier === 'lewis') {
+      return;
+    }
+
+    // For other builtin tools (like text2image), run the tool api call
     // postToolCalling
     // @ts-ignore
     const { [payload.apiName]: action } = get();

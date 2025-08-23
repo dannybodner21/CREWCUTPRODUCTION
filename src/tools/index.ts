@@ -5,6 +5,7 @@ import { ArtifactsManifest } from './artifacts';
 import { DalleManifest } from './dalle';
 import { LocalSystemManifest } from './local-system';
 import { WebBrowsingManifest } from './web-browsing';
+import { CustomApiToolManifest } from './custom-api-tool';
 
 export const builtinTools: LobeBuiltinTool[] = [
   {
@@ -27,6 +28,11 @@ export const builtinTools: LobeBuiltinTool[] = [
     hidden: true,
     identifier: WebBrowsingManifest.identifier,
     manifest: WebBrowsingManifest,
+    type: 'builtin',
+  },
+  {
+    identifier: CustomApiToolManifest.identifier,
+    manifest: CustomApiToolManifest,
     type: 'builtin',
   },
 ];

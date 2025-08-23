@@ -55,7 +55,20 @@ export const chatPortalSlice: StateCreator<
   openToolUI: (id, identifier) => {
     get().togglePortal(true);
 
-    set({ portalToolMessage: { id, identifier } }, false, 'openToolUI');
+    // First clear all portal states to show the home page
+    set({ 
+      portalArtifact: undefined,
+      portalFile: undefined,
+      portalMessageDetail: undefined,
+      portalThreadId: undefined,
+      threadStartMessageId: undefined,
+      portalToolMessage: undefined,
+    }, false, 'openToolUI/clear');
+
+    // Then after a brief delay, set the tool message to auto-open it
+    setTimeout(() => {
+      set({ portalToolMessage: { id, identifier } }, false, 'openToolUI/setTool');
+    }, 100);
   },
   togglePortal: (open) => {
     const showInspector = open === undefined ? !get().showPortal : open;

@@ -1,6 +1,6 @@
 import { ActionIcon, Icon, Text } from '@lobehub/ui';
 import isEqual from 'fast-deep-equal';
-import { ArrowLeft, Globe } from 'lucide-react';
+import { ArrowLeft, Globe, Building } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
@@ -10,6 +10,7 @@ import { chatPortalSelectors } from '@/store/chat/selectors';
 import { pluginHelpers, useToolStore } from '@/store/tool';
 import { toolSelectors } from '@/store/tool/selectors';
 import { WebBrowsingManifest } from '@/tools/web-browsing';
+import { CustomApiToolManifest } from '@/tools/custom-api-tool';
 
 const Header = () => {
   const [closeToolUI, toolUIIdentifier = ''] = useChatStore((s) => [
@@ -32,6 +33,19 @@ const Header = () => {
       </Flexbox>
     );
   }
+
+  if (toolUIIdentifier === CustomApiToolManifest.identifier) {
+    return (
+      <Flexbox align={'center'} gap={8} horizontal>
+        <ActionIcon icon={ArrowLeft} onClick={() => closeToolUI()} size={'small'} />
+        <Icon icon={Building} size={16} />
+        <Text style={{ fontSize: 16 }} type={'secondary'}>
+          LEWIS - Construction Fee Portal
+        </Text>
+      </Flexbox>
+    );
+  }
+
   return (
     <Flexbox align={'center'} gap={4} horizontal>
       <ActionIcon icon={ArrowLeft} onClick={() => closeToolUI()} size={'small'} />

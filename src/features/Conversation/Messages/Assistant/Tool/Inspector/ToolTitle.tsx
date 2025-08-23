@@ -1,7 +1,7 @@
 import { Icon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
-import { Globe, Laptop } from 'lucide-react';
+import { Globe, Laptop, CircuitBoard } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
@@ -15,6 +15,7 @@ import { toolSelectors } from '@/store/tool/selectors';
 import { shinyTextStylish } from '@/styles/loading';
 import { LocalSystemManifest } from '@/tools/local-system';
 import { WebBrowsingManifest } from '@/tools/web-browsing';
+import { CustomApiToolManifest } from '@/tools/custom-api-tool';
 
 import BuiltinPluginTitle from './BuiltinPluginTitle';
 
@@ -31,6 +32,16 @@ export const useStyles = createStyles(({ css, token }) => ({
   `,
 
   shinyText: shinyTextStylish(token),
+
+  clickableTitle: css`
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
+  `,
 }));
 
 interface ToolTitleProps {
@@ -55,6 +66,8 @@ const ToolTitle = memo<ToolTitleProps>(({ identifier, messageId, index, apiName,
   });
 
   const pluginMeta = useToolStore(toolSelectors.getMetaById(identifier), isEqual);
+  const isToolHasUI = useToolStore(toolSelectors.isToolHasUI(identifier));
+  const openToolUI = useChatStore((s) => s.openToolUI);
 
   const plugins = useMemo(
     () => [
@@ -70,8 +83,14 @@ const ToolTitle = memo<ToolTitleProps>(({ identifier, messageId, index, apiName,
         id: LocalSystemManifest.identifier,
         title: t('localSystem.title'),
       },
+      {
+        apiName: apiName,
+        icon: <Icon icon={CircuitBoard} size={13} />,
+        id: CustomApiToolManifest.identifier,
+        title: 'LEWIS',
+      },
     ],
-    [],
+    [apiName],
   );
 
   const builtinPluginTitle = plugins.find((item) => item.id === identifier);
@@ -90,12 +109,32 @@ const ToolTitle = memo<ToolTitleProps>(({ identifier, messageId, index, apiName,
 
   const pluginTitle = pluginHelpers.getPluginTitle(pluginMeta) ?? t('unknownPlugin');
 
-  return (
+  const handleTitleClick = () => {
+    if (isToolHasUI && identifier) {
+      openToolUI(messageId, identifier);
+    }
+  };
+
+  const titleContent = (
     <Flexbox align={'center'} className={isLoading ? styles.shinyText : ''} gap={6} horizontal>
       {isLoading ? <Loader /> : <PluginAvatar identifier={identifier} size={18} />}
       <div>{pluginTitle}</div>/<span className={styles.apiName}>{apiName}</span>
+      {isToolHasUI && !isLoading && (
+        <Icon icon={CircuitBoard} size={12} style={{ marginLeft: 4, opacity: 0.6 }} />
+      )}
     </Flexbox>
   );
+
+  // If the tool has a portal UI, make it clickable
+  if (isToolHasUI && !isLoading) {
+    return (
+      <div className={styles.clickableTitle} onClick={handleTitleClick} title="Click to open portal">
+        {titleContent}
+      </div>
+    );
+  }
+
+  return titleContent;
 });
 
 export default ToolTitle;

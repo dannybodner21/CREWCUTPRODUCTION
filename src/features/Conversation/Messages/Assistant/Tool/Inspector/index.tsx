@@ -1,51 +1,20 @@
-import { ActionIcon } from '@lobehub/ui';
+import { ActionIcon, Icon, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { LayoutPanelTop, LogsIcon, LucideBug, LucideBugOff } from 'lucide-react';
-import { CSSProperties, memo, useState } from 'react';
+import { LogsIcon, LucideBug, LucideBugOff, LayoutPanelTop, CircuitBoard } from 'lucide-react';
+import { memo, useState, CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
-import { shinyTextStylish } from '@/styles/loading';
+import { useChatStore } from '@/store/chat';
+import { useToolStore } from '@/store/tool';
+import { toolSelectors } from '@/store/tool/selectors';
 
 import Debug from './Debug';
 import Settings from './Settings';
 import ToolTitle from './ToolTitle';
 
-export const useStyles = createStyles(({ css, token, cx }) => ({
-  actions: cx(
-    'inspector-container',
-    css`
-      opacity: 0;
-      transition: opacity 300ms ease-in-out;
-    `,
-  ),
-  apiName: css`
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-
-    font-family: ${token.fontFamilyCode};
-    font-size: 12px;
-    text-overflow: ellipsis;
-  `,
+const useStyles = createStyles(({ css, token }) => ({
   container: css`
-    :hover {
-      .inspector-container {
-        opacity: 1;
-      }
-    }
-  `,
-  plugin: css`
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    width: fit-content;
-  `,
-  shinyText: shinyTextStylish(token),
-  tool: css`
-    cursor: pointer;
-
     width: fit-content;
     padding-block: 2px;
     border-radius: 6px;
@@ -55,6 +24,28 @@ export const useStyles = createStyles(({ css, token, cx }) => ({
     &:hover {
       background: ${token.colorFillTertiary};
     }
+  `,
+  tool: css`
+    cursor: pointer;
+    padding-block: 2px;
+    border-radius: 6px;
+
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
+  `,
+  portalButton: css`
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: ${token.colorPrimary};
+
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
+  `,
+  actions: css`
+    gap: 4px;
   `,
 }));
 
@@ -92,8 +83,19 @@ const Inspectors = memo<InspectorProps>(
   }) => {
     const { t } = useTranslation('plugin');
     const { styles } = useStyles();
-
     const [showDebug, setShowDebug] = useState(false);
+
+    // Check if this tool has a portal UI
+    const isToolHasUI = useToolStore(toolSelectors.isToolHasUI(identifier));
+    const openToolUI = useChatStore((s) => s.openToolUI);
+
+    const handleOpenPortal = () => {
+      if (isToolHasUI && identifier) {
+        // Use the assistant message ID (messageId) not the tool call ID (id)
+        // This matches how the portal home page works
+        openToolUI(messageId, identifier);
+      }
+    };
 
     return (
       <Flexbox className={styles.container} gap={4}>
@@ -117,6 +119,16 @@ const Inspectors = memo<InspectorProps>(
             />
           </Flexbox>
           <Flexbox className={styles.actions} horizontal>
+            {/* Portal Button - only show for tools that have a portal UI */}
+            {isToolHasUI && (
+              <ActionIcon
+                icon={CircuitBoard}
+                onClick={handleOpenPortal}
+                size={'small'}
+                title="Open Portal"
+                className={styles.portalButton}
+              />
+            )}
             {showRender && !hidePluginUI && (
               <ActionIcon
                 icon={showPluginRender ? LogsIcon : LayoutPanelTop}

@@ -88,6 +88,7 @@ export const messagesReducer = (state: ChatMessage[], payload: MessageDispatch):
       return produce(state, (draftState) => {
         const { id, value } = payload;
         const index = draftState.findIndex((i) => i.id === id);
+
         if (index < 0) return;
 
         draftState[index] = merge(draftState[index], { ...value, updatedAt: Date.now() });
