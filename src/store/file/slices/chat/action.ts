@@ -109,7 +109,40 @@ export const createFileSlice: StateCreator<
           previewUrl = URL.createObjectURL(new Blob([data!], { type: file.type }));
 
           const base64 = Buffer.from(data!).toString('base64');
-          base64Url = `data:${file.type};base64,${base64}`;
+
+          // Ensure we have a valid MIME type for the base64 URL
+          let mimeType = file.type;
+
+          // If file.type is empty or invalid, try to detect from file extension
+          if (!mimeType || mimeType === 'application/octet-stream') {
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            if (extension) {
+              // Map common image extensions to MIME types
+              const mimeTypeMap: Record<string, string> = {
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'gif': 'image/gif',
+                'webp': 'image/webp',
+                'svg': 'image/svg+xml',
+                'bmp': 'image/bmp',
+                'ico': 'image/x-icon',
+                'tiff': 'image/tiff',
+                'tif': 'image/tiff',
+                'avif': 'image/avif',
+                'heic': 'image/heic',
+                'heif': 'image/heif',
+              };
+
+              mimeType = mimeTypeMap[extension] || 'image/png'; // Default to PNG if unknown
+            } else {
+              // If no extension, default to PNG for images
+              mimeType = 'image/png';
+            }
+          }
+
+          base64Url = `data:${mimeType};base64,${base64}`;
+          console.log('Generated MIME type:', mimeType); // Add this line
         }
 
         return { base64Url, file, id: file.name, previewUrl, status: 'pending' } as UploadFileItem;
@@ -136,7 +169,7 @@ export const createFileSlice: StateCreator<
               error === UPLOAD_NETWORK_ERROR
                 ? t('upload.networkError', { ns: 'error' })
                 : // or the error from the server
-                  typeof error === 'string'
+                typeof error === 'string'
                   ? error
                   : t('upload.unknownError', { ns: 'error', reason: (error as Error).message }),
             message: t('upload.uploadFailed', { ns: 'error' }),

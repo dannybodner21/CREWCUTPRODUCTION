@@ -38,6 +38,8 @@ import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
 import { BuiltinPortalProps } from '@/types/tool';
+import GrantPortal from './GrantPortal';
+import ZEROPortal from './ZEROPortal';
 
 const { Search: SearchInput } = Input;
 const { Option } = Select;
@@ -144,7 +146,7 @@ interface ComparisonData {
     }[];
 }
 
-const ConstructionFeePortal = memo<BuiltinPortalProps>(({
+const CustomApiToolPortal = memo<BuiltinPortalProps>(({
     arguments: args,
     messageId,
     state,
@@ -596,6 +598,16 @@ const ConstructionFeePortal = memo<BuiltinPortalProps>(({
 
         return filtered;
     };
+
+    // Check if this is a Grant tool call
+    if (apiName && apiName.startsWith('grant')) {
+        return <GrantPortal arguments={args} messageId={messageId} state={state} apiName={apiName} identifier="grant" />;
+    }
+
+    // Check if this is a ZERO tool call
+    if (apiName && apiName.startsWith('zero')) {
+        return <ZEROPortal arguments={args} messageId={messageId} state={state} apiName={apiName} identifier="zero" />;
+    }
 
     if (loading && cities.length === 0) {
         return (
@@ -1346,6 +1358,6 @@ const ConstructionFeePortal = memo<BuiltinPortalProps>(({
     );
 });
 
-ConstructionFeePortal.displayName = 'ConstructionFeePortal';
+CustomApiToolPortal.displayName = 'CustomApiToolPortal';
 
-export default ConstructionFeePortal;
+export default CustomApiToolPortal;

@@ -1,178 +1,118 @@
-# Supabase Database Tool
+# Custom API Tool
 
-This tool allows you to connect to a Supabase database and perform various database operations. It's completely separate from your main application database and won't interfere with your existing setup.
+This package provides three powerful custom tools for LobeChat:
 
-## Setup
+## 🧭 LEWIS - Construction Fee Portal
 
-1. **Install Supabase package** (already added to package.json):
-   ```bash
-   pnpm install
-   ```
+**LEWIS** is a comprehensive construction fee calculator and database tool that provides information about construction fees for cities across the United States.
 
-2. **Set environment variables** in your `.env.local` file:
-   ```bash
-   SUPABASE_URL=https://your-project-id.supabase.co
-   SUPABASE_ANON_KEY=your-anon-key-here
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here  # Optional
-   ```
+### Features:
+- **City Database**: Access to cities from multiple states with population, county, and state information
+- **Fee Calculator**: Calculate construction fees based on project type, value, and square footage
+- **Fee Database**: Comprehensive fee structures for different cities and project types
+- **Comparison Tool**: Compare fees across different cities to find the best value
 
-## Usage Examples
+### Use Cases:
+- Construction project planning and budgeting
+- City selection for development projects
+- Fee structure analysis and comparison
+- Project cost estimation
 
-### Basic Database Operations
+## 📈 Grant - Day Trading Coach
 
-The tool provides several ways to interact with your Supabase database:
+**Grant** is your personal day trading coach powered by Polygon.io API integration. Get real-time market data and expert trading advice to improve your trading skills.
 
-#### 1. Simple Table Queries
-```typescript
-// Get all users
-await queryDatabase({
-  table: 'users',
-  select: 'id, name, email',
-  limit: 50
-});
+### Features:
+- **Real-time Stock Quotes**: Current prices, volume, change, and market data
+- **Technical Analysis**: RSI, MACD, moving averages, and other key indicators
+- **Historical Data**: Price patterns and trends over different timeframes
+- **Trading Advice**: Personalized recommendations with entry/exit points and risk management
+- **Market News**: Relevant news with sentiment analysis
+- **Educational Content**: Day trading tips and best practices
 
-// Get users with filters
-await queryDatabase({
-  table: 'users',
-  select: 'id, name, email',
-  filters: { status: 'active', role: 'admin' },
-  limit: 20
-});
-```
+### Use Cases:
+- Stock analysis and research
+- Day trading decision support
+- Technical indicator analysis
+- Risk management guidance
+- Market sentiment analysis
 
-#### 2. Advanced Database Operations
-```typescript
-// Get all records from a table
-await performDatabaseOperation({
-  operation: 'getAll',
-  table: 'users',
-  select: 'id, name, email',
-  limit: 100
-});
+## 🎓 ZERO - AI Course Creation Portal
 
-// Search for records
-await performDatabaseOperation({
-  operation: 'search',
-  table: 'users',
-  searchColumn: 'name',
-  searchTerm: 'john',
-  limit: 20
-});
+**ZERO** is an AI-powered online course creation tool that helps creators build comprehensive, engaging, and profitable online courses.
 
-// Get record by ID
-await performDatabaseOperation({
-  operation: 'getById',
-  table: 'users',
-  id: 123,
-  select: 'id, name, email, created_at'
-});
+### Features:
+- **Course Planning**: Create detailed course outlines with clear learning objectives
+- **Content Generation**: Generate engaging lesson content with examples and exercises
+- **Assessment Creation**: Design quizzes, tests, and assignments for student evaluation
+- **Marketing Support**: Create compelling marketing materials and sales content
+- **Pricing Strategy**: Get data-driven pricing recommendations for course monetization
 
-// Count records
-await performDatabaseOperation({
-  operation: 'count',
-  table: 'users',
-  filters: { status: 'active' }
-});
+### Use Cases:
+- Online course development and planning
+- Educational content creation
+- Learning objective definition
+- Student assessment design
+- Course marketing and promotion
+- Pricing strategy development
 
-// Get table schema
-await performDatabaseOperation({
-  operation: 'schema',
-  table: 'users'
-});
+## API Functions
 
-// Get all tables
-await performDatabaseOperation({
-  operation: 'tables'
-});
+### LEWIS Functions:
+- `getCities()` - Get list of cities with filtering options
+- `getFees()` - Retrieve fee structures for specific cities
+- `calculateFees()` - Compute total fees for construction projects
 
-// Get recent records
-await performDatabaseOperation({
-  operation: 'recent',
-  table: 'users',
-  timestampColumn: 'created_at',
-  hours: 24,
-  limit: 50
-});
+### Grant Functions:
+- `getStockQuote()` - Get real-time stock quote data
+- `getStockHistory()` - Retrieve historical price data for technical analysis
+- `getMarketIndicators()` - Calculate technical indicators (RSI, MACD, etc.)
+- `getTradingAdvice()` - Get personalized trading recommendations
+- `getMarketNews()` - Access relevant market news and sentiment
 
-// Get paginated records
-await performDatabaseOperation({
-  operation: 'paginated',
-  table: 'users',
-  page: 1,
-  pageSize: 20,
-  orderBy: { column: 'created_at', ascending: false }
-});
-```
+### ZERO Functions:
+- `createCourseOutline()` - Create comprehensive course outlines with modules and learning objectives
+- `generateLessonContent()` - Generate detailed lesson content with examples and exercises
+- `createAssessment()` - Create quizzes, tests, and assessments for course evaluation
+- `generateMarketingContent()` - Generate marketing materials and promotional content
+- `pricingStrategy()` - Get pricing recommendations and monetization strategies
 
-#### 3. Custom SQL Queries
-```typescript
-// Execute custom SQL (requires service role key)
-await queryDatabase({
-  query: 'SELECT COUNT(*) as total_users FROM users WHERE created_at > NOW() - INTERVAL \'7 days\''
-});
-```
+## Getting Started
 
-## Security Features
+1. **For LEWIS**: Ask questions about construction fees, cities, or project calculations
+2. **For Grant**: Ask about specific stocks, request trading advice, or get market analysis
 
-- **Anonymous Key**: Used for read operations and basic queries
-- **Service Role Key**: Required for admin operations like custom SQL execution
-- **Environment Isolation**: Completely separate from your main database configuration
-- **Error Handling**: Safe error handling that doesn't expose sensitive information
+### Example Queries:
 
-## Supported Operations
+**LEWIS:**
+- "What cities are available in Arizona?"
+- "Calculate construction fees for a $500k residential project in Phoenix"
+- "Compare fees between Phoenix and Tucson"
 
-| Operation | Description | Required Parameters |
-|-----------|-------------|-------------------|
-| `getAll` | Get all records from a table | `table` |
-| `getById` | Get a specific record by ID | `table`, `id` |
-| `search` | Search records with text matching | `table`, `searchColumn`, `searchTerm` |
-| `count` | Count records in a table | `table` |
-| `schema` | Get table schema information | `table` |
-| `tables` | Get list of all tables | None |
-| `recent` | Get recent records by timestamp | `table`, `timestampColumn` |
-| `paginated` | Get records with pagination | `table` |
+**Grant:**
+- "Should I day trade AAPL today?"
+- "What's the technical analysis for TSLA?"
+- "Give me trading advice for SPY with moderate risk tolerance"
 
-## Error Handling
+**ZERO:**
+- "I want to create a course on digital marketing for beginners"
+- "Generate lesson content for a Python programming course"
+- "Create a quiz for my photography course"
+- "Help me market my online course on social media"
+- "What should I price my course on web development?"
 
-The tool provides consistent error handling:
-- All operations return a `success` boolean
-- Errors include descriptive messages
-- No sensitive database information is exposed in error messages
-- Graceful fallbacks for missing configuration
+## Technical Details
 
-## Best Practices
+- Built with React and TypeScript
+- Uses Ant Design components for UI
+- Integrates with external APIs (Polygon.io for Grant)
+- Mock data implementation for demonstration
+- Extensible architecture for adding new tools
 
-1. **Use appropriate keys**: Use anon key for read operations, service role key only when needed
-2. **Limit results**: Always use `limit` to prevent large data transfers
-3. **Select specific columns**: Use `select` to only fetch needed data
-4. **Handle errors**: Check the `success` field before processing results
-5. **Use filters**: Apply filters to reduce data transfer and improve performance
+## Future Enhancements
 
-## Troubleshooting
-
-### Common Issues
-
-1. **"Supabase configuration missing"**: Check your `.env.local` file has the required variables
-2. **"Service role key not configured"**: Set `SUPABASE_SERVICE_ROLE_KEY` for admin operations
-3. **Connection errors**: Verify your Supabase URL and keys are correct
-4. **Permission errors**: Check your Supabase RLS (Row Level Security) policies
-
-### Debug Mode
-
-Set `DEBUG=supabase:*` in your environment to see detailed connection logs.
-
-## Integration with AI
-
-This tool is designed to work with AI agents that can:
-- Understand natural language database queries
-- Convert user questions into appropriate database operations
-- Handle complex queries by combining multiple operations
-- Provide natural language responses based on database results
-
-Example AI interaction:
-```
-User: "How many active users do we have?"
-AI: Let me check the users table for active users.
-[Uses performDatabaseOperation with operation: 'count' and filters: { status: 'active' }]
-AI: You have 1,247 active users in your system.
-```
+- Real Polygon.io API integration for live market data
+- Advanced technical analysis algorithms
+- Portfolio tracking and performance analysis
+- Real-time alerts and notifications
+- Integration with additional financial data sources

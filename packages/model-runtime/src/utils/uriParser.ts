@@ -10,7 +10,20 @@ export const parseDataUri = (dataUri: string): UriParserResult => {
 
   if (dataUriMatch) {
     // 如果是合法的 Data URI
-    return { base64: dataUriMatch[2], mimeType: dataUriMatch[1], type: 'base64' };
+    let mimeType = dataUriMatch[1];
+
+    // Extract only the base MIME type, removing any additional parameters
+    if (mimeType && mimeType.includes(';')) {
+      mimeType = mimeType.split(';')[0];
+    }
+
+    // Safety check: if MIME type is empty or invalid, provide fallback
+    if (!mimeType || mimeType === '') {
+      // Try to infer from the data URI context or default to PNG
+      mimeType = 'image/png';
+    }
+
+    return { base64: dataUriMatch[2], mimeType, type: 'base64' };
   }
 
   try {

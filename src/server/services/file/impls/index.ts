@@ -14,6 +14,11 @@ export const createFileServiceModule = (): FileServiceImpl => {
     return new DesktopLocalFileImpl();
   }
 
+  // 如果 S3 被禁用，使用本地文件实现
+  if (process.env.DISABLE_S3 === 'true') {
+    return new DesktopLocalFileImpl();
+  }
+
   return new S3StaticFileImpl();
 };
 

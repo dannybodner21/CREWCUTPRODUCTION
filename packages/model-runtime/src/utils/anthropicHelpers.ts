@@ -23,22 +23,63 @@ export const buildAnthropicBlock = async (
     case 'image_url': {
       const { mimeType, base64, type } = parseDataUri(content.image_url.url);
 
-      if (type === 'base64')
+      console.log('Debug - Image processing:', {
+        originalUrl: content.image_url.url,
+        parsedMimeType: mimeType,
+        parsedType: type,
+        hasBase64: !!base64
+      });
+
+      if (type === 'base64') {
+        // Ensure we have a valid MIME type
+        const validMimeType = mimeType || 'image/png';
+
+        console.log('Debug - Final MIME type being sent to Anthropic:', validMimeType);
+
         return {
           source: {
             data: base64 as string,
-            media_type: mimeType as Anthropic.Base64ImageSource['media_type'],
+            media_type: validMimeType as Anthropic.Base64ImageSource['media_type'],
             type: 'base64',
           },
           type: 'image',
         };
+      }
 
       if (type === 'url') {
         const { base64, mimeType } = await imageUrlToBase64(content.image_url.url);
+
+        // Ensure we have a valid MIME type
+        let validMimeType = mimeType || 'image/png';
+
+        // If MIME type is still empty or invalid, try to detect from URL
+        if (!validMimeType || validMimeType === 'application/octet-stream' || !validMimeType.startsWith('image/')) {
+          const url = content.image_url.url;
+          const extension = url.split('.').pop()?.toLowerCase();
+          if (extension) {
+            const mimeTypeMap: Record<string, string> = {
+              'jpg': 'image/jpeg',
+              'jpeg': 'image/jpeg',
+              'png': 'image/png',
+              'gif': 'image/gif',
+              'webp': 'image/webp',
+            };
+            validMimeType = mimeTypeMap[extension] || 'image/png';
+          }
+        }
+
+        console.log('Debug - URL processing result:', {
+          fetchedMimeType: mimeType,
+          finalMimeType: validMimeType,
+          hasBase64: !!base64,
+          base64Length: base64?.length || 0,
+          base64Start: base64?.substring(0, 50) || 'N/A'
+        });
+
         return {
           source: {
             data: base64 as string,
-            media_type: mimeType as Anthropic.Base64ImageSource['media_type'],
+            media_type: validMimeType as Anthropic.Base64ImageSource['media_type'],
             type: 'base64',
           },
           type: 'image',

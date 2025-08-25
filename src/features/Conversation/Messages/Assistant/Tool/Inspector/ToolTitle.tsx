@@ -1,7 +1,7 @@
 import { Icon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
-import { Globe, Laptop, CircuitBoard } from 'lucide-react';
+import { Globe, Laptop, CircuitBoard, GraduationCap } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
@@ -15,7 +15,7 @@ import { toolSelectors } from '@/store/tool/selectors';
 import { shinyTextStylish } from '@/styles/loading';
 import { LocalSystemManifest } from '@/tools/local-system';
 import { WebBrowsingManifest } from '@/tools/web-browsing';
-import { CustomApiToolManifest } from '@/tools/custom-api-tool';
+import { CustomApiToolManifest, ZeroToolManifest } from '@/tools/custom-api-tool';
 
 import BuiltinPluginTitle from './BuiltinPluginTitle';
 
@@ -88,6 +88,12 @@ const ToolTitle = memo<ToolTitleProps>(({ identifier, messageId, index, apiName,
         icon: <Icon icon={CircuitBoard} size={13} />,
         id: CustomApiToolManifest.identifier,
         title: 'LEWIS',
+      },
+      {
+        apiName: apiName,
+        icon: <Icon icon={GraduationCap} size={13} />,
+        id: ZeroToolManifest.identifier,
+        title: 'ZERO',
       },
     ],
     [apiName],

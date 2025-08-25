@@ -6,8 +6,8 @@ import { join } from 'node:path';
 // @ts-ignore tsgo handle esm import cjs and compatibility issues
 import { DB_FAIL_INIT_HINT, PGVECTOR_HINT } from './errorHint';
 
-// Read the `.env` file if it exists, or a file specified by the
-// dotenv_config_path parameter that's passed to Node.js
+// Read the .env.local file first, then fall back to .env
+dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const migrationsFolder = join(__dirname, '../../packages/database/migrations');
@@ -29,6 +29,13 @@ const runMigrations = async () => {
 };
 
 let connectionString = process.env.DATABASE_URL;
+
+// Debug: Show what environment variables are loaded
+console.log('🔍 Environment check:');
+console.log('  DATABASE_URL:', connectionString ? 'SET' : 'NOT SET');
+console.log('  DATABASE_DRIVER:', process.env.DATABASE_DRIVER);
+console.log('  NEXT_PUBLIC_IS_DESKTOP_APP:', process.env.NEXT_PUBLIC_IS_DESKTOP_APP);
+console.log('  isDesktop:', isDesktop);
 
 // only migrate database if the connection string is available
 if (!isDesktop && connectionString) {

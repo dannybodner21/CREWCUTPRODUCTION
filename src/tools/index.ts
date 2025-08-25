@@ -5,7 +5,7 @@ import { ArtifactsManifest } from './artifacts';
 import { DalleManifest } from './dalle';
 import { LocalSystemManifest } from './local-system';
 import { WebBrowsingManifest } from './web-browsing';
-import { CustomApiToolManifest } from './custom-api-tool';
+import { CustomApiToolManifest, GrantToolManifest, ZeroToolManifest } from './custom-api-tool';
 
 export const builtinTools: LobeBuiltinTool[] = [
   {
@@ -33,6 +33,16 @@ export const builtinTools: LobeBuiltinTool[] = [
   {
     identifier: CustomApiToolManifest.identifier,
     manifest: CustomApiToolManifest,
+    type: 'builtin',
+  },
+  {
+    identifier: GrantToolManifest.identifier,
+    manifest: GrantToolManifest,
+    type: 'builtin',
+  },
+  {
+    identifier: ZeroToolManifest.identifier,
+    manifest: ZeroToolManifest,
     type: 'builtin',
   },
 ];

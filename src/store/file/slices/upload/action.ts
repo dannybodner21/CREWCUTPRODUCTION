@@ -13,14 +13,14 @@ import { FileStore } from '../../store';
 type OnStatusUpdate = (
   data:
     | {
-        id: string;
-        type: 'updateFile';
-        value: Partial<UploadFileItem>;
-      }
+      id: string;
+      type: 'updateFile';
+      value: Partial<UploadFileItem>;
+    }
     | {
-        id: string;
-        type: 'removeFile';
-      },
+      id: string;
+      type: 'removeFile';
+    },
 ) => void;
 
 interface UploadWithProgressParams {
@@ -122,11 +122,36 @@ export const createFileUploadSlice: StateCreator<
     // 3. use more powerful file type detector to get file type
     let fileType = file.type;
 
-    if (!file.type) {
-      const { fileTypeFromBuffer } = await import('file-type');
+    if (!file.type || file.type === 'application/octet-stream') {
+      // Try to detect MIME type from file extension first
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (extension) {
+        // Map common image extensions to MIME types
+        const mimeTypeMap: Record<string, string> = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+          'bmp': 'image/bmp',
+          'ico': 'image/x-icon',
+          'tiff': 'image/tiff',
+          'tif': 'image/tiff',
+          'avif': 'image/avif',
+          'heic': 'image/heic',
+          'heif': 'image/heif',
+        };
 
-      const type = await fileTypeFromBuffer(fileArrayBuffer);
-      fileType = type?.mime || 'text/plain';
+        fileType = mimeTypeMap[extension];
+      }
+
+      // If still no valid type, use file-type library as fallback
+      if (!fileType) {
+        const { fileTypeFromBuffer } = await import('file-type');
+        const type = await fileTypeFromBuffer(fileArrayBuffer);
+        fileType = type?.mime || 'image/png'; // Default to PNG for images
+      }
     }
 
     // 4. create file to db
