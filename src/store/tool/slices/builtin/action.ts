@@ -21,14 +21,23 @@ export interface BuiltinToolAction {
   text2image: (params: Text2ImageParams) => DallEImageItem[];
   toggleBuiltinToolLoading: (key: string, value: boolean) => void;
   transformApiArgumentsToAiState: (key: string, params: any) => Promise<string | undefined>;
+
   // Custom API Tool actions
   callExternalAPI: (params: any) => Promise<any>;
   queryDatabase: (params: any) => Promise<any>;
   performDatabaseOperation: (params: any) => Promise<any>;
+
   // Construction Fee Portal actions
   getCities: (params: any) => Promise<any>;
   getFees: (params: any) => Promise<any>;
   calculateFees: (params: any) => Promise<any>;
+
+  // Course Builder Tool actions
+  createCourseOutline: (params: any) => Promise<any>;
+  generateLessonContent: (params: any) => Promise<any>;
+  createAssessment: (params: any) => Promise<any>;
+  generateMarketingContent: (params: any) => Promise<any>;
+  pricingStrategy: (params: any) => Promise<any>;
 }
 
 export const createBuiltinToolSlice: StateCreator<
@@ -55,29 +64,61 @@ export const createBuiltinToolSlice: StateCreator<
     getFees: customApiActions.getFees,
     calculateFees: customApiActions.calculateFees,
 
+    // Course Builder Tool actions
+    createCourseOutline: customApiActions.createCourseOutline,
+    generateLessonContent: customApiActions.generateLessonContent,
+    createAssessment: customApiActions.createAssessment,
+    generateMarketingContent: customApiActions.generateMarketingContent,
+    pricingStrategy: customApiActions.pricingStrategy,
+
     transformApiArgumentsToAiState: async (key, params) => {
+      console.log('🔧 STORE DEBUG: transformApiArgumentsToAiState called with:', { key, params });
+      console.log('🔧 STORE DEBUG: params type:', typeof params);
+      console.log('🔧 STORE DEBUG: params keys:', params ? Object.keys(params) : 'params is null/undefined');
+
       const { builtinToolLoading, toggleBuiltinToolLoading } = get();
-      if (builtinToolLoading[key]) return;
+      console.log('🔧 STORE DEBUG: current builtinToolLoading state:', builtinToolLoading);
+
+      if (builtinToolLoading[key]) {
+        console.log('🔧 STORE DEBUG: Tool is already loading, returning early');
+        return;
+      }
 
       const { [key as keyof BuiltinToolAction]: action } = get();
+      console.log('🔧 STORE DEBUG: Found action for key:', key, !!action);
+      console.log('🔧 STORE DEBUG: Action type:', typeof action);
+      console.log('🔧 STORE DEBUG: Action name:', action?.name);
 
-      if (!action) return JSON.stringify(params);
+      if (!action) {
+        console.log('🔧 STORE DEBUG: No action found, returning params as JSON string');
+        return JSON.stringify(params);
+      }
 
       // Executing tool action
-
+      console.log('🔧 STORE DEBUG: About to execute tool action:', key);
       toggleBuiltinToolLoading(key, true);
 
       try {
+        console.log('🔧 STORE DEBUG: Calling action with params:', params);
         // @ts-ignore
         const result = await action(params);
+        console.log('🔧 STORE DEBUG: Action executed successfully, result:', result);
+        console.log('🔧 STORE DEBUG: Result type:', typeof result);
+        console.log('🔧 STORE DEBUG: Result keys:', result ? Object.keys(result) : 'result is null/undefined');
 
         // Tool action completed successfully
-
         toggleBuiltinToolLoading(key, false);
 
-        return JSON.stringify(result);
+        const jsonResult = JSON.stringify(result);
+        console.log('🔧 STORE DEBUG: Returning JSON stringified result, length:', jsonResult.length);
+        return jsonResult;
       } catch (e) {
         // Tool action failed
+        console.error('🔧 STORE ERROR: Tool action failed:', e);
+        console.error('🔧 STORE ERROR: Error type:', typeof e);
+        console.error('🔧 STORE ERROR: Error message:', e instanceof Error ? e.message : 'Unknown error');
+        console.error('🔧 STORE ERROR: Error stack:', e instanceof Error ? e.stack : 'No stack trace');
+
         toggleBuiltinToolLoading(key, false);
         throw e;
       }

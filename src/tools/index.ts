@@ -5,7 +5,7 @@ import { ArtifactsManifest } from './artifacts';
 import { DalleManifest } from './dalle';
 import { LocalSystemManifest } from './local-system';
 import { WebBrowsingManifest } from './web-browsing';
-import { CustomApiToolManifest, GrantToolManifest, ZeroToolManifest } from './custom-api-tool';
+import { CustomApiToolManifest, GrantToolManifest, ZeroToolManifest, CourseBuilderToolManifest } from './custom-api-tool';
 
 export const builtinTools: LobeBuiltinTool[] = [
   {
@@ -43,6 +43,11 @@ export const builtinTools: LobeBuiltinTool[] = [
   {
     identifier: ZeroToolManifest.identifier,
     manifest: ZeroToolManifest,
+    type: 'builtin',
+  },
+  {
+    identifier: CourseBuilderToolManifest.identifier,
+    manifest: CourseBuilderToolManifest,
     type: 'builtin',
   },
 ];

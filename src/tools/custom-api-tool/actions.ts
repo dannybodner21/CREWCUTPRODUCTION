@@ -100,12 +100,12 @@ export interface CustomApiToolAction {
     getTradingAdvice: (params: GetTradingAdviceParams) => Promise<any>;
     getMarketNews: (params: GetMarketNewsParams) => Promise<any>;
 
-    // ZERO Tool actions
-    createCourseOutline: (params: any) => Promise<any>;
-    generateLessonContent: (params: any) => Promise<any>;
-    createAssessment: (params: any) => Promise<any>;
-    generateMarketingContent: (params: any) => Promise<any>;
-    pricingStrategy: (params: any) => Promise<any>;
+    // Course Builder Tool actions
+    createCourseOutline: (params: CreateCourseOutlineParams) => Promise<any>;
+    generateLessonContent: (params: GenerateLessonContentParams) => Promise<any>;
+    createAssessment: (params: CreateAssessmentParams) => Promise<any>;
+    generateMarketingContent: (params: GenerateMarketingContentParams) => Promise<any>;
+    pricingStrategy: (params: PricingStrategyParams) => Promise<any>;
 }
 
 // Implementation of your tool actions
@@ -802,62 +802,154 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
         }
     },
 
-    // ZERO Tool implementations
-    createCourseOutline: async (params) => {
-        // Implementation for creating course outlines
-        return {
-            success: true,
-            courseOutline: {
-                title: params.courseTitle,
-                description: params.courseDescription,
-                targetAudience: params.targetAudience,
-                duration: params.courseDuration || '3-5 hours',
-                modules: [], // Generate modules based on params
-                learningObjectives: params.learningObjectives || [],
-                prerequisites: params.prerequisites || []
-            }
-        };
+    // Course Builder Tool implementations
+    createCourseOutline: async (params: CreateCourseOutlineParams) => {
+        console.log('🔧 COURSE BUILDER DEBUG: createCourseOutline called with params:', params);
+        console.log('🔧 COURSE BUILDER DEBUG: params type:', typeof params);
+        console.log('🔧 COURSE BUILDER DEBUG: params keys:', Object.keys(params));
+
+        try {
+            // Implementation for creating course outlines
+            const { subject, level = 'beginner', duration = '4 weeks', learningGoals = [], targetAudience, format = 'mixed' } = params;
+
+            console.log('🔧 COURSE BUILDER DEBUG: destructured params:', { subject, level, duration, learningGoals, targetAudience, format });
+
+            // Generate course structure based on subject and level
+            const modules = generateCourseModules(subject, level);
+            console.log('🔧 COURSE BUILDER DEBUG: generated modules:', modules);
+
+            const result = {
+                success: true,
+                courseOutline: {
+                    title: `${subject} Course`,
+                    subject,
+                    level,
+                    duration,
+                    targetAudience: targetAudience || 'General learners',
+                    format,
+                    modules,
+                    learningObjectives: learningGoals.length > 0 ? learningGoals : generateDefaultLearningGoals(subject, level),
+                    prerequisites: generatePrerequisites(level),
+                    estimatedHours: calculateEstimatedHours(duration),
+                    certification: level === 'advanced' ? 'Advanced Certificate' : 'Completion Certificate'
+                }
+            };
+
+            console.log('🔧 COURSE BUILDER DEBUG: returning result:', result);
+            return result;
+        } catch (error) {
+            console.error('🔧 COURSE BUILDER ERROR: createCourseOutline failed:', error);
+            throw error;
+        }
     },
 
-    generateLessonContent: async (params) => {
-        // Implementation for generating lesson content
-        return {
-            success: true,
-            lessonContent: {
-                lessonTitle: params.lessonTitle,
-                lessonDescription: params.lessonDescription,
-                lessonType: params.lessonType || 'theory',
-                duration: params.duration || 15,
-                content: params.content || 'Generated lesson content...',
-                examples: params.examples || [],
-                exercises: params.exercises || [],
-                difficulty: params.difficulty || 'beginner'
-            }
-        };
+    generateLessonContent: async (params: GenerateLessonContentParams) => {
+        console.log('🔧 COURSE BUILDER DEBUG: generateLessonContent called with params:', params);
+
+        try {
+            // Implementation for generating lesson content
+            const { lessonTitle, lessonType = 'lecture', duration = '45 minutes', learningObjectives = [], prerequisites = [], includeActivities = true, includeResources = true } = params;
+
+            console.log('🔧 COURSE BUILDER DEBUG: destructured lesson params:', { lessonTitle, lessonType, duration, includeActivities, includeResources });
+
+            const result = {
+                success: true,
+                lessonContent: {
+                    lessonTitle,
+                    lessonType,
+                    duration,
+                    learningObjectives: learningObjectives.length > 0 ? learningObjectives : generateDefaultLessonObjectives(lessonTitle),
+                    prerequisites,
+                    content: generateLessonContent(lessonTitle, lessonType),
+                    activities: includeActivities ? generateLessonActivities(lessonTitle, lessonType) : [],
+                    resources: includeResources ? generateLessonResources(lessonTitle, lessonType) : [],
+                    assessment: generateLessonAssessment(lessonTitle, lessonType),
+                    estimatedCompletionTime: duration
+                }
+            };
+
+            console.log('🔧 COURSE BUILDER DEBUG: returning lesson result:', result);
+            return result;
+        } catch (error) {
+            console.error('🔧 COURSE BUILDER ERROR: generateLessonContent failed:', error);
+            throw error;
+        }
     },
 
-    createAssessment: async (params: any) => {
-        return {
-            success: false,
-            error: 'Not implemented',
-            data: null
-        };
+    createAssessment: async (params: CreateAssessmentParams) => {
+        console.log('🔧 COURSE BUILDER DEBUG: createAssessment called with params:', params);
+
+        try {
+            const { assessmentType, subject, difficulty = 'medium', questionCount = 10, includeAnswers = true, rubric = false } = params;
+
+            console.log('🔧 COURSE BUILDER DEBUG: destructured assessment params:', { assessmentType, subject, difficulty, questionCount, includeAnswers, rubric });
+
+            const assessment = generateAssessment(assessmentType, subject, difficulty, questionCount);
+            console.log('🔧 COURSE BUILDER DEBUG: generated assessment:', assessment);
+
+            const result = {
+                success: true,
+                assessment: {
+                    ...assessment,
+                    includeAnswers,
+                    rubric: rubric && assessmentType !== 'quiz' ? generateAssessmentRubric(assessmentType, difficulty) : undefined
+                }
+            };
+
+            console.log('🔧 COURSE BUILDER DEBUG: returning assessment result:', result);
+            return result;
+        } catch (error) {
+            console.error('🔧 COURSE BUILDER ERROR: createAssessment failed:', error);
+            throw error;
+        }
     },
 
-    generateMarketingContent: async (params: any) => {
-        return {
-            success: false,
-            error: 'Not implemented',
-            data: null
-        };
+    generateMarketingContent: async (params: GenerateMarketingContentParams) => {
+        console.log('🔧 COURSE BUILDER DEBUG: generateMarketingContent called with params:', params);
+
+        try {
+            const { courseTitle, targetAudience, contentType = 'course-description', tone = 'professional', keyBenefits = [], callToAction } = params;
+
+            console.log('🔧 COURSE BUILDER DEBUG: destructured marketing params:', { courseTitle, targetAudience, contentType, tone, keyBenefits, callToAction });
+
+            const marketingContent = generateMarketingContent(contentType, courseTitle, targetAudience || 'Learners', tone, keyBenefits, callToAction || 'Enroll now!');
+            console.log('🔧 COURSE BUILDER DEBUG: generated marketing content:', marketingContent);
+
+            const result = {
+                success: true,
+                marketingContent
+            };
+
+            console.log('🔧 COURSE BUILDER DEBUG: returning marketing result:', result);
+            return result;
+        } catch (error) {
+            console.error('🔧 COURSE BUILDER ERROR: generateMarketingContent failed:', error);
+            throw error;
+        }
     },
 
-    pricingStrategy: async (params: any) => {
-        return {
-            success: false,
-            error: 'Not implemented',
-            data: null
-        };
+    pricingStrategy: async (params: PricingStrategyParams) => {
+        console.log('🔧 COURSE BUILDER DEBUG: pricingStrategy called with params:', params);
+
+        try {
+            const { courseType, marketSegment = 'mid-market', competition, valueProposition, includeBonuses = true, paymentOptions = ['one-time'] } = params;
+
+            console.log('🔧 COURSE BUILDER DEBUG: destructured pricing params:', { courseType, marketSegment, competition, valueProposition, includeBonuses, paymentOptions });
+
+            const pricing = generatePricingStrategy(courseType, marketSegment, competition || 'Standard market', valueProposition || 'Quality education', includeBonuses, paymentOptions);
+            console.log('🔧 COURSE BUILDER DEBUG: generated pricing strategy:', pricing);
+
+            const result = {
+                success: true,
+                pricingStrategy: pricing
+            };
+
+            console.log('🔧 COURSE BUILDER DEBUG: returning pricing result:', result);
+            return result;
+        } catch (error) {
+            console.error('🔧 COURSE BUILDER ERROR: pricingStrategy failed:', error);
+            throw error;
+        }
     }
 });
 
@@ -1044,4 +1136,703 @@ function analyzeSentiment(text: string): 'positive' | 'negative' | 'neutral' {
     if (positiveCount > negativeCount) return 'positive';
     if (negativeCount > positiveCount) return 'negative';
     return 'neutral';
+}
+
+// Course Builder Helper Functions
+function generateCourseModules(subject: string, level: string): any[] {
+    const baseModules = [
+        {
+            title: 'Introduction to ' + subject,
+            description: 'Get started with the fundamentals',
+            lessons: ['Overview', 'Key Concepts', 'Getting Started'],
+            duration: '1 week'
+        },
+        {
+            title: 'Core Concepts',
+            description: 'Master the essential principles',
+            lessons: ['Theory', 'Practice', 'Examples'],
+            duration: '2 weeks'
+        },
+        {
+            title: 'Advanced Applications',
+            description: 'Apply your knowledge to real scenarios',
+            lessons: ['Case Studies', 'Projects', 'Best Practices'],
+            duration: '1 week'
+        }
+    ];
+
+    if (level === 'intermediate') {
+        baseModules.push({
+            title: 'Intermediate Techniques',
+            description: 'Build on your foundation',
+            lessons: ['Advanced Methods', 'Optimization', 'Troubleshooting'],
+            duration: '2 weeks'
+        });
+    }
+
+    if (level === 'advanced') {
+        baseModules.push(
+            {
+                title: 'Advanced Strategies',
+                description: 'Master complex scenarios',
+                lessons: ['Expert Techniques', 'Industry Insights', 'Innovation'],
+                duration: '2 weeks'
+            },
+            {
+                title: 'Capstone Project',
+                description: 'Apply everything you\'ve learned',
+                lessons: ['Project Planning', 'Implementation', 'Presentation'],
+                duration: '2 weeks'
+            }
+        );
+    }
+
+    return baseModules;
+}
+
+function generateDefaultLearningGoals(subject: string, level: string): string[] {
+    const baseGoals = [
+        `Understand the fundamental concepts of ${subject}`,
+        `Apply basic principles in practical scenarios`,
+        `Develop confidence in using ${subject} tools and techniques`
+    ];
+
+    if (level === 'intermediate') {
+        baseGoals.push(
+            `Master intermediate-level ${subject} techniques`,
+            `Solve complex problems using ${subject} methodologies`,
+            `Optimize workflows and processes`
+        );
+    }
+
+    if (level === 'advanced') {
+        baseGoals.push(
+            `Achieve expert-level proficiency in ${subject}`,
+            `Innovate and create new approaches`,
+            `Mentor others in ${subject} best practices`
+        );
+    }
+
+    return baseGoals;
+}
+
+function generatePrerequisites(level: string): string[] {
+    if (level === 'beginner') {
+        return ['No prior experience required', 'Basic computer literacy', 'Willingness to learn'];
+    } else if (level === 'intermediate') {
+        return ['Basic understanding of the subject', 'Some practical experience', 'Familiarity with related tools'];
+    } else {
+        return ['Intermediate to advanced knowledge', 'Significant practical experience', 'Understanding of industry standards'];
+    }
+}
+
+function calculateEstimatedHours(duration: string): number {
+    if (duration.includes('week')) {
+        const weeks = parseInt(duration.match(/\d+/)?.[0] || '4');
+        return weeks * 5; // 5 hours per week
+    } else if (duration.includes('hour')) {
+        return parseInt(duration.match(/\d+/)?.[0] || '20');
+    } else if (duration.includes('module')) {
+        const modules = parseInt(duration.match(/\d+/)?.[0] || '8');
+        return modules * 2; // 2 hours per module
+    }
+    return 20; // Default
+}
+
+function generateDefaultLessonObjectives(lessonTitle: string): string[] {
+    return [
+        `Understand the key concepts of ${lessonTitle}`,
+        `Apply the knowledge in practical exercises`,
+        `Complete the lesson activities successfully`
+    ];
+}
+
+function generateLessonContent(lessonTitle: string, lessonType: string): string {
+    const contentTemplates = {
+        lecture: `This lecture covers the essential concepts of ${lessonTitle}. You'll learn the theoretical foundations and practical applications that will help you master this topic.`,
+        workshop: `In this hands-on workshop, you'll actively practice ${lessonTitle} through guided exercises and real-world scenarios.`,
+        'case-study': `This case study examines real-world applications of ${lessonTitle}, providing insights into how these concepts work in practice.`,
+        project: `This project-based lesson will challenge you to apply your knowledge of ${lessonTitle} to create something meaningful.`,
+        quiz: `Test your understanding of ${lessonTitle} with this comprehensive assessment that covers all the key concepts.`
+    };
+
+    return contentTemplates[lessonType as keyof typeof contentTemplates] || contentTemplates.lecture;
+}
+
+function generateLessonActivities(lessonTitle: string, lessonType: string): any[] {
+    const activities = [
+        {
+            title: 'Knowledge Check',
+            description: 'Quick quiz to test understanding',
+            duration: '10 minutes',
+            type: 'assessment'
+        }
+    ];
+
+    if (lessonType === 'workshop' || lessonType === 'project') {
+        activities.push(
+            {
+                title: 'Hands-on Exercise',
+                description: 'Practical application of concepts',
+                duration: '30 minutes',
+                type: 'practice'
+            },
+            {
+                title: 'Group Discussion',
+                description: 'Share insights and learn from peers',
+                duration: '15 minutes',
+                type: 'collaboration'
+            }
+        );
+    }
+
+    if (lessonType === 'case-study') {
+        activities.push({
+            title: 'Case Analysis',
+            description: 'Analyze real-world scenarios',
+            duration: '25 minutes',
+            type: 'analysis'
+        });
+    }
+
+    return activities;
+}
+
+function generateLessonResources(lessonTitle: string, lessonType: string): any[] {
+    return [
+        {
+            title: 'Reading Materials',
+            type: 'document',
+            description: 'Comprehensive guide to ' + lessonTitle
+        },
+        {
+            title: 'Video Tutorial',
+            type: 'video',
+            description: 'Step-by-step demonstration'
+        },
+        {
+            title: 'Practice Exercises',
+            type: 'exercise',
+            description: 'Additional practice problems'
+        },
+        {
+            title: 'Reference Links',
+            type: 'external',
+            description: 'Further reading and resources'
+        }
+    ];
+}
+
+function generateLessonAssessment(lessonTitle: string, lessonType: string): any {
+    if (lessonType === 'quiz') {
+        return {
+            type: 'quiz',
+            questions: 5,
+            format: 'multiple-choice',
+            passingScore: 80
+        };
+    }
+
+    return {
+        type: 'assignment',
+        description: `Complete the ${lessonTitle} activities and submit your work`,
+        criteria: ['Understanding', 'Application', 'Creativity'],
+        dueDate: 'End of lesson'
+    };
+}
+
+// Course Builder Tool specific parameters
+interface CreateCourseOutlineParams {
+    subject: string;
+    level?: 'beginner' | 'intermediate' | 'advanced';
+    duration?: string;
+    learningGoals?: string[];
+    targetAudience?: string;
+    format?: 'video' | 'text' | 'interactive' | 'mixed';
+}
+
+interface GenerateLessonContentParams {
+    lessonTitle: string;
+    lessonType?: 'lecture' | 'workshop' | 'case-study' | 'project' | 'quiz';
+    duration?: string;
+    learningObjectives?: string[];
+    prerequisites?: string[];
+    includeActivities?: boolean;
+    includeResources?: boolean;
+}
+
+interface CreateAssessmentParams {
+    assessmentType: 'quiz' | 'test' | 'project' | 'presentation' | 'portfolio';
+    subject: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    questionCount?: number;
+    includeAnswers?: boolean;
+    rubric?: boolean;
+}
+
+interface GenerateMarketingContentParams {
+    courseTitle: string;
+    targetAudience?: string;
+    contentType?: 'course-description' | 'email-sequence' | 'social-media' | 'landing-page' | 'video-script';
+    tone?: 'professional' | 'casual' | 'enthusiastic' | 'authoritative' | 'friendly';
+    keyBenefits?: string[];
+    callToAction?: string;
+}
+
+interface PricingStrategyParams {
+    courseType: 'self-paced' | 'live-cohort' | 'hybrid' | 'certification';
+    marketSegment?: 'budget' | 'mid-market' | 'premium' | 'enterprise';
+    competition?: string;
+    valueProposition?: string;
+    includeBonuses?: boolean;
+    paymentOptions?: string[];
+}
+
+function generateAssessment(assessmentType: string, subject: string, difficulty: string, questionCount: number): any {
+    const baseAssessment = {
+        assessmentType,
+        title: `${subject} Assessment`,
+        subject,
+        difficulty,
+        instructions: `Complete this ${assessmentType} to test your knowledge of ${subject}`,
+        timeLimit: calculateTimeLimit(assessmentType, questionCount),
+        totalPoints: calculateTotalPoints(assessmentType, questionCount)
+    };
+
+    if (assessmentType === 'quiz' || assessmentType === 'test') {
+        return {
+            ...baseAssessment,
+            questions: generateQuestions(subject, difficulty, questionCount),
+            format: 'multiple-choice',
+            passingScore: difficulty === 'easy' ? 70 : difficulty === 'medium' ? 80 : 85
+        };
+    } else if (assessmentType === 'project') {
+        return {
+            ...baseAssessment,
+            projectDescription: generateProjectDescription(subject, difficulty),
+            deliverables: generateProjectDeliverables(subject),
+            criteria: generateProjectCriteria(difficulty)
+        };
+    } else if (assessmentType === 'presentation') {
+        return {
+            ...baseAssessment,
+            presentationTopic: generatePresentationTopic(subject),
+            requirements: generatePresentationRequirements(difficulty),
+            evaluationCriteria: generatePresentationCriteria()
+        };
+    } else {
+        return {
+            ...baseAssessment,
+            portfolioRequirements: generatePortfolioRequirements(subject, difficulty),
+            submissionGuidelines: generateSubmissionGuidelines()
+        };
+    }
+}
+
+function generateAssessmentRubric(assessmentType: string, difficulty: string): any {
+    const rubric: any = {
+        criteria: [],
+        scoring: {
+            excellent: { range: '90-100%', description: 'Outstanding performance' },
+            good: { range: '80-89%', description: 'Above average performance' },
+            satisfactory: { range: '70-79%', description: 'Meets expectations' },
+            needsImprovement: { range: '60-69%', description: 'Below expectations' },
+            unsatisfactory: { range: '0-59%', description: 'Does not meet expectations' }
+        }
+    };
+
+    if (assessmentType === 'project') {
+        rubric.criteria = [
+            { name: 'Understanding', weight: 25, description: 'Demonstrates clear understanding of concepts' },
+            { name: 'Application', weight: 30, description: 'Effectively applies knowledge to solve problems' },
+            { name: 'Creativity', weight: 20, description: 'Shows innovative thinking and originality' },
+            { name: 'Presentation', weight: 15, description: 'Clear and professional presentation of work' },
+            { name: 'Technical Quality', weight: 10, description: 'Meets technical requirements and standards' }
+        ];
+    } else if (assessmentType === 'presentation') {
+        rubric.criteria = [
+            { name: 'Content', weight: 30, description: 'Relevant and accurate information' },
+            { name: 'Organization', weight: 20, description: 'Logical structure and flow' },
+            { name: 'Delivery', weight: 25, description: 'Clear communication and engagement' },
+            { name: 'Visual Aids', weight: 15, description: 'Effective use of supporting materials' },
+            { name: 'Time Management', weight: 10, description: 'Appropriate pacing and timing' }
+        ];
+    } else {
+        rubric.criteria = [
+            { name: 'Content Quality', weight: 40, description: 'Depth and breadth of work' },
+            { name: 'Technical Skills', weight: 30, description: 'Demonstrated technical proficiency' },
+            { name: 'Presentation', weight: 20, description: 'Professional appearance and organization' },
+            { name: 'Reflection', weight: 10, description: 'Self-assessment and learning insights' }
+        ];
+    }
+
+    return rubric;
+}
+
+function generateQuestions(subject: string, difficulty: string, questionCount: number): any[] {
+    const questions = [];
+    for (let i = 1; i <= questionCount; i++) {
+        questions.push({
+            id: i,
+            question: `Question ${i}: What is a key concept related to ${subject}?`,
+            options: [
+                'Option A: Basic concept',
+                'Option B: Intermediate concept',
+                'Option C: Advanced concept',
+                'Option D: None of the above'
+            ],
+            correctAnswer: difficulty === 'easy' ? 0 : difficulty === 'medium' ? 1 : 2,
+            explanation: `This question tests your understanding of fundamental ${subject} concepts.`,
+            points: 1
+        });
+    }
+    return questions;
+}
+
+function generateProjectDescription(subject: string, difficulty: string): string {
+    const descriptions = {
+        easy: `Create a simple project that demonstrates basic understanding of ${subject}. This should be a beginner-friendly project that covers fundamental concepts.`,
+        medium: `Develop a comprehensive project that showcases intermediate-level skills in ${subject}. Include multiple components and demonstrate practical application.`,
+        hard: `Design and implement an advanced project that pushes the boundaries of ${subject}. This should be a portfolio-worthy piece that demonstrates expertise.`
+    };
+    return descriptions[difficulty as keyof typeof descriptions] || descriptions.medium;
+}
+
+function generateProjectDeliverables(subject: string): string[] {
+    return [
+        'Project proposal and plan',
+        'Working implementation or prototype',
+        'Documentation and user guide',
+        'Presentation or demonstration',
+        'Reflection and lessons learned'
+    ];
+}
+
+function generateProjectCriteria(difficulty: string): string[] {
+    const baseCriteria = ['Meets requirements', 'Code quality', 'Documentation'];
+    if (difficulty === 'medium') baseCriteria.push('User experience', 'Performance');
+    if (difficulty === 'hard') baseCriteria.push('Innovation', 'Scalability', 'Testing coverage');
+    return baseCriteria;
+}
+
+function generatePresentationTopic(subject: string): string {
+    return `Present your findings and insights on a key aspect of ${subject}. Choose a topic that interests you and prepare a compelling presentation.`;
+}
+
+function generatePresentationRequirements(difficulty: string): string[] {
+    const requirements = ['Clear structure', 'Engaging content', 'Professional delivery'];
+    if (difficulty === 'medium') requirements.push('Visual aids', 'Audience interaction');
+    if (difficulty === 'hard') requirements.push('Research depth', 'Critical analysis', 'Q&A handling');
+    return requirements;
+}
+
+function generatePresentationCriteria(): string[] {
+    return ['Content relevance', 'Organization', 'Delivery', 'Visual aids', 'Time management'];
+}
+
+function generatePortfolioRequirements(subject: string, difficulty: string): string[] {
+    const requirements = [
+        'Sample of your best work in ' + subject,
+        'Project descriptions and outcomes',
+        'Skills and competencies demonstrated'
+    ];
+
+    if (difficulty === 'medium') requirements.push('Process documentation', 'Learning reflections');
+    if (difficulty === 'hard') requirements.push('Innovation examples', 'Leadership experiences', 'Mentoring contributions');
+
+    return requirements;
+}
+
+function generateSubmissionGuidelines(): string[] {
+    return [
+        'Professional formatting and presentation',
+        'Clear organization and structure',
+        'Evidence of learning and growth',
+        'Reflection on achievements and goals'
+    ];
+}
+
+function calculateTimeLimit(assessmentType: string, questionCount: number): string {
+    if (assessmentType === 'quiz') {
+        return `${Math.max(15, questionCount * 2)} minutes`;
+    } else if (assessmentType === 'test') {
+        return `${Math.max(30, questionCount * 3)} minutes`;
+    } else {
+        return 'Varies by project scope';
+    }
+}
+
+function calculateTotalPoints(assessmentType: string, questionCount: number): number {
+    if (assessmentType === 'quiz' || assessmentType === 'test') {
+        return questionCount;
+    } else {
+        return 100;
+    }
+}
+
+function generateMarketingContent(contentType: string, courseTitle: string, targetAudience: string, tone: string, keyBenefits: string[], callToAction: string): any {
+    const baseContent = {
+        courseTitle,
+        targetAudience: targetAudience || 'Learners interested in this subject',
+        tone,
+        keyBenefits: keyBenefits.length > 0 ? keyBenefits : generateDefaultBenefits(courseTitle),
+        callToAction: callToAction || 'Enroll now and start your learning journey!'
+    };
+
+    switch (contentType) {
+        case 'course-description':
+            return {
+                ...baseContent,
+                description: generateCourseDescription(courseTitle, targetAudience),
+                highlights: generateCourseHighlights(courseTitle),
+                testimonials: generateSampleTestimonials()
+            };
+        case 'email-sequence':
+            return {
+                ...baseContent,
+                emails: generateEmailSequence(courseTitle, targetAudience)
+            };
+        case 'social-media':
+            return {
+                ...baseContent,
+                posts: generateSocialMediaPosts(courseTitle, targetAudience)
+            };
+        case 'landing-page':
+            return {
+                ...baseContent,
+                headline: generateLandingPageHeadline(courseTitle),
+                sections: generateLandingPageSections(courseTitle)
+            };
+        case 'video-script':
+            return {
+                ...baseContent,
+                script: generateVideoScript(courseTitle, targetAudience)
+            };
+        default:
+            return baseContent;
+    }
+}
+
+function generateDefaultBenefits(courseTitle: string): string[] {
+    return [
+        `Master essential ${courseTitle} concepts and skills`,
+        'Learn from industry experts and practitioners',
+        'Get hands-on experience with real-world projects',
+        'Earn a certificate upon completion',
+        'Join a community of learners and professionals'
+    ];
+}
+
+function generateCourseDescription(courseTitle: string, targetAudience: string): string {
+    return `Transform your career with our comprehensive ${courseTitle} course. Designed for ${targetAudience}, this course provides you with the knowledge, skills, and practical experience needed to excel in your field. Whether you're a beginner or looking to advance your expertise, our structured learning approach will guide you every step of the way.`;
+}
+
+function generateCourseHighlights(courseTitle: string): string[] {
+    return [
+        'Comprehensive curriculum covering all essential topics',
+        'Interactive learning with hands-on projects',
+        'Expert instruction and personalized feedback',
+        'Flexible learning schedule to fit your lifestyle',
+        'Lifetime access to course materials and updates'
+    ];
+}
+
+function generateSampleTestimonials(): any[] {
+    return [
+        {
+            name: 'Sarah M.',
+            role: 'Marketing Professional',
+            quote: 'This course completely transformed my approach to digital marketing. The practical exercises were invaluable.',
+            rating: 5
+        },
+        {
+            name: 'Michael R.',
+            role: 'Software Developer',
+            quote: 'Excellent content and clear explanations. I learned more in this course than in months of self-study.',
+            rating: 5
+        }
+    ];
+}
+
+function generateEmailSequence(courseTitle: string, targetAudience: string): any[] {
+    return [
+        {
+            subject: `Transform Your Career with ${courseTitle}`,
+            preview: 'Discover how this course can change your professional trajectory',
+            content: `Hi there! Are you ready to take your ${courseTitle} skills to the next level? Our comprehensive course is designed specifically for ${targetAudience} like you.`
+        },
+        {
+            subject: 'What You\'ll Learn in This Course',
+            preview: 'A detailed look at the skills and knowledge you\'ll gain',
+            content: 'In our previous email, we introduced you to our course. Now, let\'s dive deeper into what you\'ll actually learn and how it will benefit your career.'
+        },
+        {
+            subject: 'Success Stories from Our Students',
+            preview: 'Real results from real people who took this course',
+            content: 'Don\'t just take our word for it. Here are some inspiring success stories from students who completed our course and transformed their careers.'
+        }
+    ];
+}
+
+function generateSocialMediaPosts(courseTitle: string, targetAudience: string): any[] {
+    return [
+        {
+            platform: 'LinkedIn',
+            content: `🚀 Ready to advance your career? Our ${courseTitle} course is designed for ${targetAudience} who want to excel. Learn more at [link] #ProfessionalDevelopment #CareerGrowth`
+        },
+        {
+            platform: 'Twitter',
+            content: `📚 New course alert! Master ${courseTitle} with our comprehensive program. Perfect for ${targetAudience}. Start your journey today! #Learning #Skills`
+        },
+        {
+            platform: 'Facebook',
+            content: `🎯 Transform your future with our ${courseTitle} course! Designed for ${targetAudience}, this program will give you the skills you need to succeed.`
+        }
+    ];
+}
+
+function generateLandingPageHeadline(courseTitle: string): string {
+    return `Master ${courseTitle} and Transform Your Career in Just Weeks`;
+}
+
+function generateLandingPageSections(courseTitle: string): any[] {
+    return [
+        {
+            title: 'Why Choose This Course?',
+            content: 'Comprehensive curriculum, expert instruction, and practical projects that prepare you for real-world success.'
+        },
+        {
+            title: 'What You\'ll Learn',
+            content: 'From fundamentals to advanced techniques, you\'ll gain the complete skill set needed to excel in your field.'
+        },
+        {
+            title: 'Course Features',
+            content: 'Interactive lessons, hands-on projects, expert feedback, and lifetime access to all materials.'
+        }
+    ];
+}
+
+function generateVideoScript(courseTitle: string, targetAudience: string): string {
+    return `[Opening] Are you ready to master ${courseTitle} and take your career to new heights? 
+
+[Problem] Many ${targetAudience} struggle with [specific challenges] and feel stuck in their professional development.
+
+[Solution] Our comprehensive ${courseTitle} course provides the solution you've been looking for.
+
+[Benefits] You'll learn [key benefits], gain practical experience, and earn a valuable certification.
+
+[Social Proof] Join thousands of successful students who have transformed their careers with our proven approach.
+
+[Call to Action] Don't wait to invest in your future. Enroll in our ${courseTitle} course today and start your transformation!`;
+}
+
+function generatePricingStrategy(courseType: string, marketSegment: string, competition: string, valueProposition: string, includeBonuses: boolean, paymentOptions: string[]): any {
+    const basePricing = {
+        courseType,
+        marketSegment,
+        valueProposition: valueProposition || 'Comprehensive learning experience with expert instruction',
+        includeBonuses,
+        paymentOptions
+    };
+
+    const pricingTiers = generatePricingTiers(courseType, marketSegment);
+    const competitiveAnalysis = competition ? generateCompetitiveAnalysis(competition) : undefined;
+    const revenueProjections = generateRevenueProjections(courseType, marketSegment);
+
+    return {
+        ...basePricing,
+        pricingTiers,
+        competitiveAnalysis,
+        revenueProjections,
+        pricingStrategy: generatePricingStrategyRecommendations(courseType, marketSegment)
+    };
+}
+
+function generatePricingTiers(courseType: string, marketSegment: string): any[] {
+    const tiers = [];
+
+    if (courseType === 'self-paced') {
+        tiers.push(
+            {
+                name: 'Basic',
+                price: marketSegment === 'budget' ? 49 : marketSegment === 'premium' ? 199 : 99,
+                features: ['Course access', 'Basic materials', 'Email support']
+            },
+            {
+                name: 'Standard',
+                price: marketSegment === 'budget' ? 99 : marketSegment === 'premium' ? 399 : 199,
+                features: ['Course access', 'All materials', 'Priority support', 'Certificate']
+            },
+            {
+                name: 'Premium',
+                price: marketSegment === 'budget' ? 199 : marketSegment === 'premium' ? 799 : 399,
+                features: ['Course access', 'All materials', 'Priority support', 'Certificate', '1-on-1 consultation']
+            }
+        );
+    } else if (courseType === 'live-cohort') {
+        tiers.push(
+            {
+                name: 'Early Bird',
+                price: marketSegment === 'budget' ? 199 : marketSegment === 'premium' ? 799 : 399,
+                features: ['Live sessions', 'Group interaction', 'Materials', 'Certificate']
+            },
+            {
+                name: 'Regular',
+                price: marketSegment === 'budget' ? 299 : marketSegment === 'premium' ? 999 : 599,
+                features: ['Live sessions', 'Group interaction', 'Materials', 'Certificate', 'Office hours']
+            }
+        );
+    } else {
+        tiers.push({
+            name: 'Complete Package',
+            price: marketSegment === 'budget' ? 149 : marketSegment === 'premium' ? 599 : 299,
+            features: ['Full course access', 'Live sessions', 'Materials', 'Certificate', 'Support']
+        });
+    }
+
+    return tiers;
+}
+
+function generateCompetitiveAnalysis(competition: string): any {
+    return {
+        marketPosition: 'Competitive pricing with superior value',
+        differentiation: 'Focus on practical skills and real-world application',
+        recommendations: [
+            'Emphasize unique features and benefits',
+            'Offer flexible payment options',
+            'Provide exceptional customer support',
+            'Create a strong community aspect'
+        ]
+    };
+}
+
+function generateRevenueProjections(courseType: string, marketSegment: string): any {
+    const basePrice = marketSegment === 'budget' ? 100 : marketSegment === 'premium' ? 500 : 250;
+    const estimatedStudents = courseType === 'live-cohort' ? 20 : 100;
+
+    return {
+        estimatedRevenue: basePrice * estimatedStudents,
+        breakEvenPoint: '3-6 months',
+        profitMargin: '60-80%',
+        growthPotential: 'High - scalable model with minimal additional costs'
+    };
+}
+
+function generatePricingStrategyRecommendations(courseType: string, marketSegment: string): string[] {
+    const recommendations = [
+        'Start with competitive pricing to build initial customer base',
+        'Offer early bird discounts for live courses',
+        'Create multiple pricing tiers to capture different market segments',
+        'Include value-added bonuses to justify premium pricing'
+    ];
+
+    if (courseType === 'live-cohort') {
+        recommendations.push('Consider payment plans for higher-priced courses');
+    }
+
+    if (marketSegment === 'premium') {
+        recommendations.push('Focus on quality and exclusivity over price competition');
+    }
+
+    return recommendations;
 }

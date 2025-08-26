@@ -110,29 +110,59 @@ export const chatPlugin: StateCreator<
     if (triggerAiMessage) await triggerAIMessage({ parentId: id });
   },
   invokeBuiltinTool: async (id, payload) => {
+    console.log('🔧 PLUGIN DEBUG: invokeBuiltinTool called with:', {
+      id,
+      identifier: payload.identifier,
+      apiName: payload.apiName,
+      params: payload.arguments
+    });
+
+    const builtinTools = useToolStore.getState().builtinTools;
+    console.log('🔧 PLUGIN DEBUG: Available builtin tools:', builtinTools.map(t => ({ identifier: t.identifier, title: t.manifest.meta.title })));
+
+    const tool = builtinTools.find((tool) => tool.identifier === payload.identifier);
+    console.log('🔧 PLUGIN DEBUG: Found tool:', tool ? { identifier: tool.identifier, title: tool.manifest.meta.title } : 'NOT FOUND');
+
+    if (!tool) {
+      console.error('🔧 PLUGIN ERROR: Tool not found for identifier:', payload.identifier);
+      return;
+    }
+
+    const api = tool.manifest.api.find((api) => api.name === payload.apiName);
+    console.log('🔧 PLUGIN DEBUG: Found API:', api ? { name: api.name, description: api.description } : 'NOT FOUND');
+
+    if (!api) {
+      console.error('🔧 PLUGIN ERROR: API not found for name:', payload.apiName);
+      return;
+    }
+
+    console.log('🔧 PLUGIN DEBUG: About to call transformApiArgumentsToAiState with:', {
+      apiName: payload.apiName,
+      params: payload.arguments
+    });
+
     const {
       internal_togglePluginApiCalling,
       internal_updateMessageContent,
       internal_updatePluginError,
     } = get();
 
-    const params = JSON.parse(payload.arguments);
-    console.log('🔧 TOOL DEBUG: invokeBuiltinTool called with:', {
-      identifier: payload.identifier,
-      apiName: payload.apiName,
-      params
-    });
-
     internal_togglePluginApiCalling(true, id, n('invokeBuiltinTool/start') as string);
     let data;
     try {
-      data = await useToolStore.getState().transformApiArgumentsToAiState(payload.apiName, params);
-      console.log('🔧 TOOL DEBUG: transformApiArgumentsToAiState result:', data);
+      data = await useToolStore.getState().transformApiArgumentsToAiState(payload.apiName, payload.arguments);
+      console.log('🔧 PLUGIN DEBUG: transformApiArgumentsToAiState result:', data);
+      console.log('🔧 PLUGIN DEBUG: Result type:', typeof data);
+      console.log('🔧 PLUGIN DEBUG: Result length:', data ? data.length : 'N/A');
     } catch (error) {
       const err = error as Error;
-      console.error('Tool execution failed:', err);
+      console.error('🔧 PLUGIN ERROR: Tool execution failed:', err);
+      console.error('🔧 PLUGIN ERROR: Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
 
-      const tool = builtinTools.find((tool) => tool.identifier === payload.identifier);
       const schema = tool?.manifest?.api.find((api) => api.name === payload.apiName)?.parameters;
 
       await internal_updatePluginError(id, {
@@ -141,7 +171,7 @@ export const chatPlugin: StateCreator<
           message:
             "[plugin] fail to transform plugin arguments to ai state, it may due to model's limited tools calling capacity. You can refer to https://lobehub.com/docs/usage/tools-calling for more detail.",
           stack: err.stack,
-          arguments: params,
+          arguments: payload.arguments,
           schema,
         },
         message: '',
@@ -149,32 +179,46 @@ export const chatPlugin: StateCreator<
     }
     internal_togglePluginApiCalling(false, id, n('invokeBuiltinTool/end') as string);
 
-    if (!data) return;
+    if (!data) {
+      console.log('🔧 PLUGIN DEBUG: No data returned from transformApiArgumentsToAiState');
+      return;
+    }
 
+    console.log('🔧 PLUGIN DEBUG: About to update message content with data');
     await internal_updateMessageContent(id, data);
 
     // For custom API tools, the data is already processed and ready to display
     // No need to look for additional actions in the chat store
     if (payload.identifier === 'lewis') {
+      console.log('🔧 PLUGIN DEBUG: Lewis tool detected, returning early');
       return;
     }
 
     // For other builtin tools (like text2image), run the tool api call
     // postToolCalling
+    console.log('🔧 PLUGIN DEBUG: Looking for additional actions in chat store');
     // @ts-ignore
     const { [payload.apiName]: action } = get();
-    if (!action) return;
+    if (!action) {
+      console.log('🔧 PLUGIN DEBUG: No additional action found in chat store');
+      return;
+    }
 
     let content;
-
     try {
       content = JSON.parse(data);
-    } catch {
+      console.log('🔧 PLUGIN DEBUG: Parsed content from data:', content);
+    } catch (parseError) {
+      console.log('🔧 PLUGIN DEBUG: Failed to parse data as JSON:', parseError);
       /* empty block */
     }
 
-    if (!content) return;
+    if (!content) {
+      console.log('🔧 PLUGIN DEBUG: No content to process');
+      return;
+    }
 
+    console.log('🔧 PLUGIN DEBUG: About to call additional action with content');
     return await action(id, content);
   },
 

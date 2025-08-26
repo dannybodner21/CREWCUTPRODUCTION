@@ -640,3 +640,241 @@ Always provide:
 
 Remember: You're not just generating content - you're helping creators build successful, profitable online courses that transform students' lives.`,
 };
+
+export const CourseBuilderToolManifest: BuiltinToolManifest = {
+    identifier: 'course-builder',
+    type: 'builtin',
+    meta: {
+        title: 'Course Builder',
+        description: 'Create comprehensive online course outlines and lesson plans for any subject',
+        avatar: '📚', // Book emoji for Course Builder
+    },
+    api: [
+        {
+            name: 'createCourseOutline',
+            description: 'Create a comprehensive course outline with modules, lessons, and learning objectives',
+            parameters: {
+                type: 'object',
+                properties: {
+                    subject: {
+                        type: 'string',
+                        description: 'The main subject or topic for the course (e.g., "JavaScript Programming", "Digital Marketing", "Photography")',
+                    },
+                    level: {
+                        type: 'string',
+                        enum: ['beginner', 'intermediate', 'advanced'],
+                        description: 'Target skill level for the course',
+                        default: 'beginner',
+                    },
+                    duration: {
+                        type: 'string',
+                        description: 'Expected course duration (e.g., "4 weeks", "8 hours", "12 modules")',
+                    },
+                    learningGoals: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Specific learning objectives students should achieve',
+                    },
+                    targetAudience: {
+                        type: 'string',
+                        description: 'Description of the target audience (e.g., "Working professionals", "College students", "Small business owners")',
+                    },
+                    format: {
+                        type: 'string',
+                        enum: ['video', 'text', 'interactive', 'mixed'],
+                        description: 'Primary content format for the course',
+                        default: 'mixed',
+                    },
+                },
+                required: ['subject'],
+            },
+        },
+        {
+            name: 'generateLessonContent',
+            description: 'Generate detailed content for a specific lesson including activities, resources, and assessments',
+            parameters: {
+                type: 'object',
+                properties: {
+                    lessonTitle: {
+                        type: 'string',
+                        description: 'Title of the specific lesson',
+                    },
+                    lessonType: {
+                        type: 'string',
+                        enum: ['lecture', 'workshop', 'case-study', 'project', 'quiz'],
+                        description: 'Type of lesson to generate',
+                        default: 'lecture',
+                    },
+                    duration: {
+                        type: 'string',
+                        description: 'Expected duration of the lesson (e.g., "45 minutes", "2 hours")',
+                    },
+                    learningObjectives: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Specific learning objectives for this lesson',
+                    },
+                    prerequisites: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'What students should know before taking this lesson',
+                    },
+                    includeActivities: {
+                        type: 'boolean',
+                        description: 'Whether to include hands-on activities and exercises',
+                        default: true,
+                    },
+                    includeResources: {
+                        type: 'boolean',
+                        description: 'Whether to include additional resources and references',
+                        default: true,
+                    },
+                },
+                required: ['lessonTitle'],
+            },
+        },
+        {
+            name: 'createAssessment',
+            description: 'Create quizzes, tests, or project-based assessments for course evaluation',
+            parameters: {
+                type: 'object',
+                properties: {
+                    assessmentType: {
+                        type: 'string',
+                        enum: ['quiz', 'test', 'project', 'presentation', 'portfolio'],
+                        description: 'Type of assessment to create',
+                        default: 'quiz',
+                    },
+                    subject: {
+                        type: 'string',
+                        description: 'Subject or topic area for the assessment',
+                    },
+                    difficulty: {
+                        type: 'string',
+                        enum: ['easy', 'medium', 'hard'],
+                        description: 'Difficulty level of the assessment',
+                        default: 'medium',
+                    },
+                    questionCount: {
+                        type: 'number',
+                        description: 'Number of questions for quiz/test assessments',
+                        default: 10,
+                    },
+                    includeAnswers: {
+                        type: 'boolean',
+                        description: 'Whether to include answer keys and explanations',
+                        default: true,
+                    },
+                    rubric: {
+                        type: 'boolean',
+                        description: 'Whether to include grading rubric for project/presentation assessments',
+                        default: false,
+                    },
+                },
+                required: ['assessmentType', 'subject'],
+            },
+        },
+        {
+            name: 'generateMarketingContent',
+            description: 'Create compelling marketing materials to promote the course',
+            parameters: {
+                type: 'object',
+                properties: {
+                    courseTitle: {
+                        type: 'string',
+                        description: 'Title of the course to promote',
+                    },
+                    targetAudience: {
+                        type: 'string',
+                        description: 'Primary target audience for the marketing content',
+                    },
+                    contentType: {
+                        type: 'string',
+                        enum: ['course-description', 'email-sequence', 'social-media', 'landing-page', 'video-script'],
+                        description: 'Type of marketing content to generate',
+                        default: 'course-description',
+                    },
+                    tone: {
+                        type: 'string',
+                        enum: ['professional', 'casual', 'enthusiastic', 'authoritative', 'friendly'],
+                        description: 'Tone of voice for the marketing content',
+                        default: 'professional',
+                    },
+                    keyBenefits: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Key benefits and outcomes students will gain',
+                    },
+                    callToAction: {
+                        type: 'string',
+                        description: 'Specific call to action for the marketing content',
+                    },
+                },
+                required: ['courseTitle'],
+            },
+        },
+        {
+            name: 'pricingStrategy',
+            description: 'Develop pricing strategies and revenue models for the course',
+            parameters: {
+                type: 'object',
+                properties: {
+                    courseType: {
+                        type: 'string',
+                        enum: ['self-paced', 'live-cohort', 'hybrid', 'certification'],
+                        description: 'Type of course delivery model',
+                        default: 'self-paced',
+                    },
+                    marketSegment: {
+                        type: 'string',
+                        enum: ['budget', 'mid-market', 'premium', 'enterprise'],
+                        description: 'Target market segment for pricing',
+                        default: 'mid-market',
+                    },
+                    competition: {
+                        type: 'string',
+                        description: 'Brief description of competitive landscape and pricing',
+                    },
+                    valueProposition: {
+                        type: 'string',
+                        description: 'Unique value proposition of the course',
+                    },
+                    includeBonuses: {
+                        type: 'boolean',
+                        description: 'Whether to include bonus materials or services in pricing',
+                        default: true,
+                    },
+                    paymentOptions: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        enum: ['one-time', 'installments', 'subscription', 'pay-what-you-want'],
+                        description: 'Payment structure options to consider',
+                    },
+                },
+                required: ['courseType'],
+            },
+        },
+    ],
+    systemRole: `You are Course Builder, an expert instructional designer and course creation specialist. You help educators, trainers, and content creators develop comprehensive online courses that engage learners and achieve measurable outcomes.
+
+Available capabilities:
+1. **Course Outline Creation**: Design structured course frameworks with clear learning objectives
+2. **Lesson Content Generation**: Create detailed lesson plans with activities and resources
+3. **Assessment Development**: Design various types of evaluations and assessments
+4. **Marketing Content**: Generate compelling promotional materials for courses
+5. **Pricing Strategy**: Develop revenue models and pricing strategies
+
+**IMPORTANT: After calling any tool function, you MUST:**
+1. **Process the tool result** - Parse the JSON response and understand what was generated
+2. **Provide an intelligent answer** - Use the tool results to answer the user's question in a helpful, informative way
+3. **Explain the findings** - Don't just show raw data; interpret it and provide insights
+4. **Format the response** - Present the information in a clear, organized manner
+
+**Example workflow:**
+- User asks: "I want to create a course about digital marketing for beginners"
+- You call: createCourseOutline({ subject: "Digital Marketing", level: "beginner", duration: "6 weeks" })
+- You receive: JSON data with course structure
+- You respond: "I've created a comprehensive 6-week Digital Marketing course for beginners. Here's what your course will include: [explain the structure, modules, and learning outcomes in an organized way]"
+
+Always provide clear, helpful responses and explain what you're creating or analyzing. Never just call a tool without processing and presenting the results intelligently.`,
+};

@@ -18,14 +18,17 @@ const ToolRender = memo(() => {
   // Check if this is a builtin tool (has identifier but message might not have plugin structure)
   if (identifier && BuiltinToolsPortals[identifier]) {
     const Render = BuiltinToolsPortals[identifier];
-    
+
+    // Get the tool response data from the message content
+    const toolResponse = message.content;
+
     return (
       <Render
         apiName={identifier}
-        arguments={{}}
+        arguments={message.plugin?.arguments ? safeParseJSON(message.plugin.arguments) : {}}
         identifier={identifier}
         messageId={messageId}
-        state={undefined}
+        state={toolResponse}  // ← FIX: Pass the actual tool response!
       />
     );
   }
