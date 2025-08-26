@@ -52,20 +52,23 @@ export type UserSettingsItem = typeof userSettings.$inferSelect;
 export const userInstalledPlugins = pgTable(
   'user_installed_plugins',
   {
+    identifier: text('identifier').notNull(),
+    type: text('type', { enum: ['plugin', 'customPlugin'] }).notNull(),
+    manifest: jsonb('manifest').$type<LobeChatPluginManifest>().default('{}'),
+    settings: jsonb('settings').default('{}'),
+    customParams: jsonb('custom_params').$type<CustomPluginParams>().default('{}'),
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
-
-    identifier: text('identifier').notNull(),
-    type: text('type', { enum: ['plugin', 'customPlugin'] }).notNull(),
-    manifest: jsonb('manifest').$type<LobeChatPluginManifest>(),
-    settings: jsonb('settings'),
-    customParams: jsonb('custom_params').$type<CustomPluginParams>(),
-
-    ...timestamps,
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    accessedAt: timestamptz('accessed_at').notNull().defaultNow(),
   },
   (self) => ({
-    id: primaryKey({ columns: [self.userId, self.identifier] }),
+    id: primaryKey({ columns: [self.userId, self.identifier] }), // Composite primary key
   }),
 );
 
