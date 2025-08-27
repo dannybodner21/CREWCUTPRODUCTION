@@ -1,4 +1,4 @@
-/* eslint-disable sort-keys-fix/sort-keys-fix, typescript-sort-keys/interface */
+
 import { ChatErrorType } from '@lobechat/types';
 import { PluginErrorType } from '@lobehub/chat-plugin-sdk';
 import isEqual from 'fast-deep-equal';
@@ -272,7 +272,7 @@ export const chatPlugin: StateCreator<
     await get().internal_invokeDifferentTypePlugin(id, payload);
   },
 
-  triggerAIMessage: async ({ parentId, traceId, threadId, inPortalThread, inSearchWorkflow }) => {
+  triggerAIMessage: async ({ inPortalThread, inSearchWorkflow, parentId, threadId, traceId }) => {
     const { internal_coreProcessMessage } = get();
 
     const chats = inPortalThread
@@ -280,10 +280,10 @@ export const chatPlugin: StateCreator<
       : chatSelectors.mainAIChatsWithHistoryConfig(get());
 
     await internal_coreProcessMessage(chats, parentId ?? chats.at(-1)!.id, {
-      traceId,
-      threadId,
       inPortalThread,
       inSearchWorkflow,
+      threadId,
+      traceId,
     });
   },
 
@@ -309,7 +309,7 @@ export const chatPlugin: StateCreator<
     );
   },
 
-  triggerToolCalls: async (assistantId, { threadId, inPortalThread, inSearchWorkflow } = {}) => {
+  triggerToolCalls: async (assistantId, { inPortalThread, inSearchWorkflow, threadId } = {}) => {
     const message = chatSelectors.getMessageById(assistantId)(get());
     if (!message || !message.tools) return;
 
@@ -322,8 +322,8 @@ export const chatPlugin: StateCreator<
         plugin: payload,
         role: 'tool',
         sessionId: get().activeId,
-        tool_call_id: payload.id,
         threadId,
+        tool_call_id: payload.id,
         topicId: get().activeTopicId, // if there is activeTopicId，then add it to topicId
       };
 
@@ -445,7 +445,7 @@ export const chatPlugin: StateCreator<
   },
 
   internal_callPluginApi: async (id, payload) => {
-    const { internal_updateMessageContent, refreshMessages, internal_togglePluginApiCalling } =
+    const { internal_togglePluginApiCalling, internal_updateMessageContent, refreshMessages } =
       get();
     let data: string;
 

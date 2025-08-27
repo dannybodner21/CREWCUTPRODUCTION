@@ -13,7 +13,7 @@ import { systemStatusSelectors } from '@/store/global/selectors';
 import Footer from './Footer';
 import TextArea from './TextArea';
 
-const leftActions = ['stt', 'portalToken'] as ActionKeys[];
+const leftActions = ['stt'] as ActionKeys[];
 
 const rightActions = [] as ActionKeys[];
 

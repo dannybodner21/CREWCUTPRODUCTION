@@ -15,6 +15,11 @@ const ICON_SIZE: ActionIconProps['size'] = {
 };
 
 const BottomActions = memo(() => {
+  // Return null to remove both buttons from the sidebar
+  return null;
+
+  // Original code commented out below:
+  /*
   const { t } = useTranslation('common');
   const { hideGitHub, hideDocs } = useServerConfigStore(featureFlagsSelectors);
 
@@ -42,6 +47,7 @@ const BottomActions = memo(() => {
       )}
     </Flexbox>
   );
+  */
 });
 
 export default BottomActions;

@@ -27,7 +27,6 @@ const defaultLeftActions: ActionKeys[] = [
   'history',
   'tools',
   'params',
-  'mainToken',
 ];
 
 const defaultRightActions: ActionKeys[] = ['clear'];

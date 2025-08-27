@@ -19,7 +19,6 @@ const leftActions = [
   'history',
   'stt',
   'tools',
-  'mainToken',
 ] as ActionKeys[];
 
 const rightActions = ['clear'] as ActionKeys[];
