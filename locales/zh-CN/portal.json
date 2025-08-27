@@ -12,6 +12,7 @@
       "code": "代码",
       "preview": "预览"
     },
+    "save": "保存",
     "svg": {
       "copyAsImage": "复制为图片",
       "copyFail": "复制失败，错误原因:{{error}}",

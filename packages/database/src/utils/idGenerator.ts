@@ -15,6 +15,7 @@ const prefixes = {
   knowledgeBases: 'kb',
   messages: 'msg',
   plugins: 'plg',
+  savedArtifacts: 'sart',
   sessionGroups: 'sg',
   sessions: 'ssn',
   threads: 'thd',

@@ -12,6 +12,7 @@ export * from './rag';
 export * from './ragEvals';
 export * from './rbac';
 export * from './relations';
+export * from './savedArtifact';
 export * from './session';
 export * from './topic';
 export * from './user';

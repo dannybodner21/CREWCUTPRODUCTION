@@ -13,6 +13,7 @@ import { chunks, unstructuredChunks } from './rag';
 import { sessionGroups, sessions } from './session';
 import { threads, topicDocuments, topics } from './topic';
 import { users } from './user';
+import { savedArtifacts } from './savedArtifact';
 
 export const agentsToSessions = pgTable(
   'agents_to_sessions',
@@ -278,5 +279,17 @@ export const generationsRelations = relations(generations, ({ one }) => ({
   file: one(files, {
     fields: [generations.fileId],
     references: [files.id],
+  }),
+}));
+
+// Saved Artifacts 相关关系定义
+export const savedArtifactsRelations = relations(savedArtifacts, ({ one }) => ({
+  user: one(users, {
+    fields: [savedArtifacts.userId],
+    references: [users.id],
+  }),
+  message: one(messages, {
+    fields: [savedArtifacts.messageId],
+    references: [messages.id],
   }),
 }));

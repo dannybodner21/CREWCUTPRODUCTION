@@ -1,6 +1,7 @@
 /* eslint-disable sort-keys-fix/sort-keys-fix  */
 import { LobeChatPluginManifest } from '@lobehub/chat-plugin-sdk';
 import { boolean, jsonb, pgTable, primaryKey, text } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 import { DEFAULT_PREFERENCE } from '@/const/user';
 import { CustomPluginParams } from '@/types/tool/plugin';
@@ -54,9 +55,9 @@ export const userInstalledPlugins = pgTable(
   {
     identifier: text('identifier').notNull(),
     type: text('type', { enum: ['plugin', 'customPlugin'] }).notNull(),
-    manifest: jsonb('manifest').$type<LobeChatPluginManifest>().default('{}'),
-    settings: jsonb('settings').default('{}'),
-    customParams: jsonb('custom_params').$type<CustomPluginParams>().default('{}'),
+    manifest: jsonb('manifest').$type<LobeChatPluginManifest>().default(sql`'{}'`),
+    settings: jsonb('settings').default(sql`'{}'`),
+    customParams: jsonb('custom_params').$type<CustomPluginParams>().default(sql`'{}'`),
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),

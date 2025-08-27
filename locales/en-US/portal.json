@@ -12,6 +12,7 @@
       "code": "Code",
       "preview": "Preview"
     },
+    "save": "Save",
     "svg": {
       "copyAsImage": "Copy as Image",
       "copyFail": "Copy failed, reason: {{error}}",
