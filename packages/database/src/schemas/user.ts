@@ -54,9 +54,9 @@ export const userInstalledPlugins = pgTable(
   {
     identifier: text('identifier').notNull(),
     type: text('type', { enum: ['plugin', 'customPlugin'] }).notNull(),
-    manifest: jsonb('manifest').$type<LobeChatPluginManifest>().default('{}'),
-    settings: jsonb('settings').default('{}'),
-    customParams: jsonb('custom_params').$type<CustomPluginParams>().default('{}'),
+    manifest: jsonb('manifest').$type<LobeChatPluginManifest>().$defaultFn(() => ({})),
+    settings: jsonb('settings').$defaultFn(() => ({})),
+    customParams: jsonb('custom_params').$type<CustomPluginParams>().$defaultFn(() => ({})),
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),

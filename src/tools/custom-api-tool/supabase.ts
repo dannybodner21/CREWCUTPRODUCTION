@@ -12,15 +12,21 @@ interface SupabaseConfig {
 // Get Supabase credentials from environment variables
 // These should be separate from your main DATABASE_URL
 const getSupabaseConfig = (): SupabaseConfig => {
-    // Use NEXT_PUBLIC_ prefixed variables for client-side access
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // Use LEWIS_ prefixed variables for Lewis database access
+    const url = process.env.LEWIS_SUPABASE_URL;
+    const anonKey = process.env.LEWIS_SUPABASE_ANON_KEY;
+    const serviceRoleKey = process.env.LEWIS_SUPABASE_SERVICE_ROLE_KEY;
+
+    // Debug logging
+    console.log('🔧 Debug: Environment variables:');
+    console.log('   LEWIS_SUPABASE_URL:', url ? '✅ Set' : '❌ Missing');
+    console.log('   LEWIS_SUPABASE_ANON_KEY:', anonKey ? '✅ Set' : '❌ Missing');
+    console.log('   LEWIS_SUPABASE_SERVICE_ROLE_KEY:', serviceRoleKey ? '✅ Set' : '❌ Missing');
 
     // Environment variables loaded successfully
 
     if (!url || !anonKey) {
-        console.warn('Supabase configuration not found. Make sure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your .env.local file.');
+        console.warn('Lewis Supabase configuration not found. Make sure LEWIS_SUPABASE_URL and LEWIS_SUPABASE_ANON_KEY are set in your .env.local file.');
         // Return dummy config to prevent build errors
         return {
             url: 'https://placeholder.supabase.co',

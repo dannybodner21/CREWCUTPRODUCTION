@@ -5,7 +5,7 @@
 export const LOBE_CHAT_CLOUD = 'CREW CUT Cloud';
 
 export const BRANDING_NAME = 'CREW CUT';
-export const BRANDING_LOGO_URL = '';
+export const BRANDING_LOGO_URL = null;
 
 export const ORG_NAME = 'CREW CUT';
 

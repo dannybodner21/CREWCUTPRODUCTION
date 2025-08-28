@@ -11,6 +11,7 @@ export const useYamlArguments = (args?: string) => {
 
     return stringify(obj);
   } catch {
-    return args;
+    // Ensure we always return a string, even if parsing fails
+    return typeof args === 'string' ? args : JSON.stringify(args);
   }
 };

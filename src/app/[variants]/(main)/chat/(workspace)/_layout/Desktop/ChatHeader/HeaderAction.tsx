@@ -1,7 +1,7 @@
 'use client';
 
-import { ActionIcon } from '@lobehub/ui';
-import { PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { ActionIcon, Button } from '@lobehub/ui';
+import { PanelRightClose, PanelRightOpen, Database } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
@@ -27,8 +27,38 @@ const HeaderAction = memo<{ className?: string }>(({ className }) => {
 
   const { isAgentEditable } = useServerConfigStore(featureFlagsSelectors);
 
+  const testLewisDatabase = async () => {
+    try {
+      console.log('🧪 Testing Lewis database connection...');
+
+      // Test the simple API route
+      const response = await fetch('/api/test-lewis');
+      const data = await response.json();
+
+      console.log('✅ Lewis database test result:', data);
+
+      if (data.success) {
+        console.log(`🎯 Lewis has data for ${data.count} states:`, data.states);
+        console.log(`📝 Message: ${data.message}`);
+      } else {
+        console.log('❌ Lewis database test failed:', data.error);
+      }
+    } catch (error) {
+      console.error('💥 Error testing Lewis database:', error);
+    }
+  };
+
   return (
     <Flexbox className={className} gap={4} horizontal>
+      <Button
+        icon={<Database />}
+        onClick={testLewisDatabase}
+        size="small"
+        title="Test Lewis Database"
+        type="default"
+      >
+        Test Lewis DB
+      </Button>
       <ShareButton />
       <ActionIcon
         icon={showAgentSettings ? PanelRightClose : PanelRightOpen}

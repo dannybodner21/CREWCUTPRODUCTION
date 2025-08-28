@@ -1,6 +1,7 @@
 import { BuiltinToolAction } from '@/store/tool/slices/builtin/action';
 import { createSupabaseClient, executeSupabaseQuery } from './supabase';
 import { supabaseOperations } from './supabase-operations';
+import { hybridLewisService } from './hybrid-lewis-service';
 
 // Types for your tool parameters
 interface CallExternalAPIParams {
@@ -93,6 +94,8 @@ export interface CustomApiToolAction {
     getCities: (params: GetCitiesParams) => Promise<any>;
     getFees: (params: GetFeesParams) => Promise<any>;
     calculateFees: (params: CalculateFeesParams) => Promise<any>;
+    getStatesCount: () => Promise<any>;
+    getUniqueStates: () => Promise<any>;
     // Grant Trading Tool actions
     getStockQuote: (params: GetStockQuoteParams) => Promise<any>;
     getStockHistory: (params: GetStockHistoryParams) => Promise<any>;
@@ -502,6 +505,56 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to calculate fees',
                 params
+            };
+        }
+    },
+
+    getStatesCount: async () => {
+        try {
+            // Use the Lewis data service to get unique states
+            const statesResult = await hybridLewisService.getUniqueStates();
+
+            if (!statesResult.success) {
+                throw new Error(statesResult.error || 'Failed to get states count');
+            }
+
+            const states = statesResult.data || [];
+            const uniqueStates = [...new Set(states)];
+
+            return {
+                success: true,
+                data: uniqueStates.length,
+                states: uniqueStates,
+                message: `Found ${uniqueStates.length} states with fee data: ${uniqueStates.join(', ')}`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to get states count',
+            };
+        }
+    },
+
+    getUniqueStates: async () => {
+        try {
+            // Use the Lewis data service to get unique states
+            const statesResult = await hybridLewisService.getUniqueStates();
+
+            if (!statesResult.success) {
+                throw new Error(statesResult.error || 'Failed to get unique states');
+            }
+
+            const uniqueStates = statesResult.data || [];
+
+            return {
+                success: true,
+                data: uniqueStates,
+                message: `Found ${uniqueStates.length} unique states.`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to get unique states',
             };
         }
     },
