@@ -38,7 +38,8 @@ export const AssistantActionsBar: RenderAction = memo(({ onActionClick, error, t
   const items = useMemo(() => {
     if (hasTools) return [delAndRegenerate, copy];
 
-    return [edit, copy, inThread ? null : branching].filter(Boolean) as ActionIconGroupItemType[];
+    const actionItems = [edit, copy, inThread ? null : branching];
+    return actionItems.filter(Boolean) as ActionIconGroupItemType[];
   }, [inThread, hasTools]);
 
   if (error) return <ErrorActionsBar onActionClick={onActionClick} />;

@@ -77,6 +77,13 @@ const CustomRender = memo<CustomRenderProps>(
     useEffect(() => {
       if (!plugin?.type || loading) return;
 
+      // For builtin tools (like Lewis), don't show plugin render
+      // Builtin tools should use the portal system instead
+      if (plugin?.type === 'builtin') {
+        setShowPluginRender(false);
+        return;
+      }
+
       setShowPluginRender(!['default', 'mcp'].includes(plugin?.type));
     }, [plugin?.type, loading]);
 

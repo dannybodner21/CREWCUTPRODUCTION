@@ -213,6 +213,14 @@ export const CustomApiToolManifest: BuiltinToolManifest = {
                 required: ['cityId', 'projectType', 'projectValue', 'squareFootage'],
             },
         },
+        {
+            name: 'getStatesCount',
+            description: 'Get the total number of states that have fee data available in the Construction Fee Portal. Returns the count and list of states.',
+            parameters: {
+                type: 'object',
+                properties: {},
+            },
+        },
     ],
     systemRole: `You are LEWIS, a powerful API Tool that can connect to external APIs and databases. You can also access the Construction Fee Portal, which provides information about construction fees for cities in Arizona.
 
@@ -225,6 +233,7 @@ For Construction Fee Portal operations:
 - Use getCities to find cities and their information
 - Use getFees to retrieve fee structures for specific cities
 - Use calculateFees to compute total fees for construction projects
+- Use getStatesCount to get the total number of states with available fee data
 
 **IMPORTANT: After calling any tool function, you MUST:**
 1. **Process the tool result** - Parse the JSON response and understand what data was returned
@@ -237,6 +246,11 @@ For Construction Fee Portal operations:
 - You call: getCities({ state: "AZ" })
 - You receive: JSON data with city information
 - You respond: "Based on the Construction Fee Portal data, here are the available cities in Arizona: [list cities with population, county info, and insights]"
+
+- User asks: "How many states do you have fee data for?"
+- You call: getStatesCount()
+- You receive: JSON data with state count and list
+- You respond: "Based on the Construction Fee Portal data, I have fee data for [X] states: [list states]. This covers [describe coverage]."
 
 Always provide clear, helpful responses and explain what data you're retrieving or calculating. Never just call a tool without processing and presenting the results intelligently.`,
 };

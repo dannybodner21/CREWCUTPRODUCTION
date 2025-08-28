@@ -89,11 +89,31 @@ const Inspectors = memo<InspectorProps>(
     const isToolHasUI = useToolStore(toolSelectors.isToolHasUI(identifier));
     const openToolUI = useChatStore((s) => s.openToolUI);
 
+    console.log('🔧 INSPECTOR DEBUG: Tool portal check:', {
+      identifier,
+      isToolHasUI,
+      hasPortalButton: isToolHasUI && identifier
+    });
+
     const handleOpenPortal = () => {
+      console.log('🔧 INSPECTOR DEBUG: Portal button clicked for:', { identifier, messageId });
+
       if (isToolHasUI && identifier) {
-        // Use the assistant message ID (messageId) not the tool call ID (id)
-        // This matches how the portal home page works
-        openToolUI(messageId, identifier);
+        // For LEWIS tool, just open the portal directly with the identifier
+        // Don't try to find a specific message since the structure has changed
+        console.log('🔧 INSPECTOR DEBUG: Opening LEWIS portal directly with identifier:', identifier);
+
+        // Create a fake message ID that will work with the portal system
+        const fakeMessageId = `lewis_${Date.now()}`;
+
+        console.log('🔧 INSPECTOR DEBUG: Calling openToolUI with:', {
+          fakeMessageId,
+          identifier
+        });
+
+        openToolUI(fakeMessageId, identifier);
+      } else {
+        console.log('🔧 INSPECTOR DEBUG: Cannot open portal:', { isToolHasUI, identifier });
       }
     };
 

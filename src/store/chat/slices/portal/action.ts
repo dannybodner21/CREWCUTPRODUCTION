@@ -53,10 +53,12 @@ export const chatPortalSlice: StateCreator<
   },
 
   openToolUI: (id, identifier) => {
+    console.log('🔧 PORTAL DEBUG: openToolUI called with:', { id, identifier });
+
     get().togglePortal(true);
 
     // First clear all portal states to show the home page
-    set({ 
+    set({
       portalArtifact: undefined,
       portalFile: undefined,
       portalMessageDetail: undefined,
@@ -65,10 +67,74 @@ export const chatPortalSlice: StateCreator<
       portalToolMessage: undefined,
     }, false, 'openToolUI/clear');
 
-    // Then after a brief delay, set the tool message to auto-open it
-    setTimeout(() => {
-      set({ portalToolMessage: { id, identifier } }, false, 'openToolUI/setTool');
-    }, 100);
+    console.log('🔧 PORTAL DEBUG: Portal states cleared, setting tool message...');
+
+    // For LEWIS tool, just open the portal directly without checking message content
+    if (identifier === 'lewis') {
+      console.log('🔧 PORTAL DEBUG: LEWIS tool detected, opening portal directly');
+      const portalState = { id, identifier };
+      console.log('🔧 PORTAL DEBUG: Setting portalToolMessage to:', portalState);
+      set({ portalToolMessage: portalState }, false, 'openToolUI/setLewisTool');
+
+      // Verify the state was set
+      setTimeout(() => {
+        const currentState = get().portalToolMessage;
+        console.log('🔧 PORTAL DEBUG: Portal state after setting:', currentState);
+        console.log('🔧 PORTAL DEBUG: Current portal state:', {
+          showPortal: get().showPortal,
+          portalToolMessage: get().portalToolMessage,
+          showPluginUI: !!get().portalToolMessage
+        });
+      }, 100);
+      return;
+    }
+
+    // For other tools, check if the message content is available before opening the portal
+    const checkMessageContent = () => {
+      const message = get().messagesMap[get().activeId]?.find(m => m.id === id);
+      console.log('🔧 PORTAL DEBUG: Checking message content:', {
+        messageId: id,
+        hasMessage: !!message,
+        messageContent: message?.content,
+        contentLength: message?.content?.length || 0,
+        activeId: get().activeId,
+        messagesMapKeys: Object.keys(get().messagesMap || {}),
+        allMessages: get().messagesMap[get().activeId]?.map(m => ({ id: m.id, role: m.role, contentLength: m.content?.length || 0 })),
+        messageStructure: message ? {
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          plugin: message.plugin,
+          tool_call_id: message.tool_call_id
+        } : null
+      });
+
+      if (message?.content && message.content.length > 10) {
+        // Message content is available, open the portal
+        console.log('🔧 PORTAL DEBUG: Message content available, opening portal');
+        const portalState = { id, identifier };
+        console.log('🔧 PORTAL DEBUG: Setting portalToolMessage to:', portalState);
+        set({ portalToolMessage: portalState }, false, 'openToolUI/setTool');
+
+        // Verify the state was set
+        setTimeout(() => {
+          const currentState = get().portalToolMessage;
+          console.log('🔧 PORTAL DEBUG: Portal state after setting:', currentState);
+          console.log('🔧 PORTAL DEBUG: Current portal state:', {
+            showPortal: get().showPortal,
+            portalToolMessage: get().portalToolMessage,
+            showPluginUI: !!get().portalToolMessage
+          });
+        }, 100);
+      } else {
+        // Message content not ready yet, wait a bit more
+        console.log('🔧 PORTAL DEBUG: Message content not ready, waiting...');
+        setTimeout(checkMessageContent, 200);
+      }
+    };
+
+    // Start checking for message content
+    setTimeout(checkMessageContent, 100);
   },
   togglePortal: (open) => {
     const showInspector = open === undefined ? !get().showPortal : open;

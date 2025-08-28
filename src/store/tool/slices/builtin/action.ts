@@ -31,6 +31,8 @@ export interface BuiltinToolAction {
   getCities: (params: any) => Promise<any>;
   getFees: (params: any) => Promise<any>;
   calculateFees: (params: any) => Promise<any>;
+  getStatesCount: () => Promise<any>;
+  getUniqueStates: () => Promise<any>;
 
   // Course Builder Tool actions
   createCourseOutline: (params: any) => Promise<any>;
@@ -63,6 +65,8 @@ export const createBuiltinToolSlice: StateCreator<
     getCities: customApiActions.getCities,
     getFees: customApiActions.getFees,
     calculateFees: customApiActions.calculateFees,
+    getStatesCount: customApiActions.getStatesCount,
+    getUniqueStates: customApiActions.getUniqueStates,
 
     // Course Builder Tool actions
     createCourseOutline: customApiActions.createCourseOutline,
@@ -100,8 +104,19 @@ export const createBuiltinToolSlice: StateCreator<
 
       try {
         console.log('🔧 STORE DEBUG: Calling action with params:', params);
-        // @ts-ignore
-        const result = await action(params);
+
+        // Handle functions that don't take parameters vs those that do
+        let result;
+        if (params === null || params === undefined || Object.keys(params || {}).length === 0) {
+          // Function doesn't take parameters (like getStatesCount)
+          // @ts-ignore - Some functions don't take parameters
+          result = await action();
+        } else {
+          // Function takes parameters
+          // @ts-ignore - Some functions take parameters
+          result = await action(params);
+        }
+
         console.log('🔧 STORE DEBUG: Action executed successfully, result:', result);
         console.log('🔧 STORE DEBUG: Result type:', typeof result);
         console.log('🔧 STORE DEBUG: Result keys:', result ? Object.keys(result) : 'result is null/undefined');

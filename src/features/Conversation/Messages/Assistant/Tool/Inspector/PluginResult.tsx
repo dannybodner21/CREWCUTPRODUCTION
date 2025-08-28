@@ -14,13 +14,28 @@ const PluginResult = memo<FunctionMessageProps>(({ toolCallId, variant }) => {
 
   const { data, language } = useMemo(() => {
     try {
-      const parsed = JSON.parse(toolMessage?.content || '');
-      // Special case: if the parsed result is a string, it means the original content was a stringified string
-      if (typeof parsed === 'string') {
-        return { data: parsed, language: 'plaintext' }; // Return the parsed string directly, do not re-serialize
+      // Check if content is already a valid JSON string
+      if (!toolMessage?.content) {
+        return { data: '', language: 'plaintext' };
       }
+
+      // Try to parse the content
+      const parsed = JSON.parse(toolMessage.content);
+
+      // If parsing succeeds and it's an object with expected structure, format it nicely
+      if (typeof parsed === 'object' && parsed !== null && (parsed.success !== undefined || parsed.data !== undefined)) {
+        return { data: JSON.stringify(parsed, null, 2), language: 'json' };
+      }
+
+      // If it's a string, return it as plaintext
+      if (typeof parsed === 'string') {
+        return { data: parsed, language: 'plaintext' };
+      }
+
+      // For other types, stringify them
       return { data: JSON.stringify(parsed, null, 2), language: 'json' };
     } catch {
+      // If parsing fails, treat content as plaintext
       return { data: toolMessage?.content || '', language: 'plaintext' };
     }
   }, [toolMessage?.content]);

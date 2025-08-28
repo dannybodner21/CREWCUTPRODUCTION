@@ -66,7 +66,14 @@ const IFrameRender = memo<IFrameRenderProps>(({ url, id, payload, width = 600, h
       const props = { content: '' };
 
       try {
-        props.content = JSON.parse(message.content || '{}');
+        // Check if this is a tool result (already a JSON string) or regular content
+        if (message.plugin && message.plugin.type === 'builtin') {
+          // For builtin tools, content is already a JSON string, don't parse it
+          props.content = message.content || '';
+        } else {
+          // For other content, try to parse as JSON
+          props.content = JSON.parse(message.content || '{}');
+        }
       } catch {
         props.content = message.content || '';
       }

@@ -154,6 +154,17 @@ const Item = memo<ChatListItemProps>(
         ? normalizeThinkTags(processWithArtifact(item?.content))
         : item?.content;
 
+    // DEBUG: Log message content to see what's causing the crash
+    if (item?.role === 'assistant' && typeof message !== 'string') {
+      console.log('🔧 DEBUG: Message content is not a string:', {
+        role: item.role,
+        content: item.content,
+        message: message,
+        type: typeof message,
+        keys: message && typeof message === 'object' ? Object.keys(message) : 'not an object'
+      });
+    }
+
     // ======================= Performance Optimization ======================= //
     // these useMemo/useCallback are all for the performance optimization
     // maybe we can remove it in React 19
@@ -184,10 +195,10 @@ const Item = memo<ChatListItemProps>(
           item?.role === 'user'
             ? undefined
             : item?.search?.citations &&
-              // if the citations are all empty, we should not show the citations
-              item?.search?.citations.length > 0 &&
-              // if the citations's url and title are all the same, we should not show the citations
-              item?.search?.citations.every((item) => item.title !== item.url),
+            // if the citations are all empty, we should not show the citations
+            item?.search?.citations.length > 0 &&
+            // if the citations's url and title are all the same, we should not show the citations
+            item?.search?.citations.every((item) => item.title !== item.url),
       }),
       [animated, components, markdownCustomRender, item?.role, item?.search],
     );
