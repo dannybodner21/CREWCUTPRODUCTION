@@ -92,6 +92,9 @@ const CustomApiToolPortal = memo<BuiltinPortalProps>(({
     const [stateFilter, setStateFilter] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string>('');
+    const [selectedState, setSelectedState] = useState<string>('');
+    const [stateFeeData, setStateFeeData] = useState<any[]>([]);
+    const [loadingStateData, setLoadingStateData] = useState(false);
 
     // Parse the tool state to get data
     let toolState;
@@ -127,7 +130,45 @@ const CustomApiToolPortal = memo<BuiltinPortalProps>(({
 
     console.log('🔧 PORTAL DEBUG: Response type:', { isSimpleResponse, hasFullData });
 
-    // Define the loadInitialData function first
+    // Define the loadStateFeeData function first
+    const loadStateFeeData = useCallback(async (stateName: string) => {
+        console.log('🔧 Loading fee data for state:', stateName);
+        setLoadingStateData(true);
+        setSelectedState(stateName);
+        try {
+            // Get cities for this state
+            const citiesResult = await hybridLewisService.getCities();
+            console.log('🔧 Cities result:', citiesResult);
+
+            if (citiesResult.success && citiesResult.data) {
+                const stateCities = citiesResult.data.filter((city: any) =>
+                    city.state === stateName
+                );
+                console.log('🔧 Cities in state:', stateCities);
+
+                // Get fees for cities in this state
+                let allStateFees: any[] = [];
+                for (const city of stateCities) {
+                    console.log('🔧 Getting fees for city:', city);
+                    const feesResult = await hybridLewisService.getFeesByCity(city.id);
+                    console.log('🔧 Fees result for city:', city.id, feesResult);
+                    if (feesResult.success && feesResult.data) {
+                        allStateFees.push(...feesResult.data);
+                    }
+                }
+
+                console.log('🔧 All state fees collected:', allStateFees);
+                setStateFeeData(allStateFees);
+            }
+        } catch (err) {
+            console.error('🔧 Error loading state fee data:', err);
+            setError('Failed to load fee data for selected state');
+        } finally {
+            setLoadingStateData(false);
+        }
+    }, []);
+
+    // Define the loadInitialData function
     const loadInitialData = useCallback(async () => {
         setLoading(true);
         try {
@@ -175,26 +216,106 @@ const CustomApiToolPortal = memo<BuiltinPortalProps>(({
                         </div>
                     </Flexbox>
                     <Divider style={{ margin: '16px 0' }} />
-                    <div style={{ fontSize: 16, lineHeight: 1.6 }}>
-                        {toolState.message || toolState.error || 'No response data available'}
-                    </div>
-
-                    {/* Show additional data if available */}
+                    {/* Show states list if available */}
                     {toolState.states && (
                         <div style={{ marginTop: 16 }}>
-                            <Title level={4}>States with Fee Data:</Title>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                 {toolState.states.map((state: string, index: number) => (
-                                    <Tag key={index} color="blue">{state}</Tag>
+                                    <Button
+                                        key={index}
+                                        type={selectedState === state ? 'primary' : 'default'}
+                                        size="small"
+                                        onClick={() => loadStateFeeData(state)}
+                                        style={{ marginBottom: 8 }}
+                                    >
+                                        {state}
+                                    </Button>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {toolState.data && (
-                        <div style={{ marginTop: 16 }}>
-                            <Title level={4}>Summary:</Title>
-                            <Text>Total states: {toolState.data}</Text>
+                    {/* State Fee Data Table */}
+                    {selectedState && (
+                        <div style={{ marginTop: 24 }}>
+                            <Card size="small">
+                                <Title level={4} style={{ marginBottom: 16 }}>
+                                    Fee Data for {selectedState}
+                                </Title>
+
+                                {/* Debug info */}
+                                <div style={{ marginBottom: 16, fontSize: 12, color: '#666' }}>
+                                    <Text>Debug: selectedState={selectedState}, stateFeeData.length={stateFeeData.length}</Text>
+                                    <pre style={{ marginTop: 8, fontSize: 10 }}>
+                                        {JSON.stringify(stateFeeData.slice(0, 2), null, 2)}
+                                    </pre>
+                                </div>
+
+                                {loadingStateData ? (
+                                    <Flexbox align="center" justify="center" style={{ padding: 20 }}>
+                                        <Spin size="small" />
+                                        <Text style={{ marginLeft: 8 }}>Loading fee data...</Text>
+                                    </Flexbox>
+                                ) : stateFeeData.length > 0 ? (
+                                    <Table
+                                        dataSource={stateFeeData}
+                                        columns={[
+                                            {
+                                                title: 'City',
+                                                dataIndex: 'city_name',
+                                                key: 'city_name',
+                                                render: (text) => <Text strong>{text}</Text>
+                                            },
+                                            {
+                                                title: 'Fee Category',
+                                                dataIndex: 'fee_category',
+                                                key: 'fee_category',
+                                                render: (text) => <Tag color="green">{text}</Tag>
+                                            },
+                                            {
+                                                title: 'Description',
+                                                dataIndex: 'fee_description',
+                                                key: 'fee_description',
+                                                ellipsis: true
+                                            },
+                                            {
+                                                title: 'Amount',
+                                                dataIndex: 'verified_amounts',
+                                                key: 'verified_amounts',
+                                                render: (value) => {
+                                                    // Handle currency strings like "$77" or "$26"
+                                                    let amount = 0;
+                                                    if (typeof value === 'string') {
+                                                        // Extract numeric value from currency string
+                                                        const match = value.match(/\$?(\d+(?:\.\d+)?)/);
+                                                        if (match) {
+                                                            amount = parseFloat(match[1]);
+                                                        }
+                                                    } else if (typeof value === 'number') {
+                                                        amount = value;
+                                                    }
+
+                                                    return (
+                                                        <Text strong style={{ color: '#52c41a' }}>
+                                                            ${amount.toFixed(2)}
+                                                        </Text>
+                                                    );
+                                                }
+                                            },
+                                            {
+                                                title: 'Calculation Method',
+                                                dataIndex: 'calculation_methods',
+                                                key: 'calculation_methods'
+                                            }
+                                        ]}
+                                        pagination={{ pageSize: 10 }}
+                                        size="small"
+                                        rowKey="id"
+                                    />
+                                ) : (
+                                    <Text type="secondary">No fee data available for {selectedState}</Text>
+                                )}
+                            </Card>
                         </div>
                     )}
                 </Card>
