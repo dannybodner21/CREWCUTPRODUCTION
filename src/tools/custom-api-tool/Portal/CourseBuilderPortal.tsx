@@ -112,9 +112,9 @@ const useStyles = createStyles(({ token }) => ({
 
 interface CourseBuilderPortalProps extends BuiltinPortalProps { }
 
-const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier: _identifier }) => {
-  const { styles } = useStyles();
-  const { t: _t } = useTranslation();
+const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier: _identifier }) => { // identifier commented out - unused but preserved
+    const { styles } = useStyles();
+    // const { t: _t } = useTranslation(); // commented out - unused but preserved
     const [activeTab, setActiveTab] = useState('overview');
     const [courseData, setCourseData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -123,7 +123,9 @@ const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier: _ident
         setLoading(true);
         try {
             // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 2000);
+            });
 
             const mockCourseData = {
                 title: `${values.subject} Course`,

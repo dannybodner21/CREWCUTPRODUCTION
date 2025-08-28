@@ -55,11 +55,11 @@ import { Flexbox } from 'react-layout-kit';
 
 import { BuiltinPortalProps } from '@/types/tool';
 
-const { Search: SearchInput } = Input;
+const { Search: _SearchInput } = Input;
 const { Option } = Select;
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
-const { Panel } = Collapse;
+const { Panel: _Panel } = Collapse;
 
 const useStyles = createStyles(({ token }) => ({
     courseCard: {
@@ -174,7 +174,7 @@ interface Question {
 }
 
 const ZEROPortal = memo<BuiltinPortalProps>(({
-    arguments: args,
+    arguments: _args,
     messageId,
     state,
     apiName

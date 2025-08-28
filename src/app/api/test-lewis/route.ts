@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(_request: Request) {
+export async function GET() {
   try {
     console.log('🧪 Testing Lewis database via API route...');
     const { hybridLewisService } = await import('@/tools/custom-api-tool/hybrid-lewis-service');

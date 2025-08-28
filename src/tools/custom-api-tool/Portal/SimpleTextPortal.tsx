@@ -6,7 +6,7 @@ import { Flexbox } from 'react-layout-kit';
 
 import { BuiltinPortalProps } from '@/types/tool';
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
 
 const useStyles = createStyles(({ token }) => ({
     container: {

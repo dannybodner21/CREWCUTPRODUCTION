@@ -42,7 +42,7 @@ import { Flexbox } from 'react-layout-kit';
 
 import { BuiltinPortalProps } from '@/types/tool';
 
-const { Search: SearchInput } = Input;
+// const { Search: SearchInput } = Input; // commented out - unused but preserved
 const { Option } = Select;
 const { Title, Text, Paragraph } = Typography;
 
@@ -146,13 +146,13 @@ interface NewsItem {
 }
 
 const GrantPortal = memo<BuiltinPortalProps>(({
-  arguments: _args,
-  messageId: _messageId,
-  state,
-  apiName: _apiName,
-  identifier,
+    // arguments: args, // commented out - unused but preserved
+    // messageId: messageId, // commented out - unused but preserved
+    state,
+    // apiName: apiName, // commented out - unused but preserved
+    // identifier: identifier, // commented out - unused but preserved
 }) => {
-  const { t: _t } = useTranslation('common');
+    const { t: _t } = useTranslation('common');
     const { styles } = useStyles();
     const [form] = Form.useForm();
     const [analysisForm] = Form.useForm();
@@ -169,7 +169,7 @@ const GrantPortal = memo<BuiltinPortalProps>(({
     const [riskTolerance, setRiskTolerance] = useState<'conservative' | 'moderate' | 'aggressive'>('moderate');
 
     // Parse the tool state to get data
-    const toolState = typeof state === 'string' ? JSON.parse(state) : state;
+    const _toolState = typeof state === 'string' ? JSON.parse(state) : state;
 
     // Remove mock data - now using real Polygon.io API
     const handleTickerSearch = async (ticker: string) => {
@@ -256,7 +256,7 @@ const GrantPortal = memo<BuiltinPortalProps>(({
                         <Input
                             placeholder="Enter ticker symbol (e.g., AAPL, TSLA, SPY)"
                             style={{ width: 300 }}
-                            onPressEnter={(e) => form.submit()}
+                            onPressEnter={(_e) => form.submit()}
                         />
                     </Form.Item>
                     <Form.Item>
@@ -453,7 +453,7 @@ const GrantPortal = memo<BuiltinPortalProps>(({
                     <Card title="Market News & Sentiment" extra={<Newspaper />}>
                         <List
                             dataSource={marketNews}
-                            renderItem={(item, index) => (
+                            renderItem={(item, _index) => (
                                 <List.Item>
                                     <Card size="small" className={styles.newsCard}>
                                         <Flexbox direction="vertical" gap={8}>
