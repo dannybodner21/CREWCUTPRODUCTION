@@ -146,12 +146,13 @@ interface NewsItem {
 }
 
 const GrantPortal = memo<BuiltinPortalProps>(({
-    arguments: args,
-    messageId,
-    state,
-    apiName
+  arguments: _args,
+  messageId: _messageId,
+  state,
+  apiName: _apiName,
+  identifier,
 }) => {
-    const { t } = useTranslation('common');
+  const { t: _t } = useTranslation('common');
     const { styles } = useStyles();
     const [form] = Form.useForm();
     const [analysisForm] = Form.useForm();

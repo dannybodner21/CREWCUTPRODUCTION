@@ -112,9 +112,9 @@ const useStyles = createStyles(({ token }) => ({
 
 interface CourseBuilderPortalProps extends BuiltinPortalProps { }
 
-const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier }) => {
-    const { styles } = useStyles();
-    const { t } = useTranslation();
+const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier: _identifier }) => {
+  const { styles } = useStyles();
+  const { t: _t } = useTranslation();
     const [activeTab, setActiveTab] = useState('overview');
     const [courseData, setCourseData] = useState<any>(null);
     const [loading, setLoading] = useState(false);

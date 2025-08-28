@@ -17,7 +17,17 @@ import { HotkeyEnum } from '@/types/hotkey';
 import SettingButton from '../../../features/SettingButton';
 import ShareButton from '../../../features/ShareButton';
 
-const HeaderAction = memo<{ className?: string }>(({ className }) => {
+const testLewisDatabase = async () => {
+  try {
+    const response = await fetch('/api/test-lewis');
+    const data = await response.json();
+    console.log('Lewis DB Test Result:', data);
+  } catch (error) {
+    console.error('Error testing Lewis DB:', error);
+  }
+};
+
+const HeaderAction = memo(() => {
   const { t } = useTranslation('chat');
   const hotkey = useUserStore(settingsSelectors.getHotkeyById(HotkeyEnum.ToggleRightPanel));
   const [showAgentSettings, toggleConfig] = useGlobalStore((s) => [
@@ -27,36 +37,9 @@ const HeaderAction = memo<{ className?: string }>(({ className }) => {
 
   const { isAgentEditable } = useServerConfigStore(featureFlagsSelectors);
 
-  const testLewisDatabase = async () => {
-    try {
-      console.log('🧪 Testing Lewis database connection...');
-
-      // Test the simple API route
-      const response = await fetch('/api/test-lewis');
-      const data = await response.json();
-
-      console.log('✅ Lewis database test result:', data);
-
-      if (data.success) {
-        console.log(`🎯 Lewis has data for ${data.count} states:`, data.states);
-        console.log(`📝 Message: ${data.message}`);
-      } else {
-        console.log('❌ Lewis database test failed:', data.error);
-      }
-    } catch (error) {
-      console.error('💥 Error testing Lewis database:', error);
-    }
-  };
-
   return (
-    <Flexbox className={className} gap={4} horizontal>
-      <Button
-        icon={<Database />}
-        onClick={testLewisDatabase}
-        size="small"
-        title="Test Lewis Database"
-        type="default"
-      >
+    <Flexbox gap={4} horizontal>
+      <Button onClick={testLewisDatabase}>
         Test Lewis DB
       </Button>
       <ShareButton />

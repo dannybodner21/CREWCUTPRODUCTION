@@ -6,7 +6,7 @@ import { hybridLewisService } from '@/tools/custom-api-tool/hybrid-lewis-service
 
 const { Title, Text } = Typography;
 
-export default function TestLewisToolPage() {
+export default function TestLewisToolPage({ params: _params }: { params: any }) {
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'client' | 'server'>('client');

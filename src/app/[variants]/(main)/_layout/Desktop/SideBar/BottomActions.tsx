@@ -8,11 +8,7 @@ import { Flexbox } from 'react-layout-kit';
 import { DOCUMENTS_REFER_URL, GITHUB } from '@/const/url';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 
-const ICON_SIZE: ActionIconProps['size'] = {
-  blockSize: 36,
-  size: 20,
-  strokeWidth: 1.5,
-};
+
 
 const BottomActions = memo(() => {
   // Return null to remove both buttons from the sidebar
