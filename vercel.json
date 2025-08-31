@@ -1,5 +1,4 @@
 {
   "buildCommand": "pnpm run build",
-  "installCommand": "pnpm install",
-  "ignoreCommand": "echo 'Skipping ESLint checks'"
+  "installCommand": "pnpm install"
 }
