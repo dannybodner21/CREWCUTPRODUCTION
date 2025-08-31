@@ -8,8 +8,8 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@lobechat/const": "workspace:*",
-    "@lobechat/types": "workspace:*"
+    "@lobechat/const": "file:../const",
+    "@lobechat/types": "file:../types"
   },
   "devDependencies": {
     "vitest-canvas-mock": "^0.3.3"
