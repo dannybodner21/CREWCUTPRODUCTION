@@ -32,7 +32,7 @@
     "prebuild": "tsx scripts/prebuild.mts",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "postbuild": "npm run build-sitemap && npm run build-migrate-db",
-    "build-migrate-db": "bun run db:migrate",
+    "build-migrate-db": "npm run db:migrate",
     "build-sitemap": "tsx ./scripts/buildSitemapIndex/index.ts",
     "build:analyze": "NODE_OPTIONS=--max-old-space-size=4096 ANALYZE=true next build",
     "build:docker": "npm run prebuild && DOCKER=true next build && npm run build-sitemap",
