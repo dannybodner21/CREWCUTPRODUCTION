@@ -139,15 +139,15 @@
     "@icons-pack/react-simple-icons": "9.6.0",
     "@khmyznikov/pwa-install": "0.3.9",
     "@langchain/community": "^0.3.50",
-    "@lobechat/const": "workspace:*",
-    "@lobechat/database": "workspace:*",
-    "@lobechat/electron-client-ipc": "workspace:*",
-    "@lobechat/electron-server-ipc": "workspace:*",
-    "@lobechat/file-loaders": "workspace:*",
-    "@lobechat/model-runtime": "workspace:*",
-    "@lobechat/prompts": "workspace:*",
-    "@lobechat/utils": "workspace:*",
-    "@lobechat/web-crawler": "workspace:*",
+    "@lobechat/const": "file:./packages/const",
+    "@lobechat/database": "file:./packages/database",
+    "@lobechat/electron-client-ipc": "file:./packages/electron-client-ipc",
+    "@lobechat/electron-server-ipc": "file:./packages/electron-server-ipc",
+    "@lobechat/file-loaders": "file:./packages/file-loaders",
+    "@lobechat/model-runtime": "file:./packages/model-runtime",
+    "@lobechat/prompts": "file:./packages/prompts",
+    "@lobechat/utils": "file:./packages/utils",
+    "@lobechat/web-crawler": "file:./packages/web-crawler",
     "@lobehub/analytics": "^1.6.0",
     "@lobehub/charts": "^2.0.0",
     "@lobehub/chat-plugin-sdk": "^1.32.4",
@@ -307,7 +307,7 @@
     "@commitlint/cli": "^19.8.1",
     "@edge-runtime/vm": "^5.0.0",
     "@huggingface/tasks": "^0.15.9",
-    "@lobechat/types": "workspace:*",
+    "@lobechat/types": "file:./packages/types",
     "@lobehub/i18n-cli": "^1.25.1",
     "@lobehub/lint": "^1.26.2",
     "@lobehub/market-types": "^1.11.4",
@@ -387,17 +387,11 @@
     "vite": "^5.4.19",
     "vitest": "^3.2.4"
   },
-  "packageManager": "pnpm@10.15.0",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@vercel/speed-insights"
-    ],
-    "overrides": {
-      "mdast-util-gfm-autolink-literal": "2.0.0"
-    }
+  "overrides": {
+    "mdast-util-gfm-autolink-literal": "2.0.0"
   }
 }
