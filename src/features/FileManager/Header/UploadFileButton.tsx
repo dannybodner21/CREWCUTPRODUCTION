@@ -3,10 +3,11 @@
 import { Button, Dropdown, Icon, MenuProps } from '@lobehub/ui';
 import { Upload } from 'antd';
 import { css, cx } from 'antd-style';
-import { FileUp, FolderUp, UploadIcon } from 'lucide-react';
-import { useMemo } from 'react';
+import { FileText, FileUp, FolderUp, UploadIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import DocumentEditor from '@/components/DocumentEditor';
 import DragUpload from '@/components/DragUpload';
 import { useFileStore } from '@/store/file';
 
@@ -22,7 +23,23 @@ const hotArea = css`
 const UploadFileButton = ({ knowledgeBaseId }: { knowledgeBaseId?: string }) => {
   const { t } = useTranslation('file');
 
+  const [showDocumentEditor, setShowDocumentEditor] = useState(false);
+
   const pushDockFileList = useFileStore((s) => s.pushDockFileList);
+  const createDocument = useFileStore((s) => s.createDocument);
+
+  const handleSaveDocument = async (documentData: { name: string; content: string; fileType: string; size: number; createdAt: Date; source: string }) => {
+    try {
+      await createDocument({
+        name: documentData.name,
+        content: documentData.content,
+        knowledgeBaseId,
+      });
+    } catch (error) {
+      console.error('Failed to create document:', error);
+    }
+  };
+
   const items = useMemo<MenuProps['items']>(
     () => [
       {
@@ -60,8 +77,17 @@ const UploadFileButton = ({ knowledgeBaseId }: { knowledgeBaseId?: string }) => 
           </Upload>
         ),
       },
+      {
+        icon: <Icon icon={FileText} />,
+        key: 'create-document',
+        label: (
+          <div className={cx(hotArea)} onClick={() => setShowDocumentEditor(true)}>
+            {t('header.actions.createDocument', 'Create New Document')}
+          </div>
+        ),
+      },
     ],
-    [],
+    [createDocument, knowledgeBaseId],
   );
   return (
     <>
@@ -72,6 +98,14 @@ const UploadFileButton = ({ knowledgeBaseId }: { knowledgeBaseId?: string }) => 
         enabledFiles
         onUploadFiles={(files) => pushDockFileList(files, knowledgeBaseId)}
       />
+
+      {/* Document Editor Modal */}
+      {showDocumentEditor && (
+        <DocumentEditor
+          onClose={() => setShowDocumentEditor(false)}
+          onSave={handleSaveDocument}
+        />
+      )}
     </>
   );
 };

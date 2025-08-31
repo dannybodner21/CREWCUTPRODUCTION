@@ -99,12 +99,12 @@ const Inspectors = memo<InspectorProps>(
       console.log('🔧 INSPECTOR DEBUG: Portal button clicked for:', { identifier, messageId });
 
       if (isToolHasUI && identifier) {
-        // For LEWIS tool, just open the portal directly with the identifier
+        // For LEWIS and ZERO tools, just open the portal directly with the identifier
         // Don't try to find a specific message since the structure has changed
-        console.log('🔧 INSPECTOR DEBUG: Opening LEWIS portal directly with identifier:', identifier);
+        console.log('🔧 INSPECTOR DEBUG: Opening portal directly with identifier:', identifier);
 
         // Create a fake message ID that will work with the portal system
-        const fakeMessageId = `lewis_${Date.now()}`;
+        const fakeMessageId = `${identifier}_${Date.now()}`;
 
         console.log('🔧 INSPECTOR DEBUG: Calling openToolUI with:', {
           fakeMessageId,

@@ -65,6 +65,20 @@ export const fileRouter = router({
       return { ...item, url: await ctx.fileService.getFullFileUrl(item?.url) };
     }),
 
+  getFileContent: fileProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const item = await ctx.fileModel.findById(input.id);
+      if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'File not found' });
+
+      const content = await ctx.fileService.getFileContent(item.url!);
+      return { content, name: item.name.replace(/\.md$/i, '') };
+    }),
+
   getFileItemById: fileProcedure
     .input(
       z.object({
@@ -184,6 +198,44 @@ export const fileRouter = router({
 
       // remove from S3
       await ctx.fileService.deleteFiles(needToRemoveFileList.map((file) => file.url!));
+    }),
+
+  updateFile: fileProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        content: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get the existing file
+      const existingFile = await ctx.fileModel.findById(input.id);
+      if (!existingFile) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'File not found' });
+      }
+
+      // Create new file content
+      const blob = new Blob([input.content], { type: 'text/markdown' });
+      const newSize = blob.size;
+
+      // Generate a new file key and upload the updated content with proper UTF-8 encoding
+      const fileKey = `files/${ctx.userId}/${Date.now()}-${input.name}.md`;
+      await ctx.fileService.uploadContent(fileKey, input.content);
+
+      // Update the file record
+      await ctx.fileModel.update(input.id, {
+        name: input.name,
+        size: newSize,
+        url: fileKey,
+      });
+
+      // Delete the old file from storage
+      if (existingFile.url !== fileKey) {
+        await ctx.fileService.deleteFile(existingFile.url!);
+      }
+
+      return { success: true };
     }),
 });
 

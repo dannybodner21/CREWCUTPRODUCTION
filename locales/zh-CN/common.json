@@ -366,5 +366,19 @@
     "setting": "应用设置",
     "usages": "用量统计"
   },
+  "documentEditor": {
+    "characterCount": "{{count}} 字符",
+    "contentPlaceholder": "开始编写你的文档...",
+    "editTab": "编辑",
+    "emptyPreview": "开始编写以查看预览...",
+    "previewTab": "预览",
+    "shortcut": "Ctrl+S 保存",
+    "title": "新建文档",
+    "titlePlaceholder": "文档标题",
+    "wordCount": "{{count}} 词"
+  },
+  "createDocument": "创建文档",
+  "documentCreated": "文档创建成功",
+  "documentCreationFailed": "文档创建失败",
   "version": "版本"
 }

@@ -4,6 +4,7 @@ import { ChatStore } from '@/store/chat/store';
 import { PortalArtifact } from '@/types/artifact';
 
 import { PortalFile } from './initialState';
+import { BuiltinToolsPortals } from '@/tools/portals';
 
 export interface ChatPortalAction {
   closeArtifact: () => void;
@@ -69,23 +70,10 @@ export const chatPortalSlice: StateCreator<
 
     console.log('🔧 PORTAL DEBUG: Portal states cleared, setting tool message...');
 
-    // For LEWIS tool, just open the portal directly without checking message content
-    if (identifier === 'lewis') {
-      console.log('🔧 PORTAL DEBUG: LEWIS tool detected, opening portal directly');
+    // For LEWIS and ZERO tools, we can open the portal immediately
+    if (identifier && BuiltinToolsPortals[identifier]) {
       const portalState = { id, identifier };
-      console.log('🔧 PORTAL DEBUG: Setting portalToolMessage to:', portalState);
-      set({ portalToolMessage: portalState }, false, 'openToolUI/setLewisTool');
-
-      // Verify the state was set
-      setTimeout(() => {
-        const currentState = get().portalToolMessage;
-        console.log('🔧 PORTAL DEBUG: Portal state after setting:', currentState);
-        console.log('🔧 PORTAL DEBUG: Current portal state:', {
-          showPortal: get().showPortal,
-          portalToolMessage: get().portalToolMessage,
-          showPluginUI: !!get().portalToolMessage
-        });
-      }, 100);
+      set({ portalToolMessage: portalState }, false, 'openToolUI/setBuiltinTool');
       return;
     }
 

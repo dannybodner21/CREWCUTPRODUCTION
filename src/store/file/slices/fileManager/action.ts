@@ -18,6 +18,8 @@ import { fileManagerSelectors } from './selectors';
 const serverFileService = new ServerService();
 
 export interface FileManageAction {
+  createDocument: (documentData: { name: string; content: string; knowledgeBaseId?: string }) => Promise<void>;
+  updateDocument: (id: string, name: string, content: string) => Promise<void>;
   dispatchDockFileList: (payload: UploadFileListDispatch) => void;
   embeddingChunks: (fileIds: string[]) => Promise<void>;
   parseFilesToChunks: (ids: string[], params?: { skipExist?: boolean }) => Promise<void>;
@@ -45,6 +47,75 @@ export const createFileManageSlice: StateCreator<
   [],
   FileManageAction
 > = (set, get) => ({
+  createDocument: async (documentData) => {
+    try {
+      // Create document directly without going through file upload
+      const response = await fetch('/api/document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: documentData.content,
+          title: documentData.name,
+          fileType: 'text/markdown',
+          source: 'document_editor',
+          sourceType: 'api',
+          totalCharCount: documentData.content.length,
+          totalLineCount: documentData.content.split('\n').length,
+          metadata: {
+            title: documentData.name,
+            source: 'document_editor',
+          },
+          pages: [{
+            pageContent: documentData.content,
+            charCount: documentData.content.length,
+            lineCount: documentData.content.split('\n').length,
+            metadata: {
+              lineNumberStart: 1,
+              lineNumberEnd: documentData.content.split('\n').length,
+            },
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create document');
+      }
+
+      // Refresh the file list to show the new document
+      await get().refreshFileList();
+    } catch (error) {
+      console.error('Failed to create document:', error);
+      throw error;
+    }
+  },
+  updateDocument: async (id, name, content) => {
+    try {
+      // Update document directly without going through file upload
+      const response = await fetch('/api/document', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id,
+          content,
+          title: name,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update document');
+      }
+
+      // Refresh the file list to show the updated document
+      await get().refreshFileList();
+    } catch (error) {
+      console.error('Failed to update document:', error);
+      throw error;
+    }
+  },
   dispatchDockFileList: (payload: UploadFileListDispatch) => {
     const nextValue = uploadFileListReducer(get().dockUploadFileList, payload);
     if (nextValue === get().dockUploadFileList) return;

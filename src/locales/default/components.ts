@@ -37,6 +37,7 @@ export default {
     },
     emptyStatus: {
       actions: {
+        document: '新建文档',
         file: '上传文件',
         folder: '上传文件夹',
         knowledgeBase: '新建知识库',

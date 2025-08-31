@@ -135,10 +135,37 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
    * 注意：这个功能可能需要扩展Electron IPC接口
    */
   async uploadContent(filePath: string, content: string): Promise<any> {
-    // 这里需要扩展electronIpcClient以支持上传文件内容
-    // 例如: return electronIpcClient.uploadContent(filePath, content);
-    console.warn('uploadContent not implemented for Desktop local file service', filePath, content);
-    return;
+    try {
+      // Convert content to Buffer with UTF-8 encoding
+      const buffer = Buffer.from(content, 'utf-8');
+      
+      // Calculate SHA256 hash
+      const hash = sha256(buffer);
+      
+      // Extract filename from path
+      const filename = path.basename(filePath);
+      
+      // Create upload parameters
+      const uploadParams = {
+        content: buffer.toString('base64'),
+        filename,
+        hash,
+        path: filePath,
+        type: 'text/markdown',
+      };
+      
+      // Upload via Electron IPC
+      const result = await electronIpcClient.createFile(uploadParams);
+      
+      if (!result.success) {
+        throw new Error('Failed to upload file content via Electron IPC');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('[DesktopLocalFileImpl] Failed to upload content:', error);
+      throw error;
+    }
   }
 
   /**

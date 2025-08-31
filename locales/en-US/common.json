@@ -366,5 +366,19 @@
     "setting": "Settings",
     "usages": "Usage Statistics"
   },
+  "documentEditor": {
+    "characterCount": "{{count}} characters",
+    "contentPlaceholder": "Start writing your document...",
+    "editTab": "Edit",
+    "emptyPreview": "Start writing to see a preview...",
+    "previewTab": "Preview",
+    "shortcut": "Ctrl+S to save",
+    "title": "Create New Document",
+    "titlePlaceholder": "Document Title",
+    "wordCount": "{{count}} words"
+  },
+  "createDocument": "Create Document",
+  "documentCreated": "Document created successfully",
+  "documentCreationFailed": "Failed to create document",
   "version": "Version"
 }

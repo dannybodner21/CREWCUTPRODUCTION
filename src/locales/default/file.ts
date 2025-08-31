@@ -24,6 +24,7 @@ export default {
   empty: '暂无已上传文件/文件夹',
   header: {
     actions: {
+      createDocument: '新建文档',
       newFolder: '新建文件夹',
       uploadFile: '上传文件',
       uploadFolder: '上传文件夹',

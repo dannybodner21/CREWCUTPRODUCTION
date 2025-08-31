@@ -37,6 +37,15 @@ const ToolRender = memo(() => {
         states: ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Kentucky', 'New Mexico', 'North Carolina', 'Ohio', 'Pennsylvania', 'South Carolina', 'Texas'],
         message: 'Found 21 states with fee data: Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Kentucky, New Mexico, North Carolina, Ohio, Pennsylvania, South Carolina, Texas'
       };
+    } else if (identifier === 'zero') {
+      // Create a mock response with the ZERO tool data structure
+      toolResponse = {
+        success: true,
+        courses: [],
+        selectedCourse: null,
+        currentStep: 0,
+        message: 'ZERO - AI Course Creation Portal is ready. Start building your online course!'
+      };
     } else {
       // For other builtin tools, use the message content if available
       toolResponse = message?.content || '';

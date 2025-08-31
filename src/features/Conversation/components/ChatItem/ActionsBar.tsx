@@ -4,9 +4,11 @@ import isEqual from 'fast-deep-equal';
 import { memo, use, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import DocumentEditor from '@/components/DocumentEditor';
 import { VirtuosoContext } from '@/features/Conversation/components/VirtualizedList/VirtuosoContext';
 import { useChatStore } from '@/store/chat';
 import { chatSelectors } from '@/store/chat/selectors';
+import { useFileStore } from '@/store/file';
 import { MessageRoleType } from '@/types/message';
 
 import { renderActions } from '../../Actions';
@@ -61,10 +63,28 @@ const Actions = memo<ActionsProps>(({ id, inPortalThread, index }) => {
     s.delAndResendThreadMessage,
     s.toggleMessageEditing,
   ]);
+
+  const createDocument = useFileStore((s) => s.createDocument);
+
   const { message } = App.useApp();
   const virtuosoRef = use(VirtuosoContext);
 
   const [showShareModal, setShareModal] = useState(false);
+  const [showDocumentEditor, setShowDocumentEditor] = useState(false);
+
+  const handleSaveDocument = async (documentData: { name: string; content: string; fileType: string; size: number; createdAt: Date; source: string }) => {
+    try {
+      await createDocument({
+        name: documentData.name,
+        content: documentData.content,
+        knowledgeBaseId: undefined, // No specific knowledge base for chat messages
+      });
+      message.success(t('documentCreated', { defaultValue: 'Document created successfully' }));
+    } catch (error) {
+      console.error('Failed to create document:', error);
+      message.error(t('documentCreationFailed', { defaultValue: 'Failed to create document' }));
+    }
+  };
 
   const handleActionClick = useCallback(
     async (action: ActionIconGroupEvent) => {
@@ -81,6 +101,10 @@ const Actions = memo<ActionsProps>(({ id, inPortalThread, index }) => {
         case 'copy': {
           await copyMessage(id, item.content);
           message.success(t('copySuccess', { defaultValue: 'Copy Success' }));
+          break;
+        }
+        case 'createDocument': {
+          setShowDocumentEditor(true);
           break;
         }
         case 'branching': {
@@ -156,6 +180,16 @@ const Actions = memo<ActionsProps>(({ id, inPortalThread, index }) => {
         }}
         open={showShareModal}
       />
+
+      {/* Document Editor Modal */}
+      {showDocumentEditor && (
+        <DocumentEditor
+          onClose={() => setShowDocumentEditor(false)}
+          onSave={handleSaveDocument}
+          initialContent={item.content}
+          initialTitle={item.content.slice(0, 50) + (item.content.length > 50 ? '...' : '')}
+        />
+      )}
     </>
   );
 });

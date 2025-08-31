@@ -50,4 +50,12 @@ export class ServerService implements IFileService {
   removeFileAsyncTask = async (id: string, type: 'embedding' | 'chunk') => {
     return lambdaClient.file.removeFileAsyncTask.mutate({ id, type });
   };
+
+  updateFile = async (id: string, name: string, content: string) => {
+    return lambdaClient.file.updateFile.mutate({ id, name, content });
+  };
+
+  getFileContent = async (id: string) => {
+    return lambdaClient.file.getFileContent.query({ id });
+  };
 }

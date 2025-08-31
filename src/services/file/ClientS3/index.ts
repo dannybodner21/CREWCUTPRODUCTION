@@ -19,7 +19,21 @@ export class BrowserS3Storage {
    */
   putObject = async (key: string, file: File): Promise<void> => {
     try {
-      const data = await file.arrayBuffer();
+      // For text files, ensure proper UTF-8 encoding
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const isTextFile = ['txt', 'md', 'markdown', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'xml'].includes(ext || '');
+
+      let data: ArrayBuffer;
+      if (isTextFile) {
+        // For text files, read as text first to ensure proper UTF-8 encoding
+        const textContent = await file.text();
+        const encoder = new TextEncoder();
+        data = encoder.encode(textContent).buffer as ArrayBuffer;
+      } else {
+        // For binary files, use arrayBuffer directly
+        data = await file.arrayBuffer();
+      }
+
       await set(key, { data, name: file.name, type: file.type }, this.store);
     } catch (e) {
       throw new Error(`Failed to put file ${file.name}: ${(e as Error).message}`);
@@ -36,7 +50,21 @@ export class BrowserS3Storage {
       const res = await get<{ data: ArrayBuffer; name: string; type: string }>(key, this.store);
       if (!res) return;
 
-      return new File([res.data], res!.name, { type: res?.type });
+      // For text files, ensure proper UTF-8 decoding
+      const ext = res.name.split('.').pop()?.toLowerCase();
+      const isTextFile = ['txt', 'md', 'markdown', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'xml'].includes(ext || '');
+
+      let fileData: ArrayBuffer | string;
+      if (isTextFile) {
+        // For text files, decode as UTF-8 string first
+        const decoder = new TextDecoder('utf-8');
+        fileData = decoder.decode(res.data);
+      } else {
+        // For binary files, use ArrayBuffer directly
+        fileData = res.data;
+      }
+
+      return new File([fileData], res.name, { type: res.type });
     } catch (e) {
       console.log(`Failed to get object (key=${key}):`, e);
       return undefined;

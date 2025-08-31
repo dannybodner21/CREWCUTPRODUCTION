@@ -3,6 +3,7 @@ import {
   Copy,
   DownloadIcon,
   Edit,
+  FileText,
   ListRestart,
   RotateCcw,
   Share2,
@@ -17,6 +18,7 @@ import { isDeprecatedEdition } from '@/const/version';
 interface ChatListActionsBar {
   branching: ActionIconGroupItemType;
   copy: ActionIconGroupItemType;
+  createDocument: ActionIconGroupItemType;
   del: ActionIconGroupItemType;
   delAndRegenerate: ActionIconGroupItemType;
   divider: { type: 'divider' };
@@ -45,6 +47,11 @@ export const useChatListActionsBar = ({
         icon: Copy,
         key: 'copy',
         label: t('copy', { defaultValue: 'Copy' }),
+      },
+      createDocument: {
+        icon: FileText,
+        key: 'createDocument',
+        label: t('createDocument', { defaultValue: 'Create Document' }),
       },
       del: {
         danger: true,

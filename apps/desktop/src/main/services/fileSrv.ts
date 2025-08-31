@@ -96,6 +96,18 @@ export default class FileService extends ServiceModule {
         buffer = Buffer.from(content);
         logger.debug(`Creating buffer from ArrayBuffer, size: ${buffer.length} bytes`);
       }
+
+      // For text files, ensure proper UTF-8 encoding
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const isTextFile = ['txt', 'md', 'markdown', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'xml'].includes(ext || '');
+
+      if (isTextFile) {
+        // For text files, convert buffer to string and back to ensure proper UTF-8 encoding
+        const textContent = buffer.toString('utf8');
+        buffer = Buffer.from(textContent, 'utf8');
+        logger.debug(`Text file buffer converted to UTF-8, size: ${buffer.length} bytes`);
+      }
+
       await writeFile(savedPath, buffer);
 
       // 写入元数据文件
@@ -191,8 +203,20 @@ export default class FileService extends ServiceModule {
       logger.debug(`Starting to read file content`);
       let content: Buffer;
       try {
-        content = await readFilePromise(filePath);
-        logger.debug(`File content read complete, size: ${content.length} bytes`);
+        // For text files, read with UTF-8 encoding to preserve special characters
+        const ext = path.split('.').pop()?.toLowerCase();
+        const isTextFile = ['txt', 'md', 'markdown', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'xml'].includes(ext || '');
+
+        if (isTextFile) {
+          // Read text files as UTF-8 string first, then convert to buffer
+          const textContent = await readFilePromise(filePath, 'utf8');
+          content = Buffer.from(textContent, 'utf8');
+          logger.debug(`Text file read as UTF-8, size: ${content.length} bytes`);
+        } else {
+          // Read binary files as buffer
+          content = await readFilePromise(filePath);
+          logger.debug(`Binary file read as buffer, size: ${content.length} bytes`);
+        }
       } catch (firstError) {
         if (isLegacyAttempt) {
           // 如果是 legacy 路径读取失败，尝试从新路径读取
@@ -201,9 +225,21 @@ export default class FileService extends ServiceModule {
             `Legacy path read failed, attempting fallback to storage root: ${fallbackPath}`,
           );
           try {
-            content = await readFilePromise(fallbackPath);
+            // For text files, read with UTF-8 encoding to preserve special characters
+            const ext = path.split('.').pop()?.toLowerCase();
+            const isTextFile = ['txt', 'md', 'markdown', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'xml'].includes(ext || '');
+
+            if (isTextFile) {
+              // Read text files as UTF-8 string first, then convert to buffer
+              const textContent = await readFilePromise(fallbackPath, 'utf8');
+              content = Buffer.from(textContent, 'utf8');
+              logger.debug(`Text file fallback read as UTF-8, size: ${content.length} bytes`);
+            } else {
+              // Read binary files as buffer
+              content = await readFilePromise(fallbackPath);
+              logger.debug(`Binary file fallback read as buffer, size: ${content.length} bytes`);
+            }
             filePath = fallbackPath; // 更新 filePath 用于后续的元数据读取
-            logger.debug(`Fallback read successful, size: ${content.length} bytes`);
           } catch (fallbackError) {
             logger.error(
               `Both legacy and fallback paths failed. Legacy error: ${(firstError as Error).message}, Fallback error: ${(fallbackError as Error).message}`,

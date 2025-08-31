@@ -1,10 +1,12 @@
 import { FileTypeIcon, Icon, Text } from '@lobehub/ui';
 import { Upload } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
-import { ArrowUpIcon, PlusIcon } from 'lucide-react';
+import { ArrowUpIcon, FileTextIcon, PlusIcon } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
+import DocumentEditor from '@/components/DocumentEditor';
 import { useCreateNewModal } from '@/features/KnowledgeBaseModal';
 import { useFileStore } from '@/store/file';
 
@@ -69,9 +71,24 @@ const EmptyStatus = ({ showKnowledgeBase, knowledgeBaseId }: EmptyStatusProps) =
   const theme = useTheme();
   const { styles } = useStyles();
 
+  const [showDocumentEditor, setShowDocumentEditor] = useState(false);
+
   const pushDockFileList = useFileStore((s) => s.pushDockFileList);
+  const createDocument = useFileStore((s) => s.createDocument);
 
   const { open } = useCreateNewModal();
+
+  const handleSaveDocument = async (documentData: { name: string; content: string; fileType: string; size: number; createdAt: Date; source: string }) => {
+    try {
+      await createDocument({
+        name: documentData.name,
+        content: documentData.content,
+        knowledgeBaseId,
+      });
+    } catch (error) {
+      console.error('Failed to create document:', error);
+    }
+  };
 
   return (
     <Center gap={24} height={'100%'} style={{ paddingBottom: 100 }} width={'100%'}>
@@ -145,7 +162,34 @@ const EmptyStatus = ({ showKnowledgeBase, knowledgeBaseId }: EmptyStatusProps) =
             />
           </Flexbox>
         </Upload>
+
+        {/* Document Creation Button */}
+        <Flexbox
+          className={styles.card}
+          onClick={() => setShowDocumentEditor(true)}
+          padding={16}
+        >
+          <span className={styles.actionTitle}>
+            {t('FileManager.emptyStatus.actions.document', 'Create New Document')}
+          </span>
+          <div className={styles.glow} style={{ background: theme.cyan }} />
+          <FileTypeIcon
+            className={styles.icon}
+            color={theme.cyan}
+            icon={<Icon color={'#fff'} icon={FileTextIcon} />}
+            size={ICON_SIZE}
+            type={'file'}
+          />
+        </Flexbox>
       </Flexbox>
+
+      {/* Document Editor Modal */}
+      {showDocumentEditor && (
+        <DocumentEditor
+          onClose={() => setShowDocumentEditor(false)}
+          onSave={handleSaveDocument}
+        />
+      )}
     </Center>
   );
 };

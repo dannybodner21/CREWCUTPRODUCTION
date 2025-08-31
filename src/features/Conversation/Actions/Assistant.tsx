@@ -22,6 +22,7 @@ export const AssistantActionsBar: RenderAction = memo(({ onActionClick, error, t
     edit,
     delAndRegenerate,
     copy,
+    createDocument,
     divider,
     del,
     branching,
@@ -51,6 +52,8 @@ export const AssistantActionsBar: RenderAction = memo(({ onActionClick, error, t
         items: [
           edit,
           copy,
+          divider,
+          createDocument,
           divider,
           tts,
           translate,
