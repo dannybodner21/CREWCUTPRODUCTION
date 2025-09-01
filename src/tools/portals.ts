@@ -7,7 +7,6 @@ import ConstructionFeePortal from './custom-api-tool/Portal';
 import GrantPortal from './custom-api-tool/Portal/GrantPortal';
 import ZEROPortal from './custom-api-tool/Portal/ZEROPortal';
 import CourseBuilderPortal from './custom-api-tool/Portal/CourseBuilderPortal';
-import SimpleTextPortal from './custom-api-tool/Portal/SimpleTextPortal';
 
 export const BuiltinToolsPortals: Record<string, BuiltinPortal> = {
   [CustomApiToolManifest.identifier]: ConstructionFeePortal, // Lewis

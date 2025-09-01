@@ -56,46 +56,65 @@ const Header = () => {
     let language = artifactCodeLanguage;
 
     switch (artifactType) {
-      case ArtifactType.React:
+      case ArtifactType.React: {
         dbType = 'react';
         language = 'tsx';
         break;
-      case ArtifactType.Code:
+      }
+      case ArtifactType.Code: {
         dbType = 'code';
         break;
-      case ArtifactType.Python:
+      }
+      case ArtifactType.Python: {
         dbType = 'python';
         language = 'python';
         break;
-      case 'image/svg+xml':
+      }
+      case 'image/svg+xml': {
         dbType = 'svg';
         language = 'svg';
         break;
-      case 'text/html':
+      }
+      case 'text/html': {
         dbType = 'html';
         language = 'html';
         break;
-      case 'text/markdown':
+      }
+      case 'text/markdown': {
         dbType = 'markdown';
         language = 'markdown';
         break;
-      case 'application/lobe.artifacts.mermaid':
+      }
+      case 'application/lobe.artifacts.mermaid': {
         dbType = 'mermaid';
         language = 'mermaid';
         break;
-      default:
+      }
+      default: {
         // Handle the actual enum values
-        if (artifactType === 'application/lobe.artifacts.react') {
+        switch (artifactType) {
+        case 'application/lobe.artifacts.react': {
           dbType = 'react';
           language = 'tsx';
-        } else if (artifactType === 'application/lobe.artifacts.code') {
+        
+        break;
+        }
+        case 'application/lobe.artifacts.code': {
           dbType = 'code';
-        } else if (artifactType === 'python') {
+        
+        break;
+        }
+        case 'python': {
           dbType = 'python';
           language = 'python';
-        } else {
+        
+        break;
+        }
+        default: {
           dbType = 'unknown';
         }
+        }
+      }
     }
 
     await artifactService.saveArtifact({
@@ -123,11 +142,11 @@ const Header = () => {
       <Flexbox align={'center'} gap={8} horizontal>
         {/* Save Button */}
         <Button
+          disabled={!isDatabaseReady}
           icon={<Save size={16} />}
           onClick={handleSaveArtifact}
           size={'small'}
           type={'primary'}
-          disabled={!isDatabaseReady}
         >
           Save
         </Button>

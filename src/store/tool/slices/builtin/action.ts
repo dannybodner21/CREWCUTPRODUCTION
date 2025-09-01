@@ -1,5 +1,4 @@
 import { StateCreator } from 'zustand';
-import { devtools } from 'zustand/middleware';
 
 import { OpenAIImagePayload } from '@/types/openai/image';
 import { DallEImageItem } from '@/types/tool/dalle';

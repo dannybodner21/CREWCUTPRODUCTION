@@ -5,4 +5,4 @@ import { ServerService } from './server';
 
 export const artifactService = isServerMode ? new ServerService() : new ClientService();
 
-export type { SaveArtifactParams, IArtifactService } from './type';
+export type { IArtifactService,SaveArtifactParams } from './type';

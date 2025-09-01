@@ -1,4 +1,4 @@
-import { ActionIcon, Icon, Text } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { LogsIcon, LucideBug, LucideBugOff, LayoutPanelTop, CircuitBoard } from 'lucide-react';
 import { memo, useState, CSSProperties } from 'react';
@@ -142,11 +142,11 @@ const Inspectors = memo<InspectorProps>(
             {/* Portal Button - only show for tools that have a portal UI */}
             {isToolHasUI && (
               <ActionIcon
+                className={styles.portalButton}
                 icon={CircuitBoard}
                 onClick={handleOpenPortal}
                 size={'small'}
                 title="Open Portal"
-                className={styles.portalButton}
               />
             )}
             {showRender && !hidePluginUI && (

@@ -3,6 +3,7 @@ import { Flexbox } from 'react-layout-kit';
 
 import MainInterfaceTracker from '@/components/Analytics/MainInterfaceTracker';
 import BrandTextLoading from '@/components/Loading/BrandTextLoading';
+import LewisPortalAutoOpener from '@/components/LewisPortalAutoOpener';
 
 import { LayoutProps } from '../type';
 import ChatHeader from './ChatHeader';
@@ -33,6 +34,8 @@ const Layout = ({ children, topic, conversation, portal }: LayoutProps) => {
         <TopicPanel>{topic}</TopicPanel>
       </Flexbox>
       <MainInterfaceTracker />
+      {/* Client component that auto-opens Construction Portal for Lewis sessions */}
+      <LewisPortalAutoOpener />
     </>
   );
 };

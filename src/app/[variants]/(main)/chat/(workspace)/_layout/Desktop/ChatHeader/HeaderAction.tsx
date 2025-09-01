@@ -1,7 +1,7 @@
 'use client';
 
 import { ActionIcon, Button } from '@lobehub/ui';
-import { PanelRightClose, PanelRightOpen, Database } from 'lucide-react';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';

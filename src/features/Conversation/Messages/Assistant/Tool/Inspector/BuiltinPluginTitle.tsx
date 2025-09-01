@@ -10,7 +10,6 @@ import { chatSelectors } from '@/store/chat/selectors';
 import { useToolStore } from '@/store/tool';
 import { toolSelectors } from '@/store/tool/selectors';
 import { shinyTextStylish } from '@/styles/loading';
-import { CustomApiToolManifest } from '@/tools/custom-api-tool';
 
 export const useStyles = createStyles(({ css, token }) => ({
   apiName: css`

@@ -13,7 +13,6 @@ import { messageService } from '@/services/message';
 import { ChatStore } from '@/store/chat/store';
 import { useToolStore } from '@/store/tool';
 import { pluginSelectors } from '@/store/tool/selectors';
-import { builtinTools } from '@/tools';
 import {
   ChatMessage,
   ChatMessageError,

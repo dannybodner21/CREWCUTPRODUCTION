@@ -3,6 +3,8 @@ import qs from 'query-string';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
+import { Button } from 'antd';
+import { Building } from 'lucide-react';
 
 import ChatItem from '@/features/ChatItem';
 import { useAgentStore } from '@/store/agent';
@@ -24,6 +26,20 @@ const WelcomeMessage = () => {
   const meta = useSessionStore(sessionMetaSelectors.currentAgentMeta, isEqual);
   const { isAgentEditable } = useServerConfigStore(featureFlagsSelectors);
   const activeId = useChatStore((s) => s.activeId);
+
+  // Check if this is a Lewis session
+  const isLewisSession = meta?.title?.toLowerCase().includes('lewis');
+  const togglePortal = useChatStore((s) => s.togglePortal);
+
+  // Debug logging
+  console.log('🔧 WELCOME MESSAGE DEBUG:', {
+    meta,
+    title: meta?.title,
+    isLewisSession,
+    showButton: isLewisSession,
+    activeId,
+    currentSession: useSessionStore.getState().currentSession
+  });
 
   const agentSystemRoleMsg = t('agentDefaultMessageWithSystemRole', {
     name: meta.title || t('defaultAgent'),
@@ -53,13 +69,33 @@ const WelcomeMessage = () => {
     />
   );
 
-  return openingQuestions.length > 0 ? (
+  return (
     <Flexbox>
       {chatItem}
-      <OpeningQuestions mobile={mobile} questions={openingQuestions} />
+      {openingQuestions.length > 0 && (
+        <OpeningQuestions mobile={mobile} questions={openingQuestions} />
+      )}
+
+      {/* Lewis Construction Portal Button */}
+      {isLewisSession && (
+        <Flexbox align="center" justify="center" style={{ marginTop: 16 }}>
+          <Button
+            icon={<Building size={16} />}
+            onClick={() => togglePortal(true)}
+            size="large"
+            style={{
+              height: 48,
+              fontSize: 16,
+              paddingInline: 24,
+              borderRadius: 8,
+            }}
+            type="primary"
+          >
+            🏗️ Open Construction Portal
+          </Button>
+        </Flexbox>
+      )}
     </Flexbox>
-  ) : (
-    chatItem
   );
 };
 export default WelcomeMessage;

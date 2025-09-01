@@ -10,6 +10,7 @@ import { Plugins } from './Plugins';
 import { Thread } from './Thread';
 import Header from './components/Header';
 import { PortalImpl } from './type';
+import CustomLewisPortal from '@/components/CustomLewisPortal';
 
 const items: PortalImpl[] = [Thread, MessageDetail, Artifacts, Plugins, FilePreview];
 
@@ -50,6 +51,13 @@ export const PortalHeader = memo(() => {
 });
 
 const PortalBody = memo(() => {
+  // Check if we should show the custom portal
+  const showCustomPortal = true; // For now, always show it
+
+  if (showCustomPortal) {
+    return <CustomLewisPortal />;
+  }
+
   const enabledList: boolean[] = [];
 
   for (const item of items) {

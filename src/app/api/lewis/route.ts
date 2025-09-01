@@ -10,55 +10,81 @@ export async function POST(request: NextRequest) {
     let result;
 
     switch (action) {
-      case 'getStatesCount':
+      case 'getStatesCount': {
         result = await lewisDataService.getStatesCount();
         break;
+      }
 
-      case 'getUniqueStates':
+      case 'getUniqueStates': {
         result = await lewisDataService.getUniqueStates();
         break;
+      }
 
-      case 'getCities':
+      case 'getCities': {
         result = await lewisDataService.getCities();
         break;
+      }
 
-      case 'getCitiesByState':
+      case 'getCitiesByState': {
         result = await lewisDataService.getCitiesByState(params.state);
         break;
+      }
 
-      case 'getFees':
+      case 'getFees': {
         result = await lewisDataService.getFees();
         break;
+      }
 
-      case 'getFeesByCity':
+      case 'getFeesByCity': {
         result = await lewisDataService.getFeesByCity(params.cityId);
         break;
+      }
 
-      case 'getFeeCategories':
+      case 'getFeeCategories': {
         result = await lewisDataService.getFeeCategories();
         break;
+      }
 
-      case 'getFees':
-        result = await lewisDataService.getFees();
+      case 'getCityFees': {
+        result = await lewisDataService.getCityFees(params.cityName, params.state);
         break;
+      }
 
-      case 'calculateFees':
+      case 'getJurisdictions': {
+        result = await lewisDataService.getJurisdictions(params.stateFips);
+        break;
+      }
+
+      case 'getJurisdictionFees': {
+        result = await lewisDataService.getJurisdictionFees(params.jurisdictionId);
+        break;
+      }
+
+      case 'calculateFees': {
         result = await lewisDataService.calculateProjectFees(
           params.cityId,
           params.projectType,
           params.projectSize
         );
         break;
+      }
 
-      case 'searchCities':
+      case 'searchCities': {
         result = await lewisDataService.searchCities(params.searchTerm);
         break;
+      }
 
-      default:
+      case 'analyzeAverageFees': {
+        result = await lewisDataService.analyzeAverageFees(params);
+        break;
+      }
+
+      default: {
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
           { status: 400 }
         );
+      }
     }
 
     console.log('✅ Lewis API route result:', result);

@@ -256,6 +256,40 @@ export class LewisDataService {
             return { data: uniqueCounties, error: null };
         });
     }
+
+    // Get jurisdictions by state FIPS code
+    async getJurisdictions(stateFips?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+            let query = supabase
+                .from('jurisdictions')
+                .select('id, name, type, kind, state_fips')
+                .eq('is_active', true)
+                .order('name');
+
+            if (stateFips) {
+                query = query.eq('state_fips', stateFips);
+            }
+
+            const { data, error } = await query;
+            return { data, error };
+        });
+    }
+
+    // Get fees for a specific jurisdiction
+    async getJurisdictionFees(jurisdictionId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+            const { data, error } = await supabase
+                .from('fees')
+                .select('id, name, category, rate, unit_label, description, applies_to, use_subtype')
+                .eq('jurisdiction_id', jurisdictionId)
+                .eq('active', true)
+                .order('name');
+
+            return { data, error };
+        });
+    }
 }
 
 // Export a singleton instance
