@@ -8,7 +8,6 @@ import { pluginService } from '@/services/plugin';
 import { merge } from '@/utils/merge';
 
 import { ToolStore } from '../../store';
-import { pluginStoreSelectors } from '../oldStore/selectors';
 import { pluginSelectors } from './selectors';
 
 /**
@@ -41,7 +40,7 @@ export const createPluginSlice: StateCreator<
 
     // check if the store is empty
     // if it is, we need to load the plugin store
-    if (pluginStoreSelectors.onlinePluginStore(get()).length === 0) {
+    if (pluginSelectors.installedPluginMetaList(get()).length === 0) {
       await loadPluginStore();
     }
 

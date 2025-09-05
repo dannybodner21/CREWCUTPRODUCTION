@@ -3,7 +3,7 @@ import { Flexbox } from 'react-layout-kit';
 
 import { isDesktop } from '@/const/version';
 import InitClientDB from '@/features/InitClientDB';
-import ProtocolUrlHandler from '@/features/ProtocolUrlHandler';
+// import ProtocolUrlHandler from '@/features/ProtocolUrlHandler'; // Removed desktop app
 
 import { LayoutProps } from '../type';
 import RegisterHotkeys from './RegisterHotkeys';
@@ -29,7 +29,7 @@ const Layout = ({ children, session }: LayoutProps) => {
       <Suspense>
         <RegisterHotkeys />
       </Suspense>
-      {isDesktop && <ProtocolUrlHandler />}
+      {/* {isDesktop && <ProtocolUrlHandler />} */} {/* Removed desktop app */}
     </>
   );
 };

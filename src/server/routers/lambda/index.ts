@@ -18,7 +18,7 @@ import { generationTopicRouter } from './generationTopic';
 import { imageRouter } from './image';
 import { importerRouter } from './importer';
 import { knowledgeBaseRouter } from './knowledgeBase';
-import { marketRouter } from './market';
+// import { marketRouter } from './market'; // Removed marketplace
 import { messageRouter } from './message';
 import { pluginRouter } from './plugin';
 import { ragEvalRouter } from './ragEval';
@@ -46,7 +46,7 @@ export const lambdaRouter = router({
   image: imageRouter,
   importer: importerRouter,
   knowledgeBase: knowledgeBaseRouter,
-  market: marketRouter,
+  // market: marketRouter, // Removed marketplace
   message: messageRouter,
   plugin: pluginRouter,
   ragEval: ragEvalRouter,

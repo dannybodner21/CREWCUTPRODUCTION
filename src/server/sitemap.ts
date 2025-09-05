@@ -7,7 +7,7 @@ import { serverFeatureFlags } from '@/config/featureFlags';
 import { DEFAULT_LANG } from '@/const/locale';
 import { SITEMAP_BASE_URL } from '@/const/url';
 import { Locales, locales as allLocales } from '@/locales/resources';
-import { DiscoverService } from '@/server/services/discover';
+// import { DiscoverService } from '@/server/services/discover'; // Removed marketplace
 import { getCanonicalUrl } from '@/server/utils/url';
 import { isDev } from '@/utils/env';
 
@@ -36,26 +36,26 @@ export const LAST_MODIFIED = new Date().toISOString();
 const ITEMS_PER_PAGE = 100;
 
 export class Sitemap {
-  sitemapIndexs = [{ id: SitemapType.Pages }, { id: SitemapType.Providers }];
+  sitemapIndexs = [{ id: SitemapType.Pages }]; // Removed providers since marketplace removed
 
-  private discoverService = new DiscoverService();
+  // private discoverService = new DiscoverService(); // Removed marketplace
 
   // 获取插件总页数
   async getPluginPageCount(): Promise<number> {
-    const list = await this.discoverService.getPluginIdentifiers();
-    return Math.ceil(list.length / ITEMS_PER_PAGE);
+    // const list = await this.discoverService.getPluginIdentifiers();
+    return 0; // No plugins since marketplace removed
   }
 
   // 获取助手总页数
   async getAssistantPageCount(): Promise<number> {
-    const list = await this.discoverService.getAssistantIdentifiers();
-    return Math.ceil(list.length / ITEMS_PER_PAGE);
+    // const list = await this.discoverService.getAssistantIdentifiers();
+    return 0; // No assistants since marketplace removed
   }
 
   // 获取模型总页数
   async getModelPageCount(): Promise<number> {
-    const list = await this.discoverService.getModelIdentifiers();
-    return Math.ceil(list.length / ITEMS_PER_PAGE);
+    // const list = await this.discoverService.getModelIdentifiers();
+    return 0; // No models since marketplace removed
   }
 
   private _generateSitemapLink(url: string) {
@@ -203,88 +203,23 @@ export class Sitemap {
   }
 
   async getAssistants(page?: number): Promise<MetadataRoute.Sitemap> {
-    const list = await this.discoverService.getAssistantIdentifiers();
-
-    if (page !== undefined) {
-      const startIndex = (page - 1) * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const pageAssistants = list.slice(startIndex, endIndex);
-
-      const sitmap = pageAssistants.map((item) =>
-        this._genSitemap(urlJoin('/discover/assistant', item.identifier), {
-          lastModified: item?.lastModified || LAST_MODIFIED,
-        }),
-      );
-      return flatten(sitmap);
-    }
-
-    // 如果没有指定页数，返回所有（向后兼容）
-    const sitmap = list.map((item) =>
-      this._genSitemap(urlJoin('/discover/assistant', item.identifier), {
-        lastModified: item?.lastModified || LAST_MODIFIED,
-      }),
-    );
-    return flatten(sitmap);
+    // const list = await this.discoverService.getAssistantIdentifiers();
+    return []; // No assistants since marketplace removed
   }
 
   async getPlugins(page?: number): Promise<MetadataRoute.Sitemap> {
-    const list = await this.discoverService.getPluginIdentifiers();
-
-    if (page !== undefined) {
-      const startIndex = (page - 1) * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const pagePlugins = list.slice(startIndex, endIndex);
-
-      const sitmap = pagePlugins.map((item) =>
-        this._genSitemap(urlJoin('/discover/plugin', item.identifier), {
-          lastModified: item?.lastModified || LAST_MODIFIED,
-        }),
-      );
-      return flatten(sitmap);
-    }
-
-    // 如果没有指定页数，返回所有（向后兼容）
-    const sitmap = list.map((item) =>
-      this._genSitemap(urlJoin('/discover/plugin', item.identifier), {
-        lastModified: item?.lastModified || LAST_MODIFIED,
-      }),
-    );
-    return flatten(sitmap);
+    // const list = await this.discoverService.getPluginIdentifiers();
+    return []; // No plugins since marketplace removed
   }
 
   async getModels(page?: number): Promise<MetadataRoute.Sitemap> {
-    const list = await this.discoverService.getModelIdentifiers();
-
-    if (page !== undefined) {
-      const startIndex = (page - 1) * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const pageModels = list.slice(startIndex, endIndex);
-
-      const sitmap = pageModels.map((item) =>
-        this._genSitemap(urlJoin('/discover/model', item.identifier), {
-          lastModified: item?.lastModified || LAST_MODIFIED,
-        }),
-      );
-      return flatten(sitmap);
-    }
-
-    // 如果没有指定页数，返回所有（向后兼容）
-    const sitmap = list.map((item) =>
-      this._genSitemap(urlJoin('/discover/model', item.identifier), {
-        lastModified: item?.lastModified || LAST_MODIFIED,
-      }),
-    );
-    return flatten(sitmap);
+    // const list = await this.discoverService.getModelIdentifiers();
+    return []; // No models since marketplace removed
   }
 
   async getProviders(): Promise<MetadataRoute.Sitemap> {
-    const list = await this.discoverService.getProviderIdentifiers();
-    const sitmap = list.map((item) =>
-      this._genSitemap(urlJoin('/discover/provider', item.identifier), {
-        lastModified: item?.lastModified || LAST_MODIFIED,
-      }),
-    );
-    return flatten(sitmap);
+    // const list = await this.discoverService.getProviderIdentifiers();
+    return []; // No providers since marketplace removed
   }
 
   async getPage(): Promise<MetadataRoute.Sitemap> {
@@ -296,12 +231,7 @@ export class Sitemap {
       /* ↓ cloud slot ↓ */
 
       /* ↑ cloud slot ↑ */
-      ...this._genSitemap('/discover', { changeFrequency: 'daily', priority: 0.7 }),
-      ...this._genSitemap('/discover/assistant', { changeFrequency: 'daily', priority: 0.7 }),
-      ...this._genSitemap('/discover/mcp', { changeFrequency: 'daily', priority: 0.7 }),
-      ...this._genSitemap('/discover/plugin', { changeFrequency: 'daily', priority: 0.7 }),
-      ...this._genSitemap('/discover/model', { changeFrequency: 'daily', priority: 0.7 }),
-      ...this._genSitemap('/discover/provider', { changeFrequency: 'daily', priority: 0.7 }),
+      // Removed discover pages since marketplace was removed
     ].filter(Boolean);
   }
   getRobots() {

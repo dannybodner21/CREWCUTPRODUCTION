@@ -7,12 +7,12 @@ import { ssoProviders } from './sso-providers';
 export const initSSOProviders = () => {
   return authEnv.NEXT_PUBLIC_ENABLE_NEXT_AUTH
     ? authEnv.NEXT_AUTH_SSO_PROVIDERS.split(/[,，]/).map((provider) => {
-        const validProvider = ssoProviders.find((item) => item.id === provider.trim());
+      const validProvider = ssoProviders.find((item) => item.id === provider.trim());
 
-        if (validProvider) return validProvider.provider;
+      if (validProvider) return validProvider.provider;
 
-        throw new Error(`[NextAuth] provider ${provider} is not supported`);
-      })
+      throw new Error(`[NextAuth] provider ${provider} is not supported`);
+    })
     : [];
 };
 
@@ -25,6 +25,9 @@ export default {
       if (user?.id) {
         token.userId = user?.id;
       }
+      if (user?.image) {
+        token.avatar = user.image;
+      }
       return token;
     },
     async session({ session, token, user }) {
@@ -32,8 +35,10 @@ export default {
         // ref: https://authjs.dev/guides/extending-the-session#with-database
         if (user) {
           session.user.id = user.id;
+          session.user.avatar = user.image;
         } else {
           session.user.id = (token.userId ?? session.user.id) as string;
+          session.user.avatar = token.avatar;
         }
       }
       return session;

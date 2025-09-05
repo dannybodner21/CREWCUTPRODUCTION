@@ -54,11 +54,6 @@ export const useCategory = ({ mobile }: UseCategoryOptions = {}) => {
           key: ChatSettingsTabs.TTS,
           label: t('agentTab.tts'),
         },
-        enablePlugins && {
-          icon: <Icon icon={Blocks} size={iconSize} />,
-          key: ChatSettingsTabs.Plugin,
-          label: t('agentTab.plugin'),
-        },
       ].filter(Boolean) as MenuProps['items'],
     [t, isInbox, enablePlugins],
   );

@@ -2,7 +2,6 @@ import { Blocks } from 'lucide-react';
 import { Suspense, memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import PluginStore from '@/features/PluginStore';
 import { useModelSupportToolUse } from '@/hooks/useModelSupportToolUse';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors } from '@/store/agent/selectors';
@@ -13,9 +12,8 @@ import { useControls } from './useControls';
 
 const Tools = memo(() => {
   const { t } = useTranslation('setting');
-  const [modalOpen, setModalOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const items = useControls({ setModalOpen, setUpdating });
+  const items = useControls({ setUpdating });
   const { enablePlugins } = useServerConfigStore(featureFlagsSelectors);
 
   const model = useAgentStore(agentSelectors.currentAgentModel);
@@ -41,7 +39,6 @@ const Tools = memo(() => {
         showTooltip={false}
         title={t('tools.title')}
       />
-      <PluginStore open={modalOpen} setOpen={setModalOpen} />
     </Suspense>
   );
 });

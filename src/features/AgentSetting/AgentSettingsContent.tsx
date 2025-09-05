@@ -8,7 +8,6 @@ import AgentChat from './AgentChat';
 import AgentMeta from './AgentMeta';
 import AgentModal from './AgentModal';
 import AgentOpening from './AgentOpening';
-import AgentPlugin from './AgentPlugin';
 import AgentPrompt from './AgentPrompt';
 import AgentTTS from './AgentTTS';
 
@@ -19,7 +18,6 @@ export interface AgentSettingsContentProps {
 
 const AgentSettingsContent = memo<AgentSettingsContentProps>(({ tab, loadingSkeleton }) => {
   const loading = useStore((s) => s.loading);
-  const { enablePlugins } = useServerConfigStore(featureFlagsSelectors);
 
   if (loading) return loadingSkeleton;
 
@@ -31,7 +29,6 @@ const AgentSettingsContent = memo<AgentSettingsContentProps>(({ tab, loadingSkel
       {tab === ChatSettingsTabs.Chat && <AgentChat />}
       {tab === ChatSettingsTabs.Modal && <AgentModal />}
       {tab === ChatSettingsTabs.TTS && <AgentTTS />}
-      {enablePlugins && tab === ChatSettingsTabs.Plugin && <AgentPlugin />}
     </>
   );
 });

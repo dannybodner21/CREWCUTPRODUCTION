@@ -8,7 +8,7 @@ import { CheckMcpInstallResult } from '@/types/plugins';
 import { CustomPluginMetadata } from '@/types/tool/plugin';
 import { safeParseJSON } from '@/utils/safeParseJSON';
 
-import { discoverService } from './discover';
+// import { discoverService } from './discover'; // Removed discover service
 
 /**
  * 计算对象的字节大小
@@ -119,9 +119,9 @@ class MCPService {
       };
 
       // 异步上报，不影响主流程
-      discoverService.reportPluginCall(reportData).catch((reportError) => {
-        console.warn('Failed to report MCP tool call:', reportError);
-      });
+      // discoverService.reportPluginCall(reportData).catch((reportError) => {
+      //   console.warn('Failed to report MCP tool call:', reportError);
+      // });
     }
   }
 

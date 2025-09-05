@@ -6,13 +6,12 @@ import { Artifacts } from './Artifacts';
 import { FilePreview } from './FilePreview';
 import { HomeBody, HomeTitle } from './Home';
 import { MessageDetail } from './MessageDetail';
-import { Plugins } from './Plugins';
 import { Thread } from './Thread';
 import Header from './components/Header';
 import { PortalImpl } from './type';
 import CustomLewisPortal from '@/components/CustomLewisPortal';
 
-const items: PortalImpl[] = [Thread, MessageDetail, Artifacts, Plugins, FilePreview];
+const items: PortalImpl[] = [Thread, MessageDetail, Artifacts, FilePreview];
 
 export const PortalTitle = memo(() => {
   const enabledList: boolean[] = [];

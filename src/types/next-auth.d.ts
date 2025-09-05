@@ -6,10 +6,12 @@ declare module 'next-auth' {
    */
   interface Session {
     user: {
+      avatar?: string;
       firstName?: string;
     } & DefaultSession['user'];
   }
   interface User {
+    avatar?: string;
     providerAccountId?: string;
   }
   /**
@@ -21,6 +23,7 @@ declare module 'next-auth' {
 declare module '@auth/core/jwt' {
   /** Returned by the `jwt` callback and `auth`, when using JWT sessions */
   interface JWT {
+    avatar?: string;
     userId: string;
   }
 }

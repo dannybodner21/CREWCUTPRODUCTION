@@ -9,7 +9,7 @@ import { StateCreator } from 'zustand/vanilla';
 
 import { CURRENT_VERSION } from '@/const/version';
 import { MCPErrorData } from '@/libs/mcp/types';
-import { discoverService } from '@/services/discover';
+// import { discoverService } from '@/services/discover'; // Removed discover service
 import { mcpService } from '@/services/mcp';
 import { pluginService } from '@/services/plugin';
 import { globalHelpers } from '@/store/global/helpers';
@@ -104,10 +104,11 @@ export const createMCPPluginStoreSlice: StateCreator<
     let plugin = mcpStoreSelectors.getPluginById(identifier)(get());
 
     if (!plugin || !plugin.manifestUrl) {
-      const data = await discoverService.getMcpDetail({ identifier });
-      if (!data) return;
+      // const data = await discoverService.getMcpDetail({ identifier });
+      // if (!data) return;
 
-      plugin = data as unknown as PluginItem;
+      // plugin = data as unknown as PluginItem;
+      return; // Skip if no plugin data available
     }
 
     if (!plugin) return;
@@ -171,9 +172,10 @@ export const createMCPPluginStoreSlice: StateCreator<
           return;
         }
 
-        data = await discoverService.getMCPPluginManifest(plugin.identifier, {
-          install: true,
-        });
+        // data = await discoverService.getMCPPluginManifest(plugin.identifier, {
+        //   install: true,
+        // });
+        return; // Skip MCP plugin installation without discover service
 
         // 步骤 2: 检查安装环境
         updateMCPInstallProgress(identifier, {
@@ -338,20 +340,20 @@ export const createMCPPluginStoreSlice: StateCreator<
       // 计算安装持续时间
       const installDurationMs = Date.now() - installStartTime;
 
-      discoverService.reportMcpInstallResult({
-        identifier: plugin.identifier,
-        installDurationMs,
-        installParams: connection,
-        manifest: {
-          prompts: (manifest as any).prompts,
-          resources: (manifest as any).resources,
-          tools: (manifest as any).tools,
-        },
-        platform: result!.platform,
-        success: true,
-        userAgent,
-        version: manifest.version || data.version,
-      });
+      // discoverService.reportMcpInstallResult({
+      //   identifier: plugin.identifier,
+      //   installDurationMs,
+      //   installParams: connection,
+      //   manifest: {
+      //     prompts: (manifest as any).prompts,
+      //     resources: (manifest as any).resources,
+      //     tools: (manifest as any).tools,
+      //   },
+      //   platform: result!.platform,
+      //   success: true,
+      //   userAgent,
+      //   version: manifest.version || data.version,
+      // });
 
       // 短暂显示完成状态后清除进度
       await sleep(1000);
@@ -416,18 +418,18 @@ export const createMCPPluginStoreSlice: StateCreator<
       });
 
       // 上报安装失败结果
-      discoverService.reportMcpInstallResult({
-        errorCode: errorInfo.type,
-        errorMessage: errorInfo.message,
-        identifier: plugin.identifier,
-        installDurationMs,
-        installParams: connection,
-        metadata: errorInfo.metadata,
-        platform: result!.platform,
-        success: false,
-        userAgent,
-        version: data?.version,
-      });
+      // discoverService.reportMcpInstallResult({
+      //   errorCode: errorInfo.type,
+      //   errorMessage: errorInfo.message,
+      //   identifier: plugin.identifier,
+      //   installDurationMs,
+      //   installParams: connection,
+      //   metadata: errorInfo.metadata,
+      //   platform: result!.platform,
+      //   success: false,
+      //   userAgent,
+      //   version: data?.version,
+      // });
 
       updateInstallLoadingState(identifier, undefined);
 
@@ -584,7 +586,7 @@ export const createMCPPluginStoreSlice: StateCreator<
 
     return useSWR<PluginListResponse>(
       ['useFetchMCPPluginList', locale, ...Object.values(params)].filter(Boolean).join('-'),
-      () => discoverService.getMCPPluginList(params),
+      () => Promise.resolve({ items: [], totalCount: 0, totalPages: 0, currentPage: 1, pageSize: 20 }), // Return empty data
       {
         onSuccess(data) {
           set(

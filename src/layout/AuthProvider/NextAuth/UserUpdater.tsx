@@ -24,11 +24,12 @@ const UserUpdater = memo(() => {
   // 使用 useEffect 处理需要保持同步的用户数据
   useEffect(() => {
     if (nextUser) {
-      const userAvatar = useUserStore.getState().user?.avatar;
+      const currentUser = useUserStore.getState().user;
+      const userAvatar = currentUser?.avatar;
 
       const lobeUser = {
-        // 头像使用设置的，而不是从 next-auth 中获取
-        avatar: userAvatar || '',
+        // 优先使用 SSO 头像，如果没有则使用已设置的头像
+        avatar: (nextUser as any).avatar || userAvatar || '',
         email: nextUser.email,
         fullName: nextUser.name,
         id: nextUser.id,

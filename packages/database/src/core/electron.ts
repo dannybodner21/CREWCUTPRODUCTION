@@ -4,7 +4,7 @@ import { drizzle as pgliteDrizzle } from 'drizzle-orm/pglite';
 import fs from 'node:fs';
 import { Md5 } from 'ts-md5';
 
-import { electronIpcClient } from '@/server/modules/ElectronIPCClient';
+// import { electronIpcClient } from '@/server/modules/ElectronIPCClient'; // Removed desktop app
 import { MigrationTableItem } from '@/types/clientDB';
 
 import { DrizzleMigrationModel } from '../models/drizzleMigration';
@@ -123,7 +123,8 @@ process.on('uncaughtException', (error) => {
 const migrateDatabase = async (db: LobeChatDatabase): Promise<void> => {
   try {
     let hash: string | undefined;
-    const cacheHash = await electronIpcClient.getDatabaseSchemaHash();
+    // const cacheHash = await electronIpcClient.getDatabaseSchemaHash();
+    const cacheHash = undefined; // Desktop app removed
 
     hash = Md5.hashStr(JSON.stringify(migrations));
 
@@ -156,7 +157,7 @@ const migrateDatabase = async (db: LobeChatDatabase): Promise<void> => {
       // @ts-expect-error
       await db.dialect.migrate(migrations, db.session, {});
 
-      await electronIpcClient.setDatabaseSchemaHash(hash);
+      // await electronIpcClient.setDatabaseSchemaHash(hash);
 
       console.info(`✅ Electron DB migration success, took ${Date.now() - start}ms`);
     } catch (error) {
@@ -256,7 +257,8 @@ export const getPgliteInstance = async (): Promise<LobeChatDatabase> => {
       // 先获取数据库路径
       let dbPath: string = '';
       try {
-        dbPath = await electronIpcClient.getDatabasePath();
+        // dbPath = await electronIpcClient.getDatabasePath();
+        dbPath = './data/database'; // Default path for web app
       } catch {
         /* empty */
       }

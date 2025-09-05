@@ -2,7 +2,7 @@ import { sha256 } from 'js-sha256';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { electronIpcClient } from '@/server/modules/ElectronIPCClient';
+// import { electronIpcClient } from '@/server/modules/ElectronIPCClient'; // Removed desktop app
 import { inferContentTypeFromImageUrl } from '@/utils/url';
 
 import { FileServiceImpl } from './type';
@@ -17,7 +17,8 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
    */
   private async getLocalFileUrl(key: string): Promise<string> {
     try {
-      return await electronIpcClient.getFileHTTPURL(key);
+      // return await electronIpcClient.getFileHTTPURL(key);
+      return ''; // Desktop app removed
     } catch (e) {
       console.error('[DesktopLocalFileImpl] Failed to get file HTTP URL via IPC:', e);
       return '';
@@ -62,7 +63,8 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
       }
 
       // 使用electronIpcClient的专用方法
-      return await electronIpcClient.deleteFiles(keys);
+      // return await electronIpcClient.deleteFiles(keys);
+      return { success: false, errors: [{ message: 'Desktop app removed', path: 'batch' }] };
     } catch (error) {
       console.error('Failed to delete files:', error);
       return {
@@ -83,17 +85,18 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
   async getFileByteArray(key: string): Promise<Uint8Array> {
     try {
       // 从Electron获取文件的绝对路径
-      const filePath = await electronIpcClient.getFilePathById(key);
+      // const filePath = await electronIpcClient.getFilePathById(key);
+      return new Uint8Array(); // Desktop app removed
 
       // 检查文件是否存在
-      if (!existsSync(filePath)) {
-        console.error(`File not found: ${filePath}`);
-        return new Uint8Array();
-      }
+      // if (!existsSync(filePath)) {
+      //   console.error(`File not found: ${filePath}`);
+      //   return new Uint8Array();
+      // }
 
       // 读取文件内容并转换为Uint8Array
-      const buffer = readFileSync(filePath);
-      return new Uint8Array(buffer);
+      // const buffer = readFileSync(filePath);
+      // return new Uint8Array(buffer);
     } catch (e) {
       console.error('Failed to get file byte array:', e);
       return new Uint8Array();
@@ -106,16 +109,17 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
   async getFileContent(key: string): Promise<string> {
     try {
       // 从Electron获取文件的绝对路径
-      const filePath = await electronIpcClient.getFilePathById(key);
+      // const filePath = await electronIpcClient.getFilePathById(key);
+      return ''; // Desktop app removed
 
       // 检查文件是否存在
-      if (!existsSync(filePath)) {
-        console.error(`File not found: ${filePath}`);
-        return '';
-      }
+      // if (!existsSync(filePath)) {
+      //   console.error(`File not found: ${filePath}`);
+      //   return '';
+      // }
 
       // 读取文件内容并转换为字符串
-      return readFileSync(filePath, 'utf8');
+      // return readFileSync(filePath, 'utf8');
     } catch (e) {
       console.error('Failed to get file content:', e);
       return '';
@@ -138,13 +142,13 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
     try {
       // Convert content to Buffer with UTF-8 encoding
       const buffer = Buffer.from(content, 'utf8');
-      
+
       // Calculate SHA256 hash
       const hash = sha256(buffer);
-      
+
       // Extract filename from path
       const filename = path.basename(filePath);
-      
+
       // Create upload parameters
       const uploadParams = {
         content: buffer.toString('base64'),
@@ -153,14 +157,15 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
         path: filePath,
         type: 'text/markdown',
       };
-      
+
       // Upload via Electron IPC
-      const result = await electronIpcClient.createFile(uploadParams);
-      
+      // const result = await electronIpcClient.createFile(uploadParams);
+      return { success: false, metadata: { path: filePath } }; // Desktop app removed
+
       if (!result.success) {
         throw new Error('Failed to upload file content via Electron IPC');
       }
-      
+
       return result;
     } catch (error) {
       console.error('[DesktopLocalFileImpl] Failed to upload content:', error);
@@ -218,7 +223,8 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
       };
 
       // 调用 electronIpcClient 上传文件
-      const result = await electronIpcClient.createFile(uploadParams);
+      // const result = await electronIpcClient.createFile(uploadParams);
+      return { key }; // Desktop app removed
 
       if (!result.success) {
         throw new Error('Failed to upload file via Electron IPC');
