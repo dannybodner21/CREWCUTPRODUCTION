@@ -10,11 +10,13 @@ import ChatItem from '@/features/ChatItem';
 import { useAgentStore } from '@/store/agent';
 import { agentChatConfigSelectors, agentSelectors } from '@/store/agent/selectors';
 import { useChatStore } from '@/store/chat';
+import { chatPortalSelectors } from '@/store/chat/slices/portal/selectors';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useSessionStore } from '@/store/session';
 import { sessionMetaSelectors } from '@/store/session/selectors';
 
 import OpeningQuestions from './OpeningQuestions';
+import LewisOpeningQuestions from '@/components/LewisOpeningQuestions';
 
 const WelcomeMessage = () => {
   const mobile = useServerConfigStore((s) => s.isMobile);
@@ -30,6 +32,7 @@ const WelcomeMessage = () => {
   // Check if this is a Lewis session
   const isLewisSession = meta?.title?.toLowerCase().includes('lewis');
   const togglePortal = useChatStore((s) => s.togglePortal);
+  const showPortal = useChatStore(chatPortalSelectors.showPortal);
 
   // Debug logging
   console.log('🔧 WELCOME MESSAGE DEBUG:', {
@@ -38,6 +41,7 @@ const WelcomeMessage = () => {
     isLewisSession,
     showButton: isLewisSession,
     activeId,
+    showPortal,
     currentSession: useSessionStore.getState().currentSession
   });
 
@@ -56,8 +60,14 @@ const WelcomeMessage = () => {
 
   const message = useMemo(() => {
     if (openingMessage) return openingMessage;
+
+    // For Lewis sessions, show a custom opening message
+    if (isLewisSession) {
+      return "What type of construction project are you developing?";
+    }
+
     return !!meta.description ? agentSystemRoleMsg : agentMsg;
-  }, [openingMessage, agentSystemRoleMsg, agentMsg, meta.description]);
+  }, [openingMessage, agentSystemRoleMsg, agentMsg, meta.description, isLewisSession]);
 
   const chatItem = (
     <ChatItem
@@ -72,26 +82,33 @@ const WelcomeMessage = () => {
   return (
     <Flexbox>
       {chatItem}
-      {openingQuestions.length > 0 && (
-        <OpeningQuestions mobile={mobile} questions={openingQuestions} />
+      {isLewisSession ? (
+        <LewisOpeningQuestions />
+      ) : (
+        openingQuestions.length > 0 && (
+          <OpeningQuestions mobile={mobile} questions={openingQuestions} />
+        )
       )}
 
       {/* Lewis Construction Portal Button */}
       {isLewisSession && (
-        <Flexbox align="center" justify="center" style={{ marginTop: 16 }}>
+        <Flexbox align="center" justify="center" style={{ marginTop: 40 }}>
           <Button
             icon={<Building size={16} />}
-            onClick={() => togglePortal(true)}
+            onClick={() => togglePortal()}
             size="large"
             style={{
               height: 48,
               fontSize: 16,
               paddingInline: 24,
               borderRadius: 8,
+              backgroundColor: '#000000',
+              borderColor: '#000000',
+              color: '#ffffff',
             }}
             type="primary"
           >
-            🏗️ Open Construction Portal
+            {showPortal ? 'Close Portal' : 'Open Portal'}
           </Button>
         </Flexbox>
       )}

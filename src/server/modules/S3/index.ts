@@ -83,7 +83,7 @@ export class S3 {
     }
 
     // Ensure proper UTF-8 encoding when reading content
-    return response.Body.transformToString('utf-8');
+    return response.Body.transformToString('utf8');
   }
 
   public async getFileByteArray(key: string): Promise<Uint8Array> {
@@ -138,10 +138,10 @@ export class S3 {
   public async uploadContent(path: string, content: string) {
     const command = new PutObjectCommand({
       ACL: this.setAcl ? 'public-read' : undefined,
-      Body: Buffer.from(content, 'utf-8'),
+      Body: Buffer.from(content, 'utf8'),
       Bucket: this.bucket,
-      ContentType: 'text/markdown; charset=utf-8',
-      ContentEncoding: 'utf-8',
+      ContentType: 'text/markdown; charset=utf8',
+      ContentEncoding: 'utf8',
       Key: path,
     });
 

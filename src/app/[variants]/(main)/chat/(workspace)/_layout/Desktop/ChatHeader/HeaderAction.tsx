@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Button } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,15 +17,7 @@ import { HotkeyEnum } from '@/types/hotkey';
 import SettingButton from '../../../features/SettingButton';
 import ShareButton from '../../../features/ShareButton';
 
-const testLewisDatabase = async () => {
-  try {
-    const response = await fetch('/api/test-lewis');
-    const data = await response.json();
-    console.log('Lewis DB Test Result:', data);
-  } catch (error) {
-    console.error('Error testing Lewis DB:', error);
-  }
-};
+
 
 const HeaderAction = memo(() => {
   const { t } = useTranslation('chat');
@@ -39,9 +31,6 @@ const HeaderAction = memo(() => {
 
   return (
     <Flexbox gap={4} horizontal>
-      <Button onClick={testLewisDatabase}>
-        Test Lewis DB
-      </Button>
       <ShareButton />
       <ActionIcon
         icon={showAgentSettings ? PanelRightClose : PanelRightOpen}

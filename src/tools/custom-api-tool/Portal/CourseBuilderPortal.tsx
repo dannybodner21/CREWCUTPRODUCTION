@@ -112,7 +112,7 @@ const useStyles = createStyles(({ token }) => ({
 
 interface CourseBuilderPortalProps extends BuiltinPortalProps { }
 
-const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier: _identifier }) => { // identifier commented out - unused but preserved
+const CourseBuilderPortal = memo<CourseBuilderPortalProps>(({ identifier: _identifier }) => { // _identifier commented out - unused but preserved
     const { styles } = useStyles();
     // const { t: _t } = useTranslation(); // commented out - unused but preserved
     const [activeTab, setActiveTab] = useState('overview');

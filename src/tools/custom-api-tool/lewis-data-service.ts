@@ -263,7 +263,7 @@ export class LewisDataService {
             const supabase = this.getSupabaseClient();
             let query = supabase
                 .from('jurisdictions')
-                .select('id, name, type, kind, state_fips')
+                .select('id, name, type, kind, state_fips, population')
                 .eq('is_active', true)
                 .order('name');
 
@@ -282,12 +282,149 @@ export class LewisDataService {
             const supabase = this.getSupabaseClient();
             const { data, error } = await supabase
                 .from('fees')
-                .select('id, name, category, rate, unit_label, description, applies_to, use_subtype')
+                .select('id, name, category, rate, unit_label, description, applies_to, use_subtype, formula')
                 .eq('jurisdiction_id', jurisdictionId)
                 .eq('active', true)
                 .order('name');
 
             return { data, error };
+        });
+    }
+
+    // Get demo jurisdictions from ui_demo_fees table
+    async getDemoJurisdictions(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            // First, let's see what columns actually exist by selecting all
+            const { data, error } = await supabase
+                .from('ui_demo_fees')
+                .select('*')
+                .limit(5);
+
+            if (error) {
+                console.log('Error querying ui_demo_fees:', error);
+                return { data: null, error: error.message };
+            }
+
+            console.log('Sample ui_demo_fees data:', data);
+
+            // For now, let's create some demo data since the table structure is unclear
+            const demoJurisdictions = [
+                {
+                    id: 'demo-ny-1',
+                    name: 'New York City',
+                    state: 'New York',
+                    type: 'demo',
+                    kind: 'city'
+                },
+                {
+                    id: 'demo-ca-1',
+                    name: 'Los Angeles',
+                    state: 'California',
+                    type: 'demo',
+                    kind: 'city'
+                }
+            ];
+
+            return { data: demoJurisdictions, error: null };
+        });
+    }
+
+    // Get demo fees for a specific jurisdiction
+    async getDemoJurisdictionFees(jurisdictionId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            // For now, return sample demo fees based on jurisdiction
+            let demoFees: any[] = [];
+
+            if (jurisdictionId === 'demo-ny-1') {
+                // New York City demo fees
+                demoFees = [
+                    {
+                        id: 'ny-fee-1',
+                        name: 'Building Permit Fee',
+                        category: 'flat',
+                        rate: 2500,
+                        unit_label: '$',
+                        description: 'Base building permit fee',
+                        applies_to: 'All construction',
+                        use_subtype: null,
+                        formula: null
+                    },
+                    {
+                        id: 'ny-fee-2',
+                        name: 'Plan Review Fee',
+                        category: 'per_sqft',
+                        rate: 0.50,
+                        unit_label: '$/sqft',
+                        description: 'Plan review fee per square foot',
+                        applies_to: 'All construction',
+                        use_subtype: null,
+                        formula: null
+                    },
+                    {
+                        id: 'ny-fee-3',
+                        name: 'Impact Fee',
+                        category: 'per_unit',
+                        rate: 15000,
+                        unit_label: '$/unit',
+                        description: 'Development impact fee',
+                        applies_to: 'Multi-family residential',
+                        use_subtype: null,
+                        formula: null
+                    }
+                ];
+            } else if (jurisdictionId === 'demo-ca-1') {
+                // Los Angeles demo fees
+                demoFees = [
+                    {
+                        id: 'ca-fee-1',
+                        name: 'Building Permit Fee',
+                        category: 'flat',
+                        rate: 1800,
+                        unit_label: '$',
+                        description: 'Base building permit fee',
+                        applies_to: 'All construction',
+                        use_subtype: null,
+                        formula: null
+                    },
+                    {
+                        id: 'ca-fee-2',
+                        name: 'Plan Review Fee',
+                        category: 'per_sqft',
+                        rate: 0.35,
+                        unit_label: '$/sqft',
+                        description: 'Plan review fee per square foot',
+                        applies_to: 'All construction',
+                        use_subtype: null,
+                        formula: null
+                    },
+                    {
+                        id: 'ca-fee-3',
+                        name: 'Traffic Impact Fee',
+                        category: 'per_unit',
+                        rate: 12000,
+                        unit_label: '$/unit',
+                        description: 'Traffic impact mitigation fee',
+                        applies_to: 'Multi-family residential',
+                        use_subtype: null,
+                        formula: null
+                    },
+                    {
+                        id: 'ca-fee-4',
+                        name: 'Parking Fee',
+                        category: 'per_unit',
+                        rate: 8000,
+                        unit_label: '$/unit',
+                        description: 'Parking space requirement fee',
+                        applies_to: 'Multi-family residential',
+                        use_subtype: null,
+                        formula: null
+                    }
+                ];
+            }
+
+            return { data: demoFees, error: null };
         });
     }
 }

@@ -221,38 +221,81 @@ export const CustomApiToolManifest: BuiltinToolManifest = {
                 properties: {},
             },
         },
+        {
+            name: 'populatePortal',
+            description: 'Automatically populate the Construction Fee Portal with project data. This opens the portal and fills in the project details for fee calculations. Use this when users provide project information in their messages.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    jurisdictionId: {
+                        type: 'string',
+                        description: 'ID of the jurisdiction/city for the project',
+                    },
+                    jurisdictionName: {
+                        type: 'string',
+                        description: 'Name of the jurisdiction/city for the project',
+                    },
+                    projectType: {
+                        type: 'string',
+                        enum: ['Single Family Residential', 'Multi-Family Residential', 'Commercial', 'Restaurant/Food Service', 'Industrial'],
+                        description: 'Type of construction project',
+                    },
+                    projectUnits: {
+                        type: 'number',
+                        description: 'Number of units/dwellings in the project',
+                    },
+                    projectAcreage: {
+                        type: 'number',
+                        description: 'Project acreage in acres',
+                    },
+                    meterSize: {
+                        type: 'string',
+                        description: 'Water meter size (e.g., "6"", "8"")',
+                    },
+                    squareFootage: {
+                        type: 'number',
+                        description: 'Total project square footage',
+                    },
+                    projectValue: {
+                        type: 'number',
+                        description: 'Total project value in dollars',
+                    },
+                },
+            },
+        },
+        {
+            name: 'getPortalData',
+            description: 'Get current project data from the Construction Fee Portal. Use this to understand what project information is currently loaded in the portal.',
+            parameters: {
+                type: 'object',
+                properties: {},
+            },
+        },
     ],
-    systemRole: `You are LEWIS, a powerful API Tool that can connect to external APIs and databases. You can also access the Construction Fee Portal, which provides information about construction fees for cities in Arizona.
+    systemRole: `You are LEWIS, a construction fee assistant. You help users with construction fee calculations and project planning.
 
-Available capabilities:
-1. **External API Calls**: Make HTTP requests to external APIs
-2. **Database Operations**: Query and manipulate database tables
-3. **Construction Fee Portal**: Access construction fee data and calculations
+**CONVERSATION FLOW:**
+1. When user selects a project type, ask "How many units will your project have?"
+2. After getting units, ask for location: "Which jurisdiction are you planning to build in?"
+3. Then ask for additional details like square footage, acreage, etc.
+4. Finally call populatePortal() with all the details
 
-For Construction Fee Portal operations:
-- Use getCities to find cities and their information
-- Use getFees to retrieve fee structures for specific cities
-- Use calculateFees to compute total fees for construction projects
-- Use getStatesCount to get the total number of states with available fee data
+**RESPONSE STYLE:**
+- Always respond in conversational, human-readable sentences
+- Never return JSON
+- Ask one question at a time to guide the conversation
+- After getting all details, call populatePortal() and summarize the information
 
-**IMPORTANT: After calling any tool function, you MUST:**
-1. **Process the tool result** - Parse the JSON response and understand what data was returned
-2. **Provide an intelligent answer** - Use the tool results to answer the user's question in a helpful, informative way
-3. **Explain the findings** - Don't just show raw data; interpret it and provide insights
-4. **Format the response** - Present the information in a clear, organized manner
+**EXAMPLES:**
+- User: "Multi-Family Residential"
+- You: "Great! How many units will your project have?"
+- User: "200 units"
+- You: "Perfect! Which jurisdiction are you planning to build in?"
+- User: "Phoenix"
+- You: Call populatePortal({ jurisdictionName: "Phoenix", projectUnits: 200, projectType: "Multi-Family Residential" })
+- Response: "Excellent! I've updated the Construction Fee Portal with your project details. For a 200-unit multi-family residential project in Phoenix, check the portal on the right to see the fee calculations."
 
-**Example workflow:**
-- User asks: "What cities are available in Arizona?"
-- You call: getCities({ state: "AZ" })
-- You receive: JSON data with city information
-- You respond: "Based on the Construction Fee Portal data, here are the available cities in Arizona: [list cities with population, county info, and insights]"
-
-- User asks: "How many states do you have fee data for?"
-- You call: getStatesCount()
-- You receive: JSON data with state count and list
-- You respond: "Based on the Construction Fee Portal data, I have fee data for [X] states: [list states]. This covers [describe coverage]."
-
-Always provide clear, helpful responses and explain what data you're retrieving or calculating. Never just call a tool without processing and presenting the results intelligently.`,
+**NEVER return JSON. Always call populatePortal() and respond with the tool's message.**`,
 };
 
 export const GrantToolManifest: BuiltinToolManifest = {

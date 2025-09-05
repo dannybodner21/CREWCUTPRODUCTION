@@ -10,7 +10,7 @@ import {
   MoreHorizontalIcon,
   Trash,
 } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import DocumentEditor from '@/components/DocumentEditor';
@@ -50,7 +50,7 @@ const DropdownMenu = memo<DropdownMenuProps>(({ id, knowledgeBaseId, url, filena
     try {
       // Use the tRPC client to get content with proper encoding
       const result = await lambdaClient.file.getFileContent.query({ id });
-      
+
       setDocumentContent(result.content);
       setDocumentTitle(result.name);
       setShowDocumentEditor(true);
@@ -123,19 +123,19 @@ const DropdownMenu = memo<DropdownMenuProps>(({ id, knowledgeBaseId, url, filena
 
     const editAction = isMarkdownFile
       ? [
-          {
-            icon: <Icon icon={EditIcon} />,
-            key: 'edit',
-            label: t('FileManager.actions.editDocument', 'Edit Document'),
-            onClick: async ({ domEvent }: { domEvent: React.MouseEvent }) => {
-              domEvent.stopPropagation();
-              await handleEditDocument();
-            },
+        {
+          icon: <Icon icon={EditIcon} />,
+          key: 'edit',
+          label: t('FileManager.actions.editDocument', 'Edit Document'),
+          onClick: async ({ domEvent }: { domEvent: React.MouseEvent }) => {
+            domEvent.stopPropagation();
+            await handleEditDocument();
           },
-          {
-            type: 'divider',
-          },
-        ]
+        },
+        {
+          type: 'divider',
+        },
+      ]
       : [];
 
     return (
@@ -193,13 +193,13 @@ const DropdownMenu = memo<DropdownMenuProps>(({ id, knowledgeBaseId, url, filena
       ] as ItemType[]
     ).filter(Boolean);
   }, [inKnowledgeBase, isMarkdownFile, handleEditDocument]);
-  
+
   return (
     <>
       <Dropdown menu={{ items }}>
         <ActionIcon icon={MoreHorizontalIcon} size={'small'} />
       </Dropdown>
-      
+
       {/* Document Editor Modal */}
       {showDocumentEditor && (
         <DocumentEditor
@@ -208,7 +208,7 @@ const DropdownMenu = memo<DropdownMenuProps>(({ id, knowledgeBaseId, url, filena
           initialTitle={documentTitle}
           isEditing={true}
           onClose={() => setShowDocumentEditor(false)}
-          onSave={async () => {}} // Not used in edit mode
+          onSave={async () => { }} // Not used in edit mode
           onUpdate={handleUpdateDocument}
         />
       )}

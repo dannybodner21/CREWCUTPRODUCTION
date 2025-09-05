@@ -183,53 +183,66 @@ export const chatPlugin: StateCreator<
       return;
     }
 
+    // Handle Lewis tools specially - they return strings that get JSON.stringify'd
+    if (payload.identifier === 'lewis') {
+      console.log('🔧 PLUGIN DEBUG: Lewis tool detected, handling specially');
+      console.log('🔧 PLUGIN DEBUG: Raw data from Lewis tool:', data);
+      console.log('🔧 PLUGIN DEBUG: Data type:', typeof data);
+
+      // Lewis tools now return strings directly, but they get JSON.stringify'd
+      // So we need to parse the JSON string to get the actual string content
+      try {
+        const actualContent = JSON.parse(data);
+        console.log('🔧 PLUGIN DEBUG: Parsed content:', actualContent);
+
+        // If this is a populatePortal call, extract the parameters and update the portal
+        if (payload.apiName === 'populatePortal' && payload.arguments) {
+          try {
+            const params = JSON.parse(payload.arguments);
+            console.log('🔧 PLUGIN DEBUG: populatePortal params:', params);
+
+            // Update portal on client side
+            if (typeof window !== 'undefined') {
+              const portalState = {
+                lewisProjectData: params,
+                lastUpdated: new Date().toISOString(),
+                source: 'lewis-chat-tool'
+              };
+
+              localStorage.setItem('lewis-portal-state', JSON.stringify(portalState));
+              window.dispatchEvent(new CustomEvent('lewis-portal-update', {
+                detail: portalState
+              }));
+
+              console.log('🔧 PLUGIN DEBUG: Portal updated with project data');
+            }
+          } catch (paramError) {
+            console.log('🔧 PLUGIN DEBUG: Failed to parse populatePortal params:', paramError);
+          }
+        }
+
+        // Create a new assistant message with the actual content
+        const { internal_createMessage } = get();
+        await internal_createMessage({
+          role: 'assistant',
+          content: actualContent,
+          parentId: id,
+          sessionId: get().activeId,
+          topicId: get().activeTopicId,
+        }, { skipRefresh: false });
+
+        console.log('🔧 PLUGIN DEBUG: Lewis tool response converted to assistant message');
+      } catch (parseError) {
+        console.log('🔧 PLUGIN DEBUG: Failed to parse Lewis tool result, using raw data');
+        console.log('🔧 PLUGIN DEBUG: Parse error:', parseError);
+        await internal_updateMessageContent(id, data);
+      }
+
+      return;
+    }
+
     console.log('🔧 PLUGIN DEBUG: About to update message content with data');
     await internal_updateMessageContent(id, data);
-
-    // For custom API tools, the data is already processed and ready to display
-    // No need to look for additional actions in the chat store
-    // Note: Lewis is a builtin tool, not a plugin, so it will be handled by the builtin tool flow
-    // if (payload.identifier === 'lewis') {
-    //   console.log('🔧 PLUGIN DEBUG: Lewis tool detected, returning early');
-    //   console.log('🔧 PLUGIN DEBUG: Raw data from Lewis tool:', data);
-    //   console.log('🔧 PLUGIN DEBUG: Data type:', typeof data);
-    //   
-    //   // Ensure the Lewis tool result is properly formatted for display
-    //   // The data is already a JSON string, so we need to parse it and format it nicely
-    //   try {
-    //     const parsedData = JSON.parse(data);
-    //     console.log('🔧 PLUGIN DEBUG: Parsed data:', parsedData);
-    //     
-    //     if (parsedData.success && parsedData.message) {
-    //       // Format the result nicely for display
-    //       const formattedContent = `${parsedData.message}\n\n**States with fee data:** ${parsedData.states?.join(', ') || 'None'}`;
-    //       console.log('🔧 PLUGIN DEBUG: Formatted content:', formattedContent);
-    //       
-    //       // CRITICAL FIX: Instead of updating the tool message, create a new assistant message
-    //       // This prevents the UI from trying to render it as a tool result
-    //       const { internal_createMessage } = get();
-    //       await internal_createMessage({
-    //         role: 'assistant',
-    //         content: formattedContent,
-    //         parentId: id,
-    //         sessionId: get().activeId,
-    //         topicId: get().activeTopicId,
-    //       }, { skipRefresh: false });
-    //       
-    //       console.log('🔧 PLUGIN DEBUG: Lewis tool response converted to assistant message');
-    //     } else {
-    //       // If parsing fails or no message, use the raw data
-    //       console.log('🔧 PLUGIN DEBUG: Using raw data');
-    //       await internal_updateMessageContent(id, data);
-    //     }
-    //   } catch (parseError) {
-    //     console.log('🔧 PLUGIN DEBUG: Failed to parse Lewis tool result, using raw data');
-    //     console.log('🔧 PLUGIN DEBUG: Parse error:', parseError);
-    //       await internal_updateMessageContent(id, data);
-    //     }
-    //   
-    //   return;
-    // }
 
     // For other builtin tools (like text2image), run the tool api call
     // postToolCalling

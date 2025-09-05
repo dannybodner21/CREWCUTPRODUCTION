@@ -2,7 +2,7 @@ import { Button, Input, Modal, Tabs } from 'antd';
 import { TextArea, Markdown } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { FileText, Save, Eye, Edit3 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
 
@@ -79,7 +79,7 @@ interface DocumentEditorProps {
     isEditing?: boolean;
 }
 
-const DocumentEditor: React.FC<DocumentEditorProps> = ({ onClose, onSave, onUpdate, initialContent = '', initialTitle = '', fileId, isEditing = false }) => {
+const DocumentEditor = ({ onClose, onSave, onUpdate, initialContent = '', initialTitle = '', fileId, isEditing = false }: DocumentEditorProps) => {
     const { t } = useTranslation('common');
     const { styles } = useStyles();
 
@@ -117,19 +117,6 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ onClose, onSave, onUpda
         }
     }, [initialContent, initialTitle]);
 
-    // Keyboard shortcuts
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                handleSave();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
     const handleSave = async () => {
         if (!title.trim() || !content.trim()) return;
 
@@ -147,7 +134,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ onClose, onSave, onUpda
                     name: title.trim(),
                     content: cleanContent,
                     fileType: 'text/markdown',
-                    size: new Blob([cleanContent], { type: 'text/plain; charset=utf-8' }).size,
+                    size: new Blob([cleanContent], { type: 'text/plain; charset=utf8' }).size,
                     createdAt: new Date(),
                     source: 'document_editor'
                 });
@@ -162,6 +149,19 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ onClose, onSave, onUpda
             setIsSaving(false);
         }
     };
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [handleSave]);
 
     const handleCancel = () => {
         // Clear draft when canceling

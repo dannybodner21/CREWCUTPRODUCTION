@@ -66,6 +66,12 @@ export const createBuiltinToolSlice: StateCreator<
     calculateFees: customApiActions.calculateFees,
     getStatesCount: customApiActions.getStatesCount,
     getUniqueStates: customApiActions.getUniqueStates,
+    // Portal integration actions
+    populatePortal: customApiActions.populatePortal,
+    getPortalData: customApiActions.getPortalData,
+    // Demo data actions for testing
+    getDemoJurisdictions: customApiActions.getDemoJurisdictions,
+    getDemoJurisdictionFees: customApiActions.getDemoJurisdictionFees,
 
     // Course Builder Tool actions
     createCourseOutline: customApiActions.createCourseOutline,

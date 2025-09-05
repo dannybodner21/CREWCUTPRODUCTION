@@ -179,7 +179,7 @@ const ZEROPortal = memo<BuiltinPortalProps>(({
     state,
     apiName
 }) => {
-    const { t } = useTranslation('common');
+    const { t: _t } = useTranslation('common');
     const { styles } = useStyles();
     const [courseForm] = Form.useForm();
     const [lessonForm] = Form.useForm();
@@ -468,7 +468,7 @@ const ZEROPortal = memo<BuiltinPortalProps>(({
             message.success(`New lesson "${newLesson.title}" added to course!`);
         } else if (aiContent.assessment && selectedCourse) {
             // Add assessment to existing course
-            const updatedCourse = { ...selectedCourse };
+            const _updatedCourse = { ...selectedCourse };
             const newAssessment = {
                 id: Date.now().toString(),
                 title: aiContent.assessment.title || 'AI Generated Assessment',
@@ -885,12 +885,12 @@ const ZEROPortal = memo<BuiltinPortalProps>(({
                                 </Button>
                             </Row>
 
-                            {selectedCourse.modules.map((module, moduleIndex) => (
+                            {selectedCourse.modules.map((module, _moduleIndex) => (
                                 <Card key={module.id} title={`Module ${module.order}: ${module.title}`} className={styles.moduleCard}>
                                     <Paragraph>{module.description}</Paragraph>
                                     <List
                                         dataSource={module.lessons}
-                                        renderItem={(lesson, lessonIndex) => (
+                                        renderItem={(lesson, _lessonIndex) => (
                                             <List.Item className={styles.lessonItem}>
                                                 <List.Item.Meta
                                                     avatar={<PlayCircle size={20} />}

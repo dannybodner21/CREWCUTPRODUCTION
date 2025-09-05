@@ -2,6 +2,8 @@
 
 import { FluentEmoji, Markdown } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
+import { Button } from 'antd';
+import { Building } from 'lucide-react';
 import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -9,7 +11,10 @@ import { Center, Flexbox } from 'react-layout-kit';
 import { BRANDING_NAME } from '@/const/branding';
 import { isCustomBranding } from '@/const/version';
 import { useGreeting } from '@/hooks/useGreeting';
+import { useChatStore } from '@/store/chat';
+import { chatPortalSelectors } from '@/store/chat/slices/portal/selectors';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
+import LewisOpeningQuestions from '@/components/LewisOpeningQuestions';
 
 import AddButton from './AddButton';
 import QuestionSuggest from './QuestionSuggest';
@@ -46,6 +51,10 @@ const InboxWelcome = memo(() => {
   const greeting = useGreeting();
   const { showWelcomeSuggest, showCreateSession } = useServerConfigStore(featureFlagsSelectors);
 
+  // Portal state and toggle function
+  const togglePortal = useChatStore((s) => s.togglePortal);
+  const showPortal = useChatStore(chatPortalSelectors.showPortal);
+
   return (
     <Center padding={16} width={'100%'}>
       <Flexbox className={styles.container} gap={16} style={{ maxWidth: 800 }} width={'100%'}>
@@ -77,6 +86,30 @@ const InboxWelcome = memo(() => {
             appName: BRANDING_NAME,
           })}
         </Markdown>
+
+        {/* Lewis Construction Portal Button */}
+        <Flexbox align="center" justify="center" style={{ marginTop: 20, marginBottom: 20 }}>
+          <Button
+            icon={<Building size={16} style={{ color: '#000000' }} />}
+            onClick={() => togglePortal()}
+            size="large"
+            style={{
+              height: 48,
+              fontSize: 16,
+              paddingInline: 24,
+              borderRadius: 8,
+              backgroundColor: '#ffffff',
+              borderColor: '#d9d9d9',
+              color: '#000000',
+            }}
+            type="default"
+          >
+            {showPortal ? 'Close Portal' : 'Open Portal'}
+          </Button>
+        </Flexbox>
+
+        {/* Show Lewis opening questions on the main page */}
+        <LewisOpeningQuestions />
         {showWelcomeSuggest && (
           <>
             {/* Removed AgentsSuggest component */}

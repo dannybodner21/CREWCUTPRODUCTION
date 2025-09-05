@@ -79,6 +79,16 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'getDemoJurisdictions': {
+        result = await lewisDataService.getDemoJurisdictions();
+        break;
+      }
+
+      case 'getDemoJurisdictionFees': {
+        result = await lewisDataService.getDemoJurisdictionFees(params.jurisdictionId);
+        break;
+      }
+
       default: {
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },

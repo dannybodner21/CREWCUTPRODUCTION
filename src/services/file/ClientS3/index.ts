@@ -57,7 +57,7 @@ export class BrowserS3Storage {
       let fileData: ArrayBuffer | string;
       if (isTextFile) {
         // For text files, decode as UTF-8 string first
-        const decoder = new TextDecoder('utf-8');
+        const decoder = new TextDecoder('utf8');
         fileData = decoder.decode(res.data);
       } else {
         // For binary files, use ArrayBuffer directly

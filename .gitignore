@@ -109,3 +109,8 @@ CLAUDE.local.md
 *.ppt*
 *.doc*
 *.xls*
+
+
+
+nyc_fees.csv
+check-ny-jurisdictions.ts

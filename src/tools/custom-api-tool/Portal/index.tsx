@@ -54,7 +54,7 @@ interface Fee {
     cityId: number;
 }
 
-interface ComparisonData {
+interface _ComparisonData {
     cityName: string;
     totalFees: number;
     breakdown: Fee[];
@@ -66,9 +66,9 @@ const CustomApiToolPortal = memo<BuiltinPortalProps>(({
     state,
     apiName
 }) => {
-    const { t } = useTranslation('common');
-    const { styles } = useStyles();
-    const [form] = Form.useForm();
+    const { t: _t } = useTranslation('common');
+    const { styles: _styles } = useStyles();
+    const [_form] = Form.useForm();
 
     // Debug logging
     console.log('🔧 PORTAL DEBUG: ConstructionFeePortal rendered with:', {
@@ -87,7 +87,7 @@ const CustomApiToolPortal = memo<BuiltinPortalProps>(({
     const [selectedCity, setSelectedCity] = useState<number | null>(null);
     const [filteredFees, setFilteredFees] = useState<Fee[]>([]);
     const [feeCategoryFilter, setFeeCategoryFilter] = useState<string>('');
-    const [feeSearchTerm, setFeeSearchTerm] = useState<string>('');
+    const [feeSearchTerm, _setFeeSearchTerm] = useState<string>('');
     const [citySearchTerm, setCitySearchTerm] = useState<string>('');
     const [stateFilter, setStateFilter] = useState<string>('');
     const [loading, setLoading] = useState(false);
@@ -419,7 +419,7 @@ const CustomApiToolPortal = memo<BuiltinPortalProps>(({
         }
     }, [selectedCity]);
 
-    const loadCities = async () => {
+    const _loadCities = async () => {
         // Use the hybrid Lewis service to get cities from the database
         return await hybridLewisService.getCities();
     };

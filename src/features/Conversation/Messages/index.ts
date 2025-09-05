@@ -7,6 +7,7 @@ import { sessionSelectors } from '@/store/session/selectors';
 
 import { MarkdownCustomRender, RenderBelowMessage, RenderMessage } from '../types';
 import { AssistantMessage } from './Assistant';
+// import { AssistantBelowMessage } from './Assistant/AssistantBelowMessage'; // Temporarily disabled
 import { DefaultBelowMessage, DefaultMessage } from './Default';
 import { UserBelowMessage, UserMarkdownRender, UserMessage } from './User';
 
@@ -18,6 +19,7 @@ export const renderMessages: Record<string, RenderMessage> = {
 };
 
 export const renderBelowMessages: Record<string, RenderBelowMessage> = {
+  // assistant: AssistantBelowMessage, // Temporarily disabled
   default: DefaultBelowMessage,
   user: UserBelowMessage,
 };

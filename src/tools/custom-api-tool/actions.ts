@@ -2,6 +2,8 @@ import { BuiltinToolAction } from '@/store/tool/slices/builtin/action';
 import { createSupabaseClient, executeSupabaseQuery } from './supabase';
 import { supabaseOperations } from './supabase-operations';
 import { hybridLewisService } from './hybrid-lewis-service';
+import { lewisPortalIntegration } from './lewis-portal-integration';
+import { lewisDataService } from './lewis-data-service';
 
 // Types for your tool parameters
 interface CallExternalAPIParams {
@@ -56,6 +58,22 @@ interface CalculateFeesParams {
     squareFootage: number;
 }
 
+// Portal integration parameters
+interface PopulatePortalParams {
+    jurisdictionId?: string;
+    jurisdictionName?: string;
+    projectType?: string;
+    projectUnits?: number;
+    projectAcreage?: number;
+    meterSize?: string;
+    squareFootage?: number;
+    projectValue?: number;
+}
+
+interface GetPortalDataParams {
+    // No specific parameters needed
+}
+
 // Grant Trading Tool specific parameters
 interface GetStockQuoteParams {
     ticker: string;
@@ -96,6 +114,12 @@ export interface CustomApiToolAction {
     calculateFees: (params: CalculateFeesParams) => Promise<any>;
     getStatesCount: () => Promise<any>;
     getUniqueStates: () => Promise<any>;
+    // Portal integration actions
+    populatePortal: (params: PopulatePortalParams) => Promise<any>;
+    getPortalData: (params: GetPortalDataParams) => Promise<any>;
+    // Demo data actions for testing
+    getDemoJurisdictions: () => Promise<any>;
+    getDemoJurisdictionFees: (params: { jurisdictionId: string }) => Promise<any>;
     // Grant Trading Tool actions
     getStockQuote: (params: GetStockQuoteParams) => Promise<any>;
     getStockHistory: (params: GetStockHistoryParams) => Promise<any>;
@@ -371,28 +395,29 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                 );
             }
 
-            return {
-                success: true,
-                data: filteredCities,
-                total: filteredCities.length,
-                filters: params,
-                message: `Found ${filteredCities.length} cities matching your criteria.`,
-                summary: `Cities available: ${filteredCities.map(c => c.name).join(', ')}`,
-                insights: {
-                    largestCity: filteredCities.reduce((max, city) => city.population > max.population ? city : max, filteredCities[0]),
-                    countyBreakdown: filteredCities.reduce((acc, city) => {
-                        acc[city.county] = (acc[city.county] || 0) + 1;
-                        return acc;
-                    }, {} as Record<string, number>),
-                    totalPopulation: filteredCities.reduce((sum, city) => sum + city.population, 0)
-                }
-            };
+            // Create conversational response
+            let responseMessage = `I found ${filteredCities.length} cities in Arizona with construction fee data available. Here are the main options:\n\n`;
+
+            filteredCities.slice(0, 10).forEach((city, index) => {
+                responseMessage += `• **${city.name}** - ${city.county} County (Population: ${city.population.toLocaleString()})\n`;
+            });
+
+            if (filteredCities.length > 10) {
+                responseMessage += `\n...and ${filteredCities.length - 10} more cities available.\n`;
+            }
+
+            const largestCity = filteredCities.reduce((max, city) => city.population > max.population ? city : max, filteredCities[0]);
+            const totalPopulation = filteredCities.reduce((sum, city) => sum + city.population, 0);
+
+            responseMessage += `\n**Key Insights:**\n`;
+            responseMessage += `• Largest city: **${largestCity.name}** with ${largestCity.population.toLocaleString()} residents\n`;
+            responseMessage += `• Total population covered: ${totalPopulation.toLocaleString()}\n`;
+            responseMessage += `• Each city has different fee structures and requirements\n\n`;
+            responseMessage += `Would you like me to help you calculate fees for a specific city, or would you like more details about any particular location?`;
+
+            return responseMessage;
         } catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Failed to get cities',
-                filters: params
-            };
+            return `I'm sorry, I encountered an error while trying to get the cities: ${error instanceof Error ? error.message : 'Failed to get cities'}. Please try again or let me know if you need help with something else.`;
         }
     },
 
@@ -478,34 +503,38 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
 
             const totalFees = results.reduce((sum: number, fee: Record<string, any>) => sum + fee.calculatedAmount, 0);
 
-            return {
-                success: true,
-                data: results,
-                summary: {
-                    totalFees: Math.round(totalFees * 100) / 100,
-                    feeCount: results.length,
-                    projectType: params.projectType,
-                    projectValue: params.projectValue,
-                    squareFootage: params.squareFootage
-                },
-                message: `Fee calculation completed successfully. Total fees: $${Math.round(totalFees * 100) / 100}`,
-                breakdown: `Project: ${params.projectType} construction, Value: $${params.projectValue.toLocaleString()}, Area: ${params.squareFootage} sq ft`,
-                insights: {
-                    feeBreakdown: results.map((fee: Record<string, any>) => ({
-                        category: fee.category,
-                        amount: fee.calculatedAmount,
-                        percentage: Math.round((fee.calculatedAmount / totalFees) * 100)
-                    })),
-                    costPerSqFt: Math.round((totalFees / params.squareFootage) * 100) / 100,
-                    costPercentage: Math.round((totalFees / params.projectValue) * 10000) / 100
-                }
-            };
+            // Create conversational response
+            let responseMessage = `I've calculated the construction fees for your ${params.projectType} project. Here's the breakdown:\n\n`;
+            responseMessage += `**Project Details:**\n`;
+            responseMessage += `• Type: ${params.projectType}\n`;
+            responseMessage += `• Value: $${params.projectValue.toLocaleString()}\n`;
+            responseMessage += `• Size: ${params.squareFootage.toLocaleString()} sq ft\n\n`;
+
+            responseMessage += `**Fee Summary:**\n`;
+            responseMessage += `• **Total Fees**: $${Math.round(totalFees * 100) / 100}\n`;
+            responseMessage += `• **Number of Fees**: ${results.length} different fee categories\n`;
+            responseMessage += `• **Cost per Sq Ft**: $${Math.round((totalFees / params.squareFootage) * 100) / 100}\n`;
+            responseMessage += `• **Percentage of Project Value**: ${Math.round((totalFees / params.projectValue) * 10000) / 100}%\n\n`;
+
+            // Show top 5 highest fees
+            const topFees = results
+                .filter((fee: Record<string, any>) => fee.calculatedAmount > 0)
+                .sort((a: Record<string, any>, b: Record<string, any>) => b.calculatedAmount - a.calculatedAmount)
+                .slice(0, 5);
+
+            if (topFees.length > 0) {
+                responseMessage += `**Top Fee Categories:**\n`;
+                topFees.forEach((fee: Record<string, any>, index: number) => {
+                    const percentage = Math.round((fee.calculatedAmount / totalFees) * 100);
+                    responseMessage += `${index + 1}. **${fee.category}**: $${fee.calculatedAmount.toLocaleString()} (${percentage}% of total)\n`;
+                });
+            }
+
+            responseMessage += `\nThis gives you a comprehensive overview of the construction fees for your project. The portal on the right shows the complete detailed breakdown. Would you like me to explain any specific fees or help you with anything else?`;
+
+            return responseMessage;
         } catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Failed to calculate fees',
-                params
-            };
+            return `I'm sorry, I encountered an error while trying to calculate the fees: ${error instanceof Error ? error.message : 'Failed to calculate fees'}. Please try again or let me know if you need help with something else.`;
         }
     },
 
@@ -521,17 +550,11 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
             const states = statesResult.data || [];
             const uniqueStates = [...new Set(states)];
 
-            return {
-                success: true,
-                data: uniqueStates.length,
-                states: uniqueStates,
-                message: `Found ${uniqueStates.length} states with fee data: ${uniqueStates.join(', ')}`
-            };
+            const responseMessage = `I have construction fee data available for **${uniqueStates.length} states**: ${uniqueStates.join(', ')}.\n\nThis comprehensive database covers a wide range of jurisdictions across the United States, giving you access to fee information for construction projects in multiple states. Each state has different fee structures, requirements, and calculation methods.\n\nWould you like me to help you find specific cities or calculate fees for a particular state?`;
+
+            return responseMessage;
         } catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Failed to get states count',
-            };
+            return `I'm sorry, I encountered an error while trying to get the states count: ${error instanceof Error ? error.message : 'Failed to get states count'}. Please try again or let me know if you need help with something else.`;
         }
     },
 
@@ -546,15 +569,196 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
 
             const uniqueStates = statesResult.data || [];
 
-            return {
-                success: true,
-                data: uniqueStates,
-                message: `Found ${uniqueStates.length} unique states.`
-            };
+            return `I found ${uniqueStates.length} unique states with construction fee data available: ${uniqueStates.join(', ')}.`;
+        } catch (error) {
+            return `I'm sorry, I encountered an error while trying to get the unique states: ${error instanceof Error ? error.message : 'Failed to get unique states'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    // Portal integration actions
+    populatePortal: async (params: PopulatePortalParams) => {
+        try {
+            console.log('🔧 LEWIS TOOL: populatePortal called with:', params);
+
+            // Calculate fee totals for the response
+            let feeSummary = '';
+            if (params.jurisdictionName) {
+                try {
+                    console.log('🔧 LEWIS TOOL: Starting fee calculation for:', params.jurisdictionName);
+
+                    // Get demo jurisdictions to find the matching one
+                    const jurisdictionsResult = await lewisDataService.getDemoJurisdictions();
+                    console.log('🔧 LEWIS TOOL: Jurisdictions result:', jurisdictionsResult);
+
+                    if (jurisdictionsResult.success && jurisdictionsResult.data && jurisdictionsResult.data.length > 0) {
+                        console.log('🔧 LEWIS TOOL: Total jurisdictions found:', jurisdictionsResult.data.length);
+                        console.log('🔧 LEWIS TOOL: First few jurisdictions:', jurisdictionsResult.data.slice(0, 3));
+
+                        const matchingJurisdiction = jurisdictionsResult.data.find((j: any) =>
+                            j.name.toLowerCase().includes(params.jurisdictionName!.toLowerCase()) ||
+                            params.jurisdictionName!.toLowerCase().includes(j.name.toLowerCase())
+                        );
+
+                        console.log('🔧 LEWIS TOOL: Matching jurisdiction:', matchingJurisdiction);
+
+                        if (matchingJurisdiction) {
+                            // Get demo fees for this jurisdiction
+                            const feesResult = await lewisDataService.getDemoJurisdictionFees(matchingJurisdiction.id);
+                            console.log('🔧 LEWIS TOOL: Fees result:', feesResult);
+
+                            if (feesResult.success && feesResult.data) {
+                                const fees = feesResult.data;
+
+                                // Calculate totals
+                                const totalFees = fees.length;
+                                const applicableFees = fees.filter((fee: any) => {
+                                    // Simple filtering based on project type
+                                    const feeName = fee.name.toLowerCase();
+                                    const projectType = params.projectType?.toLowerCase() || '';
+
+                                    if (projectType.includes('residential')) {
+                                        return feeName.includes('residential') || feeName.includes('single family') ||
+                                            feeName.includes('multi-family') || feeName.includes('apartment') ||
+                                            !feeName.includes('commercial') && !feeName.includes('industrial');
+                                    } else if (projectType.includes('commercial')) {
+                                        return feeName.includes('commercial') || feeName.includes('business') ||
+                                            !feeName.includes('residential') && !feeName.includes('single family');
+                                    }
+                                    return true; // Include all fees if no specific type
+                                });
+
+                                // Calculate estimated total cost (simplified)
+                                let estimatedTotal = 0;
+                                applicableFees.forEach((fee: any) => {
+                                    if (fee.rate) {
+                                        const rate = parseFloat(fee.rate);
+                                        if (fee.category === 'flat') {
+                                            estimatedTotal += rate;
+                                        } else if (fee.category === 'per_unit' && params.projectUnits) {
+                                            estimatedTotal += rate * params.projectUnits;
+                                        } else if (fee.category === 'per_sqft' && params.squareFootage) {
+                                            estimatedTotal += rate * params.squareFootage;
+                                        } else if (fee.category === 'per_acre' && params.projectAcreage) {
+                                            estimatedTotal += rate * params.projectAcreage;
+                                        }
+                                    }
+                                });
+
+                                feeSummary = `\n\n**Fee Summary for ${params.jurisdictionName}:**\n`;
+                                feeSummary += `• Total Fee Records: ${totalFees}\n`;
+                                feeSummary += `• Applicable Fees: ${applicableFees.length}\n`;
+                                feeSummary += `• Estimated Total Cost: $${estimatedTotal.toLocaleString()}`;
+
+                                console.log('🔧 LEWIS TOOL: Fee summary calculated:', feeSummary);
+                            } else {
+                                console.log('🔧 LEWIS TOOL: No fees found for jurisdiction');
+                                feeSummary = `\n\n*No fee data available for ${params.jurisdictionName} - check the portal for more details.*`;
+                            }
+                        } else {
+                            console.log('🔧 LEWIS TOOL: No matching jurisdiction found');
+                            feeSummary = `\n\n*Jurisdiction "${params.jurisdictionName}" not found in database - check the portal for available locations.*`;
+                        }
+                    } else {
+                        console.log('🔧 LEWIS TOOL: No jurisdictions data available');
+                        feeSummary = `\n\n*No jurisdiction data available in database - check the portal for available locations.*`;
+                    }
+                } catch (feeError) {
+                    console.log('🔧 LEWIS TOOL: Error calculating fees:', feeError);
+                    feeSummary = `\n\n*Fee calculation in progress - check the portal for detailed breakdown.*`;
+                }
+            }
+
+            // Build response
+            let response = `Great! I've updated the Construction Fee Portal with your project details.`;
+
+            if (params.jurisdictionName) {
+                response += ` I've set the location to ${params.jurisdictionName}.`;
+            }
+            if (params.projectUnits) {
+                response += ` The project is set for ${params.projectUnits} units.`;
+            }
+            if (params.squareFootage) {
+                response += ` The size is ${params.squareFootage.toLocaleString()} square feet.`;
+            }
+            if (params.projectAcreage) {
+                response += ` The acreage is ${params.projectAcreage} acres.`;
+            }
+
+            response += ` Check the portal on the right to see the fee calculations.`;
+            response += feeSummary;
+
+            return response;
+        } catch (error) {
+            return `Sorry, I had trouble updating the portal. Please try again.`;
+        }
+    },
+
+    getPortalData: async (params: GetPortalDataParams) => {
+        try {
+            console.log('🔧 LEWIS TOOL: getPortalData called');
+
+            // Get current project data from the portal
+            const portalData = lewisPortalIntegration.getCurrentProjectData();
+
+            if (portalData) {
+                let responseMessage = `I can see your current project setup in the portal:\n\n`;
+
+                if (portalData.jurisdictionName) {
+                    responseMessage += `📍 **Location**: ${portalData.jurisdictionName}\n`;
+                }
+                if (portalData.projectType) {
+                    responseMessage += `🏗️ **Project Type**: ${portalData.projectType}\n`;
+                }
+                if (portalData.projectUnits) {
+                    responseMessage += `🏠 **Units**: ${portalData.projectUnits}\n`;
+                }
+                if (portalData.projectAcreage) {
+                    responseMessage += `📏 **Acreage**: ${portalData.projectAcreage} acres\n`;
+                }
+                if (portalData.squareFootage) {
+                    responseMessage += `📐 **Square Footage**: ${portalData.squareFootage.toLocaleString()} sq ft\n`;
+                }
+                if (portalData.projectValue) {
+                    responseMessage += `💰 **Project Value**: $${portalData.projectValue.toLocaleString()}\n`;
+                }
+                if (portalData.meterSize) {
+                    responseMessage += `🔧 **Meter Size**: ${portalData.meterSize}\n`;
+                }
+
+                responseMessage += `\nI can help you with fee calculations, comparisons, or answer questions about this project. What would you like to know?`;
+
+                return responseMessage;
+            } else {
+                return `I don't see any project data in the portal yet. To get started, you can either:\n\n• Fill in the portal manually with your project details\n• Tell me about your project (like "I want to build a 50-unit apartment complex in Phoenix") and I'll populate the portal for you\n\nWhat would you like to do?`;
+            }
+        } catch (error) {
+            return `I'm sorry, I encountered an error while trying to get the portal data: ${error instanceof Error ? error.message : 'Failed to get portal data'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    // Demo data actions for testing
+    getDemoJurisdictions: async () => {
+        try {
+            console.log('🔧 LEWIS TOOL: getDemoJurisdictions called');
+            const result = await lewisDataService.getDemoJurisdictions();
+            return result;
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Failed to get unique states',
+                error: error instanceof Error ? error.message : 'Failed to get demo jurisdictions'
+            };
+        }
+    },
+
+    getDemoJurisdictionFees: async (params: { jurisdictionId: string }) => {
+        try {
+            console.log('🔧 LEWIS TOOL: getDemoJurisdictionFees called with:', params);
+            const result = await lewisDataService.getDemoJurisdictionFees(params.jurisdictionId);
+            return result;
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to get demo jurisdiction fees'
             };
         }
     },
@@ -1889,3 +2093,6 @@ function generatePricingStrategyRecommendations(courseType: string, marketSegmen
 
     return recommendations;
 }
+
+// Export the actions object
+export const customApiActions = createCustomApiToolActions();

@@ -137,7 +137,7 @@ export class DesktopLocalFileImpl implements FileServiceImpl {
   async uploadContent(filePath: string, content: string): Promise<any> {
     try {
       // Convert content to Buffer with UTF-8 encoding
-      const buffer = Buffer.from(content, 'utf-8');
+      const buffer = Buffer.from(content, 'utf8');
       
       // Calculate SHA256 hash
       const hash = sha256(buffer);
