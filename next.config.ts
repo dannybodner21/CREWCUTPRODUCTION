@@ -44,7 +44,17 @@ const nextConfig: NextConfig = {
     // refs: https://github.com/lobehub/lobe-chat/pull/7430
     serverMinification: false,
     webVitalsAttribution: ['CLS', 'LCP'],
+    // Build optimizations
+    staticGenerationRetryCount: 1,
+    outputFileTracingRoot: undefined,
   },
+  // Build optimizations
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
+  // Reduce static generation
+  trailingSlash: false,
+  generateEtags: false,
   async headers() {
     return [
       {
