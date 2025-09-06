@@ -37,8 +37,10 @@ console.log('  DATABASE_DRIVER:', process.env.DATABASE_DRIVER);
 console.log('  NEXT_PUBLIC_IS_DESKTOP_APP:', process.env.NEXT_PUBLIC_IS_DESKTOP_APP);
 console.log('  isDesktop:', isDesktop);
 
-// only migrate database if the connection string is available
-if (!isDesktop && connectionString) {
+// only migrate database if the connection string is available and not skipped
+const skipMigration = process.env.SKIP_DB_MIGRATION === 'true';
+
+if (!isDesktop && connectionString && !skipMigration) {
   // eslint-disable-next-line unicorn/prefer-top-level-await
   runMigrations().catch((err) => {
     console.error('❌ Database migrate failed:', err);
@@ -55,5 +57,9 @@ if (!isDesktop && connectionString) {
     process.exit(1);
   });
 } else {
-  console.log('🟢 not find database env or in desktop mode, migration skipped');
+  if (skipMigration) {
+    console.log('🟢 Database migration skipped (SKIP_DB_MIGRATION=true)');
+  } else {
+    console.log('🟢 not find database env or in desktop mode, migration skipped');
+  }
 }
