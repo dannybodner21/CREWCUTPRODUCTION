@@ -47,6 +47,10 @@ const nextConfig: NextConfig = {
     // Build optimizations
     staticGenerationRetryCount: 1,
     outputFileTracingRoot: undefined,
+    // Memory optimizations
+    memoryBasedWorkersCount: true,
+    workerThreads: false,
+    cpus: 1,
   },
   // Build optimizations
   generateBuildId: async () => {
@@ -269,6 +273,27 @@ const nextConfig: NextConfig = {
     config.experiments = {
       asyncWebAssembly: true,
       layers: true,
+    };
+
+    // Memory optimizations
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: -10,
+            chunks: 'all',
+          },
+        },
+      },
     };
 
     // React scan removed - not needed for production
