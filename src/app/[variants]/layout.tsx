@@ -85,22 +85,12 @@ export const generateViewport = async (props: DynamicLayoutProps): ResolvingView
 };
 
 export const generateStaticParams = () => {
-  const themes: ThemeAppearance[] = ['dark', 'light'];
-  const mobileOptions = isDesktop ? [false] : [true, false];
-  // only static for serveral page, other go to dynamtic
-  const staticLocales: Locales[] = [DEFAULT_LANG, 'zh-CN'];
-
-  const variants: { variants: string }[] = [];
-
-  for (const locale of staticLocales) {
-    for (const theme of themes) {
-      for (const isMobile of mobileOptions) {
-        variants.push({
-          variants: RouteVariants.serializeVariants({ isMobile, locale, theme }),
-        });
-      }
-    }
-  }
-
-  return variants;
+  // Only generate the default variant to reduce build time
+  return [{
+    variants: RouteVariants.serializeVariants({
+      isMobile: false,
+      locale: DEFAULT_LANG,
+      theme: 'light'
+    }),
+  }];
 };
