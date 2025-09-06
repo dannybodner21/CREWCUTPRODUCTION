@@ -275,26 +275,8 @@ const nextConfig: NextConfig = {
       layers: true,
     };
 
-    // Memory optimizations
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        cacheGroups: {
-          default: {
-            minChunks: 2,
-            priority: -20,
-            reuseExistingChunk: true,
-          },
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            priority: -10,
-            chunks: 'all',
-          },
-        },
-      },
-    };
+    // Memory optimizations - removed problematic chunk splitting
+    // The chunk splitting was causing "self is not defined" errors
 
     // React scan removed - not needed for production
 
