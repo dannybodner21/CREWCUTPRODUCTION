@@ -1,11 +1,11 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Client } from '@modelcontextprotocol/sdk/client';
 import {
   StdioClientTransport,
   getDefaultEnvironment,
-} from '@modelcontextprotocol/sdk/client/stdio.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.d.ts';
-import type { Progress } from '@modelcontextprotocol/sdk/types.js';
+} from '@modelcontextprotocol/sdk/client/stdio';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport';
+import type { Progress } from '@modelcontextprotocol/sdk/types';
 import debug from 'debug';
 import { spawn } from 'node:child_process';
 

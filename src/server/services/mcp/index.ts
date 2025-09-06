@@ -1,6 +1,6 @@
 import { LobeChatPluginApi, LobeChatPluginManifest, PluginSchema } from '@lobehub/chat-plugin-sdk';
 import { DeploymentOption } from '@lobehub/market-sdk';
-import { McpError } from '@modelcontextprotocol/sdk/types.js';
+import { McpError } from '@modelcontextprotocol/sdk/types';
 import { TRPCError } from '@trpc/server';
 import debug from 'debug';
 
@@ -329,10 +329,10 @@ class MCPService {
         description:
           metadata?.description ||
           `${identifier} MCP server has ` +
-            Object.entries(manifest)
-              .filter(([key]) => ['tools', 'prompts', 'resources'].includes(key))
-              .map(([key, item]) => `${(item as Array<any>)?.length} ${key}`)
-              .join(','),
+          Object.entries(manifest)
+            .filter(([key]) => ['tools', 'prompts', 'resources'].includes(key))
+            .map(([key, item]) => `${(item as Array<any>)?.length} ${key}`)
+            .join(','),
         title: metadata?.name || identifier,
       },
       ...manifest,
