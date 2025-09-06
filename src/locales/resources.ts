@@ -3,24 +3,7 @@ import { DEFAULT_LANG } from '@/const/locale';
 import resources from './default';
 
 export const locales = [
-  'ar',
-  'bg-BG',
-  'de-DE',
   'en-US',
-  'es-ES',
-  'fr-FR',
-  'ja-JP',
-  'ko-KR',
-  'pt-BR',
-  'ru-RU',
-  'tr-TR',
-  'zh-CN',
-  'zh-TW',
-  'vi-VN',
-  'fa-IR',
-  'it-IT',
-  'pl-PL',
-  'nl-NL',
 ] as const;
 
 export type DefaultResources = typeof resources;
