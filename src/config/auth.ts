@@ -40,6 +40,10 @@ declare global {
       ZITADEL_CLIENT_ID?: string;
       ZITADEL_CLIENT_SECRET?: string;
       ZITADEL_ISSUER?: string;
+
+      // GOOGLE
+      AUTH_GOOGLE_CLIENT_ID?: string;
+      AUTH_GOOGLE_CLIENT_SECRET?: string;
     }
   }
 }
@@ -199,6 +203,10 @@ export const getAuthConfig = () => {
       ZITADEL_CLIENT_SECRET: z.string().optional(),
       ZITADEL_ISSUER: z.string().optional(),
 
+      // GOOGLE
+      AUTH_GOOGLE_CLIENT_ID: z.string().optional(),
+      AUTH_GOOGLE_CLIENT_SECRET: z.string().optional(),
+
       // LOGTO
       LOGTO_CLIENT_ID: z.string().optional(),
       LOGTO_CLIENT_SECRET: z.string().optional(),
@@ -260,6 +268,10 @@ export const getAuthConfig = () => {
       ZITADEL_CLIENT_ID: process.env.ZITADEL_CLIENT_ID,
       ZITADEL_CLIENT_SECRET: process.env.ZITADEL_CLIENT_SECRET,
       ZITADEL_ISSUER: process.env.ZITADEL_ISSUER,
+
+      // GOOGLE
+      AUTH_GOOGLE_CLIENT_ID: process.env.AUTH_GOOGLE_CLIENT_ID,
+      AUTH_GOOGLE_CLIENT_SECRET: process.env.AUTH_GOOGLE_CLIENT_SECRET,
 
       // LOGTO
       LOGTO_CLIENT_ID: process.env.LOGTO_CLIENT_ID,
