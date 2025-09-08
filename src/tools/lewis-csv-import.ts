@@ -202,6 +202,17 @@ class LewisCSVImporter {
     }
 
     private async processRow(row: CSVRow): Promise<void> {
+        // Skip rows with missing jurisdiction name or state name
+        if (!row.jurisdiction_name || row.jurisdiction_name.trim() === '') {
+            console.log(`   ⏭️  Skipping row with missing jurisdiction name`);
+            return;
+        }
+
+        if (!row.state_name || row.state_name.trim() === '') {
+            console.log(`   ⏭️  Skipping row with missing state name`);
+            return;
+        }
+
         // 1. Verify jurisdiction exists (don't create)
         const jurisdiction = await this.getOrCreateJurisdiction(row);
 
@@ -226,13 +237,30 @@ class LewisCSVImporter {
         }
 
         // Look up existing jurisdiction (don't create new ones)
-        const { data: existingJurisdiction, error: searchError } = await this.supabase
+        // First try exact match
+        let { data: existingJurisdiction, error: searchError } = await this.supabase
             .from('jurisdictions')
             .select('*')
             .eq('name', row.jurisdiction_name)
             .eq('iso_country', 'US')
             .eq('state_fips', this.getStateFIPS(row.state_name))
             .single();
+
+        // If no exact match, try flexible matching for known cases
+        if (searchError && row.jurisdiction_name === 'Honolulu city and county') {
+            const { data: honoluluMatch, error: honoluluError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Honolulu County')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (honoluluMatch && !honoluluError) {
+                existingJurisdiction = honoluluMatch;
+                searchError = null;
+            }
+        }
 
         if (existingJurisdiction && !searchError) {
             this.jurisdictions.set(key, existingJurisdiction);
@@ -467,6 +495,8 @@ class LewisCSVImporter {
             'Texas': '48',
             'Florida': '12',
             'New York': '36',
+            'Kansas': '20',
+            'Hawaii': '15',
             // Add more states as needed
         };
 

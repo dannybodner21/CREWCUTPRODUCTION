@@ -18,11 +18,17 @@ class JurisdictionAnalyticsPopulator {
         console.log('📊 Populating jurisdiction analytics...\n');
 
         try {
-            // Get all unique jurisdictions from fees_stage
+            // Get all unique jurisdictions from fees table (final processed data)
             const { data: jurisdictions, error: fetchError } = await this.supabase
-                .from('fees_stage')
-                .select('jurisdiction_name, state_name')
-                .order('state_name, jurisdiction_name');
+                .from('fees')
+                .select(`
+                    jurisdictions!inner(
+                        id,
+                        name,
+                        state_fips
+                    )
+                `)
+                .eq('active', true);
 
             if (fetchError) {
                 console.error('❌ Error fetching jurisdictions:', fetchError.message);
@@ -30,19 +36,19 @@ class JurisdictionAnalyticsPopulator {
             }
 
             if (!jurisdictions || jurisdictions.length === 0) {
-                console.log('📭 No jurisdictions found in fees_stage');
+                console.log('📭 No jurisdictions found in fees table');
                 return;
             }
 
             // Get unique jurisdictions
             const uniqueJurisdictions = [...new Map(
-                jurisdictions.map(j => [`${j.jurisdiction_name}|${j.state_name}`, j])
+                jurisdictions.map(j => [`${j.jurisdictions.name}|${j.jurisdictions.state_fips}`, j.jurisdictions])
             ).values()];
 
             console.log(`📈 Found ${uniqueJurisdictions.length} unique jurisdictions to analyze\n`);
 
             for (const jurisdiction of uniqueJurisdictions) {
-                await this.analyzeJurisdiction(jurisdiction.jurisdiction_name, jurisdiction.state_name);
+                await this.analyzeJurisdiction(jurisdiction.id, jurisdiction.name, jurisdiction.state_fips);
             }
 
             console.log('\n✅ Jurisdiction analytics populated successfully!');
@@ -52,16 +58,20 @@ class JurisdictionAnalyticsPopulator {
         }
     }
 
-    private async analyzeJurisdiction(jurisdictionName: string, stateName: string): Promise<void> {
+    private async analyzeJurisdiction(jurisdictionId: string, jurisdictionName: string, stateFips: string): Promise<void> {
         try {
-            console.log(`🔍 Analyzing ${jurisdictionName}, ${stateName}...`);
+            console.log(`🔍 Analyzing ${jurisdictionName}...`);
 
-            // Get all fees for this jurisdiction
+            // Get all fees for this jurisdiction from the final fees table
             const { data: fees, error: fetchError } = await this.supabase
-                .from('fees_stage')
-                .select('*')
-                .eq('jurisdiction_name', jurisdictionName)
-                .eq('state_name', stateName);
+                .from('fees')
+                .select(`
+                    *,
+                    agencies!inner(name),
+                    fee_categories!inner(name)
+                `)
+                .eq('jurisdiction_id', jurisdictionId)
+                .eq('active', true);
 
             if (fetchError) {
                 console.error(`   ❌ Error fetching fees: ${fetchError.message}`);
@@ -69,36 +79,36 @@ class JurisdictionAnalyticsPopulator {
             }
 
             if (!fees || fees.length === 0) {
-                console.log(`   📭 No fees found for ${jurisdictionName}, ${stateName}`);
+                console.log(`   📭 No fees found for ${jurisdictionName}`);
                 return;
             }
 
             // Calculate metrics
             const totalFees = fees.length;
-            const uniqueAgencies = [...new Set(fees.map(f => f.agency_name).filter(Boolean))].length;
-            const uniqueCategories = [...new Set(fees.map(f => f.category).filter(Boolean))].length;
+            const uniqueAgencies = [...new Set(fees.map(f => f.agencies.name).filter(Boolean))].length;
+            const uniqueCategories = [...new Set(fees.map(f => f.fee_categories.name).filter(Boolean))].length;
 
             const recordsWithRates = fees.filter(f => f.rate && f.rate > 0).length;
             const recordsWithDescriptions = fees.filter(f => f.description && f.description.trim()).length;
-            const recordsWithFormulas = fees.filter(f => f.formula && f.formula.trim()).length;
             const recordsWithEffectiveDates = fees.filter(f => f.effective_date).length;
             const recordsWithSources = fees.filter(f => f.source_url && f.source_url.trim()).length;
 
-            // Calculate quality and completeness scores
+            // Calculate quality and completeness scores (removed formulas)
             const qualityScore = Math.round(
-                (recordsWithRates / totalFees) * 40 + // 40% weight for rates
+                (recordsWithRates / totalFees) * 50 + // 50% weight for rates
                 (recordsWithDescriptions / totalFees) * 30 + // 30% weight for descriptions
-                (recordsWithFormulas / totalFees) * 20 + // 20% weight for formulas
-                (recordsWithEffectiveDates / totalFees) * 10 // 10% weight for effective dates
+                (recordsWithEffectiveDates / totalFees) * 20 // 20% weight for effective dates
             );
 
             const completenessScore = Math.round(
-                (recordsWithRates / totalFees) * 25 + // 25% weight for rates
-                (recordsWithDescriptions / totalFees) * 25 + // 25% weight for descriptions
-                (recordsWithFormulas / totalFees) * 15 + // 15% weight for formulas
+                (recordsWithRates / totalFees) * 40 + // 40% weight for rates
+                (recordsWithDescriptions / totalFees) * 30 + // 30% weight for descriptions
                 (recordsWithEffectiveDates / totalFees) * 15 + // 15% weight for effective dates
-                (recordsWithSources / totalFees) * 20 // 20% weight for sources
+                (recordsWithSources / totalFees) * 15 // 15% weight for sources
             );
+
+            // Get state name from FIPS code
+            const stateName = this.getStateNameFromFips(stateFips);
 
             // Insert or update analytics record
             const analyticsData = {
@@ -111,7 +121,6 @@ class JurisdictionAnalyticsPopulator {
                 completeness_score: completenessScore,
                 records_with_rates: recordsWithRates,
                 records_with_descriptions: recordsWithDescriptions,
-                records_with_formulas: recordsWithFormulas,
                 records_with_effective_dates: recordsWithEffectiveDates,
                 records_with_sources: recordsWithSources,
                 last_analyzed_at: new Date().toISOString(),
@@ -133,8 +142,25 @@ class JurisdictionAnalyticsPopulator {
             console.log(`      Quality: ${qualityScore}/100, Completeness: ${completenessScore}/100`);
 
         } catch (error) {
-            console.error(`   💥 Error analyzing ${jurisdictionName}, ${stateName}:`, error);
+            console.error(`   💥 Error analyzing ${jurisdictionName}:`, error);
         }
+    }
+
+    private getStateNameFromFips(stateFips: string): string {
+        const fipsToState: { [key: string]: string } = {
+            '01': 'Alabama', '02': 'Alaska', '04': 'Arizona', '05': 'Arkansas', '06': 'California',
+            '08': 'Colorado', '09': 'Connecticut', '10': 'Delaware', '11': 'District of Columbia',
+            '12': 'Florida', '13': 'Georgia', '15': 'Hawaii', '16': 'Idaho', '17': 'Illinois',
+            '18': 'Indiana', '19': 'Iowa', '20': 'Kansas', '21': 'Kentucky', '22': 'Louisiana',
+            '23': 'Maine', '24': 'Maryland', '25': 'Massachusetts', '26': 'Michigan', '27': 'Minnesota',
+            '28': 'Mississippi', '29': 'Missouri', '30': 'Montana', '31': 'Nebraska', '32': 'Nevada',
+            '33': 'New Hampshire', '34': 'New Jersey', '35': 'New Mexico', '36': 'New York',
+            '37': 'North Carolina', '38': 'North Dakota', '39': 'Ohio', '40': 'Oklahoma',
+            '41': 'Oregon', '42': 'Pennsylvania', '44': 'Rhode Island', '45': 'South Carolina',
+            '46': 'South Dakota', '47': 'Tennessee', '48': 'Texas', '49': 'Utah', '50': 'Vermont',
+            '51': 'Virginia', '53': 'Washington', '54': 'West Virginia', '55': 'Wisconsin', '56': 'Wyoming'
+        };
+        return fipsToState[stateFips] || `State FIPS ${stateFips}`;
     }
 
     async getAnalyticsSummary(): Promise<void> {

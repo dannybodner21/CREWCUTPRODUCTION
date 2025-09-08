@@ -417,8 +417,7 @@ const CustomLewisPortal = () => {
                 <Card style={{ maxWidth: '600px', margin: '0 auto' }}>
                     <Title level={3} style={{ color: '#faad14' }}>No Jurisdictions with Fee Data</Title>
                     <Text type="secondary" style={{ fontSize: '16px' }}>
-                        No Arizona jurisdictions currently have fee data available.
-                        Please check back later or contact your administrator to add fee data.
+                        There was an error retrieving jurisdiction fee data. Please refresh and try again.
                     </Text>
                 </Card>
             </div>

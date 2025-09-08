@@ -30,21 +30,21 @@ class SimpleProcessor {
     private agencyMap = new Map<string, string>();
     private categoryMap = new Map<string, number>();
 
-    async processStagedFees(): Promise<void> {
+    async processStagedFees(jurisdictionName?: string): Promise<void> {
         console.log('🔄 Simple processing: Remove true duplicates, import all unique fees...\n');
 
         try {
-            // Get Charlotte city jurisdiction
-            await this.getCharlotteJurisdiction();
+            // Get jurisdiction (default to Charlotte city for backward compatibility)
+            await this.getJurisdiction(jurisdictionName || 'Charlotte city');
 
             // Load existing agencies and categories
             await this.loadMappings();
 
-            // Get all staged fees
+            // Get all staged fees for the jurisdiction
             const { data: stagedFees, error: fetchError } = await this.supabase
                 .from('fees_stage')
                 .select('*')
-                .eq('jurisdiction_name', 'Charlotte city');
+                .eq('jurisdiction_name', jurisdictionName || 'Charlotte city');
 
             if (fetchError) {
                 console.error('❌ Error fetching staged fees:', fetchError);
@@ -105,24 +105,48 @@ class SimpleProcessor {
         return uniqueFees;
     }
 
-    private async getCharlotteJurisdiction(): Promise<void> {
-        console.log('🔍 Finding Charlotte city jurisdiction...');
+    private async getJurisdiction(jurisdictionName: string): Promise<void> {
+        console.log(`🔍 Finding ${jurisdictionName} jurisdiction...`);
 
-        const { data: jurisdiction, error } = await this.supabase
+        // For Stockton city, we know it's in California (FIPS 06)
+        let query = this.supabase
             .from('jurisdictions')
             .select('id, name, state_fips')
-            .eq('name', 'Charlotte city')
-            .eq('state_fips', '37')
-            .eq('iso_country', 'US')
-            .single();
+            .eq('name', jurisdictionName);
+
+        // Add state filter for specific jurisdictions
+        if (jurisdictionName === 'Stockton city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Charlotte city') {
+            query = query.eq('state_fips', '37');
+        } else if (jurisdictionName === 'Honolulu city and county') {
+            query = query.eq('state_fips', '15');
+        }
+
+        let { data: jurisdiction, error } = await query.single();
+
+        // If no exact match, try flexible matching for known cases
+        if (error && jurisdictionName === 'Honolulu city and county') {
+            const { data: honoluluMatch, error: honoluluError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Honolulu County')
+                .eq('state_fips', '15')
+                .single();
+
+            if (honoluluMatch && !honoluluError) {
+                jurisdiction = honoluluMatch;
+                error = null;
+            }
+        }
 
         if (error || !jurisdiction) {
-            console.error('❌ Charlotte city jurisdiction not found:', error);
-            throw new Error('Charlotte city jurisdiction not found');
+            console.error(`❌ ${jurisdictionName} jurisdiction not found:`, error);
+            throw new Error(`${jurisdictionName} jurisdiction not found`);
         }
 
         this.jurisdictionId = jurisdiction.id;
-        console.log(`✅ Found Charlotte city: ${jurisdiction.id}`);
+        console.log(`✅ Found ${jurisdictionName}: ${jurisdiction.id}`);
     }
 
     private async loadMappings(): Promise<void> {
@@ -311,7 +335,8 @@ class SimpleProcessor {
 
 async function main() {
     const processor = new SimpleProcessor();
-    await processor.processStagedFees();
+    const jurisdictionName = process.argv[2] || 'Charlotte city';
+    await processor.processStagedFees(jurisdictionName);
 }
 
 main().catch(console.error);
