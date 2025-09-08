@@ -276,6 +276,29 @@ export class LewisDataService {
         });
     }
 
+    // Get jurisdictions that have fees (for portal dropdown)
+    async getJurisdictionsWithFees(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+            const { data, error } = await supabase
+                .from('jurisdictions')
+                .select(`
+                    id, 
+                    name, 
+                    type, 
+                    kind, 
+                    state_fips, 
+                    population,
+                    fees!inner(id)
+                `)
+                .eq('is_active', true)
+                .eq('fees.active', true)
+                .order('name');
+
+            return { data, error };
+        });
+    }
+
     // Get fees for a specific jurisdiction
     async getJurisdictionFees(jurisdictionId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
         return await executeSupabaseQuery(async () => {

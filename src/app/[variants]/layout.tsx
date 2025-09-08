@@ -52,7 +52,7 @@ const RootLayout = async ({ children, params, modal }: RootLayoutProps) => {
               {children}
               {!isMobile && modal}
             </AuthProvider>
-            <PWAInstall />
+            {/* <PWAInstall /> */}
           </GlobalProvider>
         </NuqsAdapter>
         <Analytics />

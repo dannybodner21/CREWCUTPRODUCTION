@@ -586,8 +586,8 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                 try {
                     console.log('🔧 LEWIS TOOL: Starting fee calculation for:', params.jurisdictionName);
 
-                    // Get demo jurisdictions to find the matching one
-                    const jurisdictionsResult = await lewisDataService.getDemoJurisdictions();
+                    // Get real jurisdictions to find the matching one
+                    const jurisdictionsResult = await lewisDataService.getJurisdictions();
                     console.log('🔧 LEWIS TOOL: Jurisdictions result:', jurisdictionsResult);
 
                     if (jurisdictionsResult.success && jurisdictionsResult.data && jurisdictionsResult.data.length > 0) {
@@ -602,8 +602,8 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                         console.log('🔧 LEWIS TOOL: Matching jurisdiction:', matchingJurisdiction);
 
                         if (matchingJurisdiction) {
-                            // Get demo fees for this jurisdiction
-                            const feesResult = await lewisDataService.getDemoJurisdictionFees(matchingJurisdiction.id);
+                            // Get real fees for this jurisdiction
+                            const feesResult = await lewisDataService.getJurisdictionFees(matchingJurisdiction.id);
                             console.log('🔧 LEWIS TOOL: Fees result:', feesResult);
 
                             if (feesResult.success && feesResult.data) {

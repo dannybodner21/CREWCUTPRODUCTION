@@ -134,18 +134,18 @@ const CustomLewisPortal = () => {
         };
     }, [jurisdictions]);
 
-    // Fetch demo jurisdictions from ui_demo_fees table
+    // Fetch jurisdictions that have fees from database
     useEffect(() => {
-        const fetchDemoJurisdictions = async () => {
+        const fetchJurisdictions = async () => {
             try {
                 setLoading(true);
 
-                // Fetch demo jurisdictions from ui_demo_fees table
+                // Fetch jurisdictions that have fees from database
                 const response = await fetch('/api/lewis', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        action: 'getDemoJurisdictions',
+                        action: 'getJurisdictionsWithFees',
                         params: {}
                     })
                 });
@@ -163,14 +163,14 @@ const CustomLewisPortal = () => {
                     }
                 }
             } catch (error) {
-                console.error('Error fetching demo jurisdictions:', error);
-                message.error('Failed to load demo jurisdictions');
+                console.error('Error fetching jurisdictions:', error);
+                message.error('Failed to load jurisdictions');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchDemoJurisdictions();
+        fetchJurisdictions();
     }, []);
 
     // Filter jurisdictions based on search
@@ -178,10 +178,12 @@ const CustomLewisPortal = () => {
         if (searchJurisdiction.trim() === '') {
             setFilteredJurisdictions(jurisdictions);
         } else {
+            const searchTerm = searchJurisdiction.toLowerCase().trim();
             const filtered = jurisdictions.filter(jurisdiction =>
-                jurisdiction.name.toLowerCase().includes(searchJurisdiction.toLowerCase()) ||
-                jurisdiction.type.toLowerCase().includes(searchJurisdiction.toLowerCase()) ||
-                (jurisdiction.kind && jurisdiction.kind.toLowerCase().includes(searchJurisdiction.toLowerCase()))
+                jurisdiction.name.toLowerCase().includes(searchTerm) ||
+                jurisdiction.type.toLowerCase().includes(searchTerm) ||
+                (jurisdiction.kind && jurisdiction.kind.toLowerCase().includes(searchTerm)) ||
+                (jurisdiction.state_fips && jurisdiction.state_fips.includes(searchTerm))
             );
             setFilteredJurisdictions(filtered);
         }
@@ -192,10 +194,12 @@ const CustomLewisPortal = () => {
         if (searchJurisdiction2.trim() === '') {
             setFilteredJurisdictions2(jurisdictions);
         } else {
+            const searchTerm = searchJurisdiction2.toLowerCase().trim();
             const filtered = jurisdictions.filter(jurisdiction =>
-                jurisdiction.name.toLowerCase().includes(searchJurisdiction2.toLowerCase()) ||
-                jurisdiction.type.toLowerCase().includes(searchJurisdiction2.toLowerCase()) ||
-                (jurisdiction.kind && jurisdiction.kind.toLowerCase().includes(searchJurisdiction2.toLowerCase()))
+                jurisdiction.name.toLowerCase().includes(searchTerm) ||
+                jurisdiction.type.toLowerCase().includes(searchTerm) ||
+                (jurisdiction.kind && jurisdiction.kind.toLowerCase().includes(searchTerm)) ||
+                (jurisdiction.state_fips && jurisdiction.state_fips.includes(searchTerm))
             );
             setFilteredJurisdictions2(filtered);
         }
@@ -210,7 +214,7 @@ const CustomLewisPortal = () => {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            action: 'getDemoJurisdictionFees',
+                            action: 'getJurisdictionFees',
                             params: { jurisdictionId: selectedJurisdiction.id }
                         })
                     });
@@ -242,7 +246,7 @@ const CustomLewisPortal = () => {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            action: 'getDemoJurisdictionFees',
+                            action: 'getJurisdictionFees',
                             params: { jurisdictionId: selectedJurisdiction2.id }
                         })
                     });

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "NODE_OPTIONS='--max-old-space-size=6144' npm run build",
   "installCommand": "npm install --force --legacy-peer-deps",
   "functions": {
     "app/**/*.ts": {
@@ -8,6 +8,7 @@
   },
   "env": {
     "NPM_CONFIG_PACKAGE_MANAGER": "npm",
-    "DISABLE_PNPM": "true"
+    "DISABLE_PNPM": "true",
+    "NODE_OPTIONS": "--max-old-space-size=6144"
   }
 }

@@ -55,6 +55,11 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'getJurisdictionsWithFees': {
+        result = await lewisDataService.getJurisdictionsWithFees();
+        break;
+      }
+
       case 'getJurisdictionFees': {
         result = await lewisDataService.getJurisdictionFees(params.jurisdictionId);
         break;
