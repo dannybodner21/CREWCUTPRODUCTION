@@ -19,16 +19,45 @@ class JurisdictionAnalyticsPopulator {
 
         try {
             // Get all unique jurisdictions from fees table (final processed data)
+            // Use pagination to get all active fees
+            let allFees: any[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data: fees, error: feesError } = await this.supabase
+                    .from('fees')
+                    .select('jurisdiction_id')
+                    .eq('active', true)
+                    .range(from, from + pageSize - 1);
+
+                if (feesError) {
+                    console.error('❌ Error fetching fees:', feesError.message);
+                    return;
+                }
+
+                if (fees && fees.length > 0) {
+                    allFees.push(...fees);
+                    from += pageSize;
+                    hasMore = fees.length === pageSize; // If we got less than pageSize, we've reached the end
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            console.log(`🔍 Found ${allFees.length} total active fees`);
+
+            // Get unique jurisdiction IDs
+            const uniqueJurisdictionIds = [...new Set(allFees.map(f => f.jurisdiction_id))];
+            console.log(`🔍 Found ${uniqueJurisdictionIds.length} unique jurisdiction IDs`);
+
+            // Now get the jurisdiction details
             const { data: jurisdictions, error: fetchError } = await this.supabase
-                .from('fees')
-                .select(`
-                    jurisdictions!inner(
-                        id,
-                        name,
-                        state_fips
-                    )
-                `)
-                .eq('active', true);
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .in('id', uniqueJurisdictionIds)
+                .eq('is_active', true);
 
             if (fetchError) {
                 console.error('❌ Error fetching jurisdictions:', fetchError.message);
@@ -40,14 +69,9 @@ class JurisdictionAnalyticsPopulator {
                 return;
             }
 
-            // Get unique jurisdictions
-            const uniqueJurisdictions = [...new Map(
-                jurisdictions.map(j => [`${j.jurisdictions.name}|${j.jurisdictions.state_fips}`, j.jurisdictions])
-            ).values()];
+            console.log(`📈 Found ${jurisdictions.length} unique jurisdictions to analyze\n`);
 
-            console.log(`📈 Found ${uniqueJurisdictions.length} unique jurisdictions to analyze\n`);
-
-            for (const jurisdiction of uniqueJurisdictions) {
+            for (const jurisdiction of jurisdictions) {
                 await this.analyzeJurisdiction(jurisdiction.id, jurisdiction.name, jurisdiction.state_fips);
             }
 

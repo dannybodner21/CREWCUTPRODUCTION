@@ -262,6 +262,46 @@ class LewisCSVImporter {
             }
         }
 
+        // Flexible matching for Bakersfield
+        if (searchError && row.jurisdiction_name === 'Bakersfield') {
+            // Try with both FIPS formats for California
+            const californiaFips = this.getStateFIPS(row.state_name);
+            const californiaFipsAlt = californiaFips === '06' ? '6' : californiaFips;
+
+            const { data: bakersfieldMatch, error: bakersfieldError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Bakersfield city')
+                .eq('iso_country', 'US')
+                .or(`state_fips.eq.${californiaFips},state_fips.eq.${californiaFipsAlt}`)
+                .single();
+
+            if (bakersfieldMatch && !bakersfieldError) {
+                existingJurisdiction = bakersfieldMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Aurora
+        if (searchError && row.jurisdiction_name === 'Aurora city') {
+            // Try with both FIPS formats for Colorado
+            const coloradoFips = this.getStateFIPS(row.state_name);
+            const coloradoFipsAlt = coloradoFips === '08' ? '8' : coloradoFips;
+
+            const { data: auroraMatch, error: auroraError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Aurora city')
+                .eq('iso_country', 'US')
+                .or(`state_fips.eq.${coloradoFips},state_fips.eq.${coloradoFipsAlt}`)
+                .single();
+
+            if (auroraMatch && !auroraError) {
+                existingJurisdiction = auroraMatch;
+                searchError = null;
+            }
+        }
+
         if (existingJurisdiction && !searchError) {
             this.jurisdictions.set(key, existingJurisdiction);
             console.log(`   📍 Found existing jurisdiction: ${row.jurisdiction_name}, ${row.state_name}`);
@@ -497,6 +537,10 @@ class LewisCSVImporter {
             'New York': '36',
             'Kansas': '20',
             'Hawaii': '15',
+            'Nevada': '32',
+            'Colorado': '08',
+            'Oklahoma': '40',
+            'Minnesota': '27',
             // Add more states as needed
         };
 

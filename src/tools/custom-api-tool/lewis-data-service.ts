@@ -280,6 +280,41 @@ export class LewisDataService {
     async getJurisdictionsWithFees(): Promise<{ success: boolean; data?: any[]; error?: string }> {
         return await executeSupabaseQuery(async () => {
             const supabase = this.getSupabaseClient();
+
+            // First, get all unique jurisdiction IDs that have active fees with pagination
+            let allFees: any[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data: fees, error: feesError } = await supabase
+                    .from('fees')
+                    .select('jurisdiction_id')
+                    .eq('active', true)
+                    .range(from, from + pageSize - 1);
+
+                if (feesError) {
+                    return { data: null, error: feesError.message };
+                }
+
+                if (fees && fees.length > 0) {
+                    allFees.push(...fees);
+                    from += pageSize;
+                    hasMore = fees.length === pageSize; // If we got less than pageSize, we've reached the end
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            if (allFees.length === 0) {
+                return { data: [], error: null };
+            }
+
+            // Get unique jurisdiction IDs
+            const uniqueJurisdictionIds = [...new Set(allFees.map(f => f.jurisdiction_id))];
+
+            // Now get the jurisdiction details for those IDs
             const { data, error } = await supabase
                 .from('jurisdictions')
                 .select(`
@@ -288,11 +323,10 @@ export class LewisDataService {
                     type, 
                     kind, 
                     state_fips, 
-                    population,
-                    fees!inner(id)
+                    population
                 `)
                 .eq('is_active', true)
-                .eq('fees.active', true)
+                .in('id', uniqueJurisdictionIds)
                 .order('name');
 
             return { data, error };

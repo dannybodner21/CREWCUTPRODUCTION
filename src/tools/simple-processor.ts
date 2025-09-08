@@ -121,6 +121,20 @@ class SimpleProcessor {
             query = query.eq('state_fips', '37');
         } else if (jurisdictionName === 'Honolulu city and county') {
             query = query.eq('state_fips', '15');
+        } else if (jurisdictionName === 'Henderson city') {
+            query = query.eq('state_fips', '32');
+        } else if (jurisdictionName === 'Bakersfield') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Aurora city') {
+            query = query.eq('state_fips', '08');
+        } else if (jurisdictionName === 'Tulsa city') {
+            query = query.eq('state_fips', '40');
+        } else if (jurisdictionName === 'Tampa city') {
+            query = query.eq('state_fips', '12');
+        } else if (jurisdictionName === 'Minneapolis city') {
+            query = query.eq('state_fips', '27');
+        } else if (jurisdictionName === 'Long Beach city') {
+            query = query.eq('state_fips', '06');
         }
 
         let { data: jurisdiction, error } = await query.single();
@@ -136,6 +150,36 @@ class SimpleProcessor {
 
             if (honoluluMatch && !honoluluError) {
                 jurisdiction = honoluluMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Bakersfield
+        if (error && jurisdictionName === 'Bakersfield') {
+            const { data: bakersfieldMatch, error: bakersfieldError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Bakersfield city')
+                .or('state_fips.eq.06,state_fips.eq.6')
+                .single();
+
+            if (bakersfieldMatch && !bakersfieldError) {
+                jurisdiction = bakersfieldMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Aurora
+        if (error && jurisdictionName === 'Aurora city') {
+            const { data: auroraMatch, error: auroraError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Aurora city')
+                .or('state_fips.eq.08,state_fips.eq.8')
+                .single();
+
+            if (auroraMatch && !auroraError) {
+                jurisdiction = auroraMatch;
                 error = null;
             }
         }
