@@ -94,6 +94,18 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'rankJurisdictions': {
+        const { jurisdictionRankingService } = await import('@/tools/custom-api-tool/jurisdiction-ranking-service');
+        result = await jurisdictionRankingService.rankJurisdictions(params);
+        break;
+      }
+
+      case 'getTopJurisdictions': {
+        const { jurisdictionRankingService } = await import('@/tools/custom-api-tool/jurisdiction-ranking-service');
+        result = await jurisdictionRankingService.getTopJurisdictions(params, params.limit);
+        break;
+      }
+
       default: {
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },

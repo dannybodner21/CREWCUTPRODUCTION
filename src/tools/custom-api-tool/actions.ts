@@ -117,6 +117,9 @@ export interface CustomApiToolAction {
     // Portal integration actions
     populatePortal: (params: PopulatePortalParams) => Promise<any>;
     getPortalData: (params: GetPortalDataParams) => Promise<any>;
+    // Jurisdiction ranking actions
+    rankJurisdictions: (params: any) => Promise<any>;
+    getTopJurisdictions: (params: any) => Promise<any>;
     // Demo data actions for testing
     getDemoJurisdictions: () => Promise<any>;
     getDemoJurisdictionFees: (params: { jurisdictionId: string }) => Promise<any>;
@@ -572,6 +575,39 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
             return `I found ${uniqueStates.length} unique states with construction fee data available: ${uniqueStates.join(', ')}.`;
         } catch (error) {
             return `I'm sorry, I encountered an error while trying to get the unique states: ${error instanceof Error ? error.message : 'Failed to get unique states'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    // Jurisdiction ranking actions
+    rankJurisdictions: async (params: any) => {
+        try {
+            console.log('🔧 LEWIS TOOL: rankJurisdictions called with:', params);
+
+            // Use direct service call instead of HTTP request for better reliability
+            const { jurisdictionRankingService } = await import('./jurisdiction-ranking-service');
+            const result = await jurisdictionRankingService.rankJurisdictions(params);
+
+            console.log('🔧 LEWIS TOOL: rankJurisdictions result:', result);
+            return result;
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: rankJurisdictions error:', error);
+            return { success: false, error: 'Failed to rank jurisdictions' };
+        }
+    },
+
+    getTopJurisdictions: async (params: any) => {
+        try {
+            console.log('🔧 LEWIS TOOL: getTopJurisdictions called with:', params);
+
+            // Use direct service call instead of HTTP request for better reliability
+            const { jurisdictionRankingService } = await import('./jurisdiction-ranking-service');
+            const result = await jurisdictionRankingService.getTopJurisdictions(params, params.limit);
+
+            console.log('🔧 LEWIS TOOL: getTopJurisdictions result:', result);
+            return result;
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: getTopJurisdictions error:', error);
+            return { success: false, error: 'Failed to get top jurisdictions' };
         }
     },
 

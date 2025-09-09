@@ -105,11 +105,27 @@ export const createSessionSlice: StateCreator<
   createSession: async (agent, isSwitchSession = true) => {
     const { switchSession, refreshSessions } = get();
 
-    // merge the defaultAgent in settings
-    const defaultAgent = merge(
-      DEFAULT_AGENT_LOBE_SESSION,
-      settingsSelectors.defaultAgent(useUserStore.getState()),
-    );
+    // Check if this is a LEWIS session
+    const isLewisSession = agent?.meta?.title?.toLowerCase().includes('lewis') ||
+      agent?.agentId === 'lewis' ||
+      agent?.identifier === 'lewis';
+
+    // Use LEWIS agent configuration for LEWIS sessions
+    let defaultAgent;
+    if (isLewisSession) {
+      const { LEWIS_AGENT_CONFIG } = await import('@/const/settings/lewis-agent');
+      defaultAgent = merge(
+        DEFAULT_AGENT_LOBE_SESSION,
+        LEWIS_AGENT_CONFIG,
+        settingsSelectors.defaultAgent(useUserStore.getState()),
+      );
+    } else {
+      // merge the defaultAgent in settings
+      defaultAgent = merge(
+        DEFAULT_AGENT_LOBE_SESSION,
+        settingsSelectors.defaultAgent(useUserStore.getState()),
+      );
+    }
 
     const newSession: LobeAgentSession = merge(defaultAgent, agent);
 

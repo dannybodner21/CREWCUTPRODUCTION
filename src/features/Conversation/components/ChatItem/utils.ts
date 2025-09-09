@@ -4,6 +4,11 @@ import { ARTIFACT_TAG_REGEX, ARTIFACT_THINKING_TAG_REGEX } from '@/const/plugin'
  * Replace all line breaks in the matched `lobeArtifact` tag with an empty string
  */
 export const processWithArtifact = (input: string = '') => {
+  // Ensure input is a string
+  if (typeof input !== 'string') {
+    input = String(input || '');
+  }
+
   // First remove outer fenced code block if it exists
   let output = input.replace(
     /^([\S\s]*?)\s*```[^\n]*\n((?:<lobeThinking>[\S\s]*?<\/lobeThinking>\s*\n\s*)?<lobeArtifact[\S\s]*?<\/lobeArtifact>\s*)\n```\s*([\S\s]*?)$/,
@@ -61,6 +66,11 @@ export const processWithArtifact = (input: string = '') => {
 
 // 预处理函数：确保 think 标签前后有两个换行符
 export const normalizeThinkTags = (input: string) => {
+  // Ensure input is a string
+  if (typeof input !== 'string') {
+    input = String(input || '');
+  }
+
   return (
     input
       // 确保 <think> 标签前后有两个换行符

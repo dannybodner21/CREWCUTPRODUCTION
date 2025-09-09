@@ -17,12 +17,6 @@ const getSupabaseConfig = (): SupabaseConfig => {
     const anonKey = process.env.LEWIS_SUPABASE_ANON_KEY;
     const serviceRoleKey = process.env.LEWIS_SUPABASE_SERVICE_ROLE_KEY;
 
-    // Debug logging
-    console.log('🔧 Debug: Environment variables:');
-    console.log('   LEWIS_SUPABASE_URL:', url ? '✅ Set' : '❌ Missing');
-    console.log('   LEWIS_SUPABASE_ANON_KEY:', anonKey ? '✅ Set' : '❌ Missing');
-    console.log('   LEWIS_SUPABASE_SERVICE_ROLE_KEY:', serviceRoleKey ? '✅ Set' : '❌ Missing');
-
     // Environment variables loaded successfully
 
     if (!url || !anonKey) {

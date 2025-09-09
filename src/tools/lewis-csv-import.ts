@@ -262,6 +262,102 @@ class LewisCSVImporter {
             }
         }
 
+        // Flexible matching for Louisville
+        if (searchError && (row.jurisdiction_name === 'Louisville' || row.jurisdiction_name === 'Louisville Metro')) {
+            const { data: louisvilleMatch, error: louisvilleError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Louisville/Jefferson County metro government (balance)')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (louisvilleMatch && !louisvilleError) {
+                existingJurisdiction = louisvilleMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Indianapolis
+        if (searchError && (row.jurisdiction_name === 'Indianapolis' || row.jurisdiction_name === 'Indianapolis city')) {
+            const { data: indianapolisMatch, error: indianapolisError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Indianapolis city (balance)')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (indianapolisMatch && !indianapolisError) {
+                existingJurisdiction = indianapolisMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for El Paso
+        if (searchError && row.jurisdiction_name === 'El Paso') {
+            const { data: elPasoMatch, error: elPasoError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'El Paso city')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (elPasoMatch && !elPasoError) {
+                existingJurisdiction = elPasoMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Nashville-Davidson (handle en dash character)
+        if (searchError && (row.jurisdiction_name === 'Nashville–Davidson (Metro)' || row.jurisdiction_name.includes('Nashville') && row.jurisdiction_name.includes('Davidson'))) {
+            const { data: nashvilleMatch, error: nashvilleError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Nashville-Davidson metropolitan government (balance)')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (nashvilleMatch && !nashvilleError) {
+                existingJurisdiction = nashvilleMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Washington D.C.
+        if (searchError && (row.jurisdiction_name === 'Washington, D.C.' || row.jurisdiction_name.includes('Washington') && row.jurisdiction_name.includes('D.C.'))) {
+            const { data: washingtonMatch, error: washingtonError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Washington city')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (washingtonMatch && !washingtonError) {
+                existingJurisdiction = washingtonMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Seattle city
+        if (searchError && row.jurisdiction_name === 'Seattle city') {
+            const { data: seattleMatch, error: seattleError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Seattle city')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (seattleMatch && !seattleError) {
+                existingJurisdiction = seattleMatch;
+                searchError = null;
+            }
+        }
+
         // Flexible matching for Bakersfield
         if (searchError && row.jurisdiction_name === 'Bakersfield') {
             // Try with both FIPS formats for California
@@ -298,6 +394,89 @@ class LewisCSVImporter {
 
             if (auroraMatch && !auroraError) {
                 existingJurisdiction = auroraMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for City of New York
+        if (searchError && row.jurisdiction_name === 'City of New York') {
+            const { data: nycMatch, error: nycError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'New York city')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (nycMatch && !nycError) {
+                existingJurisdiction = nycMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Louisiana state
+        if (searchError && row.jurisdiction_name === 'Louisiana state') {
+            const { data: louisianaMatch, error: louisianaError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Louisiana')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (louisianaMatch && !louisianaError) {
+                existingJurisdiction = louisianaMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Chesapeake
+        if (searchError && row.jurisdiction_name === 'Chesapeake') {
+            const { data: chesapeakeMatch, error: chesapeakeError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Chesapeake city')
+                .eq('type', 'municipality')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (chesapeakeMatch && !chesapeakeError) {
+                existingJurisdiction = chesapeakeMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Jersey City
+        if (searchError && row.jurisdiction_name === 'Jersey City') {
+            const { data: jerseyCityMatch, error: jerseyCityError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Jersey City city')
+                .eq('type', 'municipality')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (jerseyCityMatch && !jerseyCityError) {
+                existingJurisdiction = jerseyCityMatch;
+                searchError = null;
+            }
+        }
+
+        // Flexible matching for Norfolk
+        if (searchError && row.jurisdiction_name === 'Norfolk') {
+            const { data: norfolkMatch, error: norfolkError } = await this.supabase
+                .from('jurisdictions')
+                .select('*')
+                .eq('name', 'Norfolk city')
+                .eq('type', 'municipality')
+                .eq('iso_country', 'US')
+                .eq('state_fips', this.getStateFIPS(row.state_name))
+                .single();
+
+            if (norfolkMatch && !norfolkError) {
+                existingJurisdiction = norfolkMatch;
                 searchError = null;
             }
         }
@@ -541,6 +720,30 @@ class LewisCSVImporter {
             'Colorado': '08',
             'Oklahoma': '40',
             'Minnesota': '27',
+            'Nebraska': '31',
+            'Missouri': '29',
+            'Kentucky': '21',
+            'New Mexico': '35',
+            'Indiana': '18',
+            'Oregon': '41',
+            'Massachusetts': '25',
+            'Tennessee': '47',
+            'District of Columbia': '11',
+            'Washington': '53',
+            'Ohio': '39',
+            'Pennsylvania': '42',
+            'Illinois': '17',
+            'Arizona': '04',
+            'Virginia': '51',
+            'Louisiana': '22',
+            'Alabama': '01',
+            'Idaho': '16',
+            'Iowa': '19',
+            'Michigan': '26',
+            'New Jersey': '34',
+            'Arkansas': '05',
+            'Rhode Island': '44',
+            'Utah': '49',
             // Add more states as needed
         };
 

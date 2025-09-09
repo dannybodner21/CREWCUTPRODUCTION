@@ -41,10 +41,52 @@ class SimpleProcessor {
             await this.loadMappings();
 
             // Get all staged fees for the jurisdiction
-            const { data: stagedFees, error: fetchError } = await this.supabase
+            let stagedFeesQuery = this.supabase
                 .from('fees_stage')
                 .select('*')
                 .eq('jurisdiction_name', jurisdictionName || 'Charlotte city');
+
+            // Handle flexible matching for El Paso
+            if (jurisdictionName === 'El Paso city') {
+                stagedFeesQuery = this.supabase
+                    .from('fees_stage')
+                    .select('*')
+                    .eq('jurisdiction_name', 'El Paso');
+            }
+
+            // Handle flexible matching for Nashville-Davidson
+            if (jurisdictionName === 'Nashville-Davidson metropolitan government (balance)') {
+                stagedFeesQuery = this.supabase
+                    .from('fees_stage')
+                    .select('*')
+                    .eq('jurisdiction_name', 'Nashville–Davidson (Metro)');
+            }
+
+            // Handle flexible matching for Washington D.C.
+            if (jurisdictionName === 'Washington city') {
+                stagedFeesQuery = this.supabase
+                    .from('fees_stage')
+                    .select('*')
+                    .eq('jurisdiction_name', 'Washington, D.C.');
+            }
+
+            // Handle flexible matching for New York city
+            if (jurisdictionName === 'New York city') {
+                stagedFeesQuery = this.supabase
+                    .from('fees_stage')
+                    .select('*')
+                    .eq('jurisdiction_name', 'City of New York');
+            }
+
+            // Handle flexible matching for Chesapeake city
+            if (jurisdictionName === 'Chesapeake city') {
+                stagedFeesQuery = this.supabase
+                    .from('fees_stage')
+                    .select('*')
+                    .eq('jurisdiction_name', 'Chesapeake');
+            }
+
+            const { data: stagedFees, error: fetchError } = await stagedFeesQuery;
 
             if (fetchError) {
                 console.error('❌ Error fetching staged fees:', fetchError);
@@ -52,7 +94,7 @@ class SimpleProcessor {
             }
 
             if (!stagedFees || stagedFees.length === 0) {
-                console.log('❌ No staged fees found for Charlotte city');
+                console.log(`❌ No staged fees found for ${jurisdictionName || 'Charlotte city'}`);
                 return;
             }
 
@@ -135,6 +177,134 @@ class SimpleProcessor {
             query = query.eq('state_fips', '27');
         } else if (jurisdictionName === 'Long Beach city') {
             query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Omaha city') {
+            query = query.eq('state_fips', '31');
+        } else if (jurisdictionName === 'Raleigh city') {
+            query = query.eq('state_fips', '37');
+        } else if (jurisdictionName === 'Miami city') {
+            query = query.eq('state_fips', '12');
+        } else if (jurisdictionName === 'Kansas City city') {
+            query = query.eq('state_fips', '29');
+        } else if (jurisdictionName === 'Louisville/Jefferson County metro government (balance)') {
+            query = query.eq('state_fips', '21');
+        } else if (jurisdictionName === 'Albuquerque city') {
+            query = query.eq('state_fips', '35');
+        } else if (jurisdictionName === 'Indianapolis city (balance)') {
+            query = query.eq('state_fips', '18');
+        } else if (jurisdictionName === 'Las Vegas city') {
+            query = query.eq('state_fips', '32');
+        } else if (jurisdictionName === 'Portland city') {
+            query = query.eq('state_fips', '41');
+        } else if (jurisdictionName === 'Boston city') {
+            query = query.eq('state_fips', '25');
+        } else if (jurisdictionName === 'El Paso city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'Oklahoma City city') {
+            query = query.eq('state_fips', '40');
+        } else if (jurisdictionName === 'Nashville-Davidson metropolitan government (balance)') {
+            query = query.eq('state_fips', '47');
+        } else if (jurisdictionName === 'Washington city') {
+            query = query.eq('state_fips', '11');
+        } else if (jurisdictionName === 'Jacksonville city') {
+            query = query.eq('state_fips', '12');
+        } else if (jurisdictionName === 'Denver city') {
+            query = query.eq('state_fips', '08');
+        } else if (jurisdictionName === 'Seattle city') {
+            query = query.eq('state_fips', '53');
+        } else if (jurisdictionName === 'San Francisco city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Columbus city') {
+            query = query.eq('state_fips', '39');
+        } else if (jurisdictionName === 'Fort Worth city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'Austin city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'San Jose city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Dallas city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'San Diego city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'San Antonio city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'Philadelphia city') {
+            query = query.eq('state_fips', '42');
+        } else if (jurisdictionName === 'Houston city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'Los Angeles city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Chicago city') {
+            query = query.eq('state_fips', '17');
+        } else if (jurisdictionName === 'New York city') {
+            query = query.eq('state_fips', '36');
+        } else if (jurisdictionName === 'Chandler city') {
+            query = query.eq('state_fips', '04');
+        } else if (jurisdictionName === 'Phoenix city') {
+            query = query.eq('state_fips', '04');
+        } else if (jurisdictionName === 'Scottsdale city') {
+            query = query.eq('state_fips', '04');
+        } else if (jurisdictionName === 'Tucson city') {
+            query = query.eq('state_fips', '04');
+        } else if (jurisdictionName === 'Akron city') {
+            query = query.eq('state_fips', '39');
+        } else if (jurisdictionName === 'Arlington County') {
+            query = query.eq('state_fips', '51');
+        } else if (jurisdictionName === 'Louisiana state') {
+            query = query.eq('state_fips', '22');
+        } else if (jurisdictionName === 'Birmingham city') {
+            query = query.eq('state_fips', '01');
+        } else if (jurisdictionName === 'Chesapeake city') {
+            query = query.eq('state_fips', '51');
+        } else if (jurisdictionName === 'Chula Vista city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Buffalo city') {
+            query = query.eq('state_fips', '36');
+        } else if (jurisdictionName === 'Fremont city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Boise city') {
+            query = query.eq('state_fips', '16');
+        } else if (jurisdictionName === 'Rochester city') {
+            query = query.eq('state_fips', '36');
+        } else if (jurisdictionName === 'Des Moines city') {
+            query = query.eq('state_fips', '19');
+        } else if (jurisdictionName === 'Fort Lauderdale city') {
+            query = query.eq('state_fips', '12');
+        } else if (jurisdictionName === 'Garland city') {
+            query = query.eq('state_fips', '48');
+        } else if (jurisdictionName === 'Gilbert town') {
+            query = query.eq('state_fips', '04');
+        } else if (jurisdictionName === 'Glendale city') {
+            query = query.eq('state_fips', '04');
+        } else if (jurisdictionName === 'Grand Rapids city') {
+            query = query.eq('state_fips', '26');
+        } else if (jurisdictionName === 'Jersey City') {
+            query = query.eq('state_fips', '34');
+        } else if (jurisdictionName === 'Little Rock city') {
+            query = query.eq('state_fips', '05');
+        } else if (jurisdictionName === 'Modesto city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'New Orleans city') {
+            query = query.eq('state_fips', '22');
+        } else if (jurisdictionName === 'Norfolk') {
+            query = query.eq('state_fips', '51');
+        } else if (jurisdictionName === 'North Las Vegas city') {
+            query = query.eq('state_fips', '32');
+        } else if (jurisdictionName === 'Orlando city') {
+            query = query.eq('state_fips', '12');
+        } else if (jurisdictionName === 'Oxnard city') {
+            query = query.eq('state_fips', '06');
+        } else if (jurisdictionName === 'Providence city') {
+            query = query.eq('state_fips', '44');
+        } else if (jurisdictionName === 'Salt Lake City') {
+            query = query.eq('state_fips', '49');
+        } else if (jurisdictionName === 'Spokane city') {
+            query = query.eq('state_fips', '53');
+        } else if (jurisdictionName === 'St. Petersburg city') {
+            query = query.eq('state_fips', '12');
+        } else if (jurisdictionName === 'Toledo city') {
+            query = query.eq('state_fips', '39');
+        } else if (jurisdictionName === 'Yonkers city') {
+            query = query.eq('state_fips', '36');
         }
 
         let { data: jurisdiction, error } = await query.single();
@@ -180,6 +350,99 @@ class SimpleProcessor {
 
             if (auroraMatch && !auroraError) {
                 jurisdiction = auroraMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Louisville Metro
+        if (error && jurisdictionName === 'Louisville Metro') {
+            const { data: louisvilleMatch, error: louisvilleError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Louisville/Jefferson County metro government (balance)')
+                .eq('state_fips', '21')
+                .single();
+
+            if (louisvilleMatch && !louisvilleError) {
+                jurisdiction = louisvilleMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Indianapolis city
+        if (error && jurisdictionName === 'Indianapolis city') {
+            const { data: indianapolisMatch, error: indianapolisError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Indianapolis city (balance)')
+                .eq('state_fips', '18')
+                .single();
+
+            if (indianapolisMatch && !indianapolisError) {
+                jurisdiction = indianapolisMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Louisiana state
+        if (error && jurisdictionName === 'Louisiana state') {
+            const { data: louisianaMatch, error: louisianaError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Louisiana')
+                .eq('state_fips', '22')
+                .single();
+
+            if (louisianaMatch && !louisianaError) {
+                jurisdiction = louisianaMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Chesapeake
+        if (error && jurisdictionName === 'Chesapeake city') {
+            const { data: chesapeakeMatch, error: chesapeakeError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Chesapeake city')
+                .eq('type', 'municipality')
+                .eq('state_fips', '51')
+                .single();
+
+            if (chesapeakeMatch && !chesapeakeError) {
+                jurisdiction = chesapeakeMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Jersey City
+        if (error && jurisdictionName === 'Jersey City') {
+            const { data: jerseyCityMatch, error: jerseyCityError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Jersey City city')
+                .eq('type', 'municipality')
+                .eq('state_fips', '34')
+                .single();
+
+            if (jerseyCityMatch && !jerseyCityError) {
+                jurisdiction = jerseyCityMatch;
+                error = null;
+            }
+        }
+
+        // Flexible matching for Norfolk
+        if (error && jurisdictionName === 'Norfolk') {
+            const { data: norfolkMatch, error: norfolkError } = await this.supabase
+                .from('jurisdictions')
+                .select('id, name, state_fips')
+                .eq('name', 'Norfolk city')
+                .eq('type', 'municipality')
+                .eq('state_fips', '51')
+                .single();
+
+            if (norfolkMatch && !norfolkError) {
+                jurisdiction = norfolkMatch;
                 error = null;
             }
         }

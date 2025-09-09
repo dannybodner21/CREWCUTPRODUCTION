@@ -33,6 +33,18 @@ export interface BuiltinToolAction {
   getStatesCount: () => Promise<any>;
   getUniqueStates: () => Promise<any>;
 
+  // Portal integration actions
+  populatePortal: (params: any) => Promise<any>;
+  getPortalData: (params: any) => Promise<any>;
+
+  // Jurisdiction ranking actions
+  rankJurisdictions: (params: any) => Promise<any>;
+  getTopJurisdictions: (params: any) => Promise<any>;
+
+  // Demo data actions for testing
+  getDemoJurisdictions: () => Promise<any>;
+  getDemoJurisdictionFees: (params: { jurisdictionId: string }) => Promise<any>;
+
   // Course Builder Tool actions
   createCourseOutline: (params: any) => Promise<any>;
   generateLessonContent: (params: any) => Promise<any>;
@@ -69,6 +81,9 @@ export const createBuiltinToolSlice: StateCreator<
     // Portal integration actions
     populatePortal: customApiActions.populatePortal,
     getPortalData: customApiActions.getPortalData,
+    // Jurisdiction ranking actions
+    rankJurisdictions: customApiActions.rankJurisdictions,
+    getTopJurisdictions: customApiActions.getTopJurisdictions,
     // Demo data actions for testing
     getDemoJurisdictions: customApiActions.getDemoJurisdictions,
     getDemoJurisdictionFees: customApiActions.getDemoJurisdictionFees,
