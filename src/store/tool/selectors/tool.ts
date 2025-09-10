@@ -16,93 +16,93 @@ import { pluginSelectors } from '../slices/plugin/selectors';
 
 const enabledSchema =
   (tools: string[] = []) =>
-  (s: ToolStoreState): ChatCompletionTool[] => {
-    const manifests = pluginSelectors
-      .installedPluginManifestList(s)
-      .concat(s.builtinTools.map((b) => b.manifest as LobeChatPluginManifest))
-      // 如果存在 enabledPlugins，那么只启用 enabledPlugins 中的插件
-      .filter((m) => tools.includes(m?.identifier));
+    (s: ToolStoreState): ChatCompletionTool[] => {
+      const manifests = pluginSelectors
+        .installedPluginManifestList(s)
+        .concat(s.builtinTools.map((b) => b.manifest as LobeChatPluginManifest))
+        // 如果存在 enabledPlugins，那么只启用 enabledPlugins 中的插件
+        .filter((m) => tools.includes(m?.identifier));
 
-    return convertPluginManifestToToolsCalling(manifests);
-  };
+      return convertPluginManifestToToolsCalling(manifests);
+    };
 
 const enabledSystemRoles =
   (tools: string[] = []) =>
-  (s: ToolStoreState) => {
-    const toolsSystemRole = pluginSelectors
-      .installedPluginManifestList(s)
-      .concat(s.builtinTools.map((b) => b.manifest as LobeChatPluginManifest))
-      // 如果存在 enabledPlugins，那么只启用 enabledPlugins 中的插件
-      .filter((m) => m && tools.includes(m.identifier))
-      .map((manifest) => {
-        const meta = manifest.meta || {};
+    (s: ToolStoreState) => {
+      const toolsSystemRole = pluginSelectors
+        .installedPluginManifestList(s)
+        .concat(s.builtinTools.map((b) => b.manifest as LobeChatPluginManifest))
+        // 如果存在 enabledPlugins，那么只启用 enabledPlugins 中的插件
+        .filter((m) => m && tools.includes(m.identifier))
+        .map((manifest) => {
+          const meta = manifest.meta || {};
 
-        const title = pluginHelpers.getPluginTitle(meta) || manifest.identifier;
-        let systemRole = manifest.systemRole || pluginHelpers.getPluginDesc(meta);
+          const title = pluginHelpers.getPluginTitle(meta) || manifest.identifier;
+          let systemRole = manifest.systemRole || pluginHelpers.getPluginDesc(meta);
 
-        // Use the global context manager to fill the template
-        if (systemRole) {
-          const context = globalAgentContextManager.getContext();
+          // Use the global context manager to fill the template
+          if (systemRole) {
+            const context = globalAgentContextManager.getContext();
 
-          systemRole = hydrationPrompt(systemRole, context);
-        }
+            systemRole = hydrationPrompt(systemRole, context);
+          }
 
-        return {
-          apis: manifest.api.map((m) => ({
-            desc: m.description,
-            name: genToolCallingName(manifest.identifier, m.name, manifest.type),
-          })),
-          identifier: manifest.identifier,
-          name: title,
-          systemRole,
-        };
-      });
+          return {
+            apis: manifest.api.map((m) => ({
+              desc: m.description,
+              name: genToolCallingName(manifest.identifier, m.name, manifest.type),
+            })),
+            identifier: manifest.identifier,
+            name: title,
+            systemRole,
+          };
+        });
 
-    if (toolsSystemRole.length > 0) {
-      return pluginPrompts({ tools: toolsSystemRole });
-    }
+      if (toolsSystemRole.length > 0) {
+        return pluginPrompts({ tools: toolsSystemRole });
+      }
 
-    return '';
-  };
+      return '';
+    };
 
 const metaList =
   (showDalle?: boolean) =>
-  (s: ToolStoreState): LobeToolMeta[] => {
-    const pluginList = pluginSelectors.installedPluginMetaList(s) as LobeToolMeta[];
+    (s: ToolStoreState): LobeToolMeta[] => {
+      const pluginList = pluginSelectors.installedPluginMetaList(s) as LobeToolMeta[];
 
-    return builtinToolSelectors.metaList(showDalle)(s).concat(pluginList);
-  };
+      return builtinToolSelectors.metaList(showDalle)(s).concat(pluginList);
+    };
 
 const getMetaById =
   (id: string, showDalle: boolean = true) =>
-  (s: ToolStoreState): MetaData | undefined => {
-    const item = metaList(showDalle)(s).find((m) => m.identifier === id);
+    (s: ToolStoreState): MetaData | undefined => {
+      const item = metaList(showDalle)(s).find((m) => m.identifier === id);
 
-    if (!item) return;
+      if (!item) return;
 
-    if (item.meta) return item.meta;
+      if (item.meta) return item.meta;
 
-    return {
-      avatar: item?.avatar,
-      backgroundColor: item?.backgroundColor,
-      description: item?.description,
-      title: item?.title,
+      return {
+        avatar: item?.avatar,
+        backgroundColor: item?.backgroundColor,
+        description: item?.description,
+        title: item?.title,
+      };
     };
-  };
 
 const getManifestById =
   (id: string) =>
-  (s: ToolStoreState): LobeChatPluginManifest | undefined =>
-    pluginSelectors
-      .installedPluginManifestList(s)
-      .concat(s.builtinTools.map((b) => b.manifest as LobeChatPluginManifest))
-      .find((i) => i.identifier === id);
+    (s: ToolStoreState): LobeChatPluginManifest | undefined =>
+      pluginSelectors
+        .installedPluginManifestList(s)
+        .concat(s.builtinTools.map((b) => b.manifest as LobeChatPluginManifest))
+        .find((i) => i.identifier === id);
 
 // 获取插件 manifest 加载状态
 const getManifestLoadingStatus = (id: string) => (s: ToolStoreState) => {
   const manifest = getManifestById(id)(s);
 
-  if (s.pluginInstallLoading[id]) return 'loading';
+  if (s.loadingInstallPlugins) return 'loading';
 
   if (!manifest) return 'error';
 

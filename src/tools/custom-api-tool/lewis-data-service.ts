@@ -315,6 +315,7 @@ export class LewisDataService {
             const uniqueJurisdictionIds = [...new Set(allFees.map(f => f.jurisdiction_id))];
 
             // Now get the jurisdiction details for those IDs
+            // Filter to only include local jurisdictions (counties and municipalities) for construction fee analysis
             const { data, error } = await supabase
                 .from('jurisdictions')
                 .select(`
@@ -327,6 +328,7 @@ export class LewisDataService {
                 `)
                 .eq('is_active', true)
                 .in('id', uniqueJurisdictionIds)
+                .in('type', ['county', 'municipality'])
                 .order('name');
 
             return { data, error };

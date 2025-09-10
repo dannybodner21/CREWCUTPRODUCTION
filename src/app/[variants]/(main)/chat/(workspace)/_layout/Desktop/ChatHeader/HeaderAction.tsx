@@ -15,7 +15,6 @@ import { settingsSelectors } from '@/store/user/selectors';
 import { HotkeyEnum } from '@/types/hotkey';
 
 import SettingButton from '../../../features/SettingButton';
-import ShareButton from '../../../features/ShareButton';
 
 
 
@@ -31,7 +30,6 @@ const HeaderAction = memo(() => {
 
   return (
     <Flexbox gap={4} horizontal>
-      <ShareButton />
       <ActionIcon
         icon={showAgentSettings ? PanelRightClose : PanelRightOpen}
         onClick={() => toggleConfig()}

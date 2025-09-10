@@ -1,4 +1,4 @@
-import { CollapseProps , Button } from 'antd';
+import { CollapseProps, Button } from 'antd';
 import isEqual from 'fast-deep-equal';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,6 +78,16 @@ const DefaultMode = memo(() => {
 
   return (
     <>
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            background-position: -200% -200%;
+          }
+          100% {
+            background-position: 200% 200%;
+          }
+        }
+      `}</style>
       <Inbox />
 
       {/* Lewis Construction Portal Button */}
@@ -96,10 +106,20 @@ const DefaultMode = memo(() => {
             borderRadius: 8,
             width: '100%',
             maxWidth: 280,
+            backgroundColor: '#ffffff',
+            borderColor: '#6b7280',
+            borderWidth: '1px',
+            color: '#000000',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
+            backgroundSize: '200% 200%',
+            animation: 'shimmer 3s ease-in-out infinite',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+            position: 'relative',
+            overflow: 'hidden',
           }}
-          type="primary"
+          type="default"
         >
-          🏗️ LEWIS - Construction Portal
+          LEWIS - Construction Portal
         </Button>
       </div>
 

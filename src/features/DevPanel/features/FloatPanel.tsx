@@ -1,10 +1,8 @@
 'use client';
 
 import { ActionIcon, FluentEmoji, Icon, SideNav } from '@lobehub/ui';
-import { FloatButton } from 'antd';
 import { createStyles } from 'antd-style';
-import { BugIcon, BugOff, XIcon } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { XIcon } from 'lucide-react';
 import { ReactNode, memo, useEffect, useState } from 'react';
 import { Flexbox } from 'react-layout-kit';
 import { Rnd } from 'react-rnd';
@@ -89,8 +87,6 @@ const CollapsibleFloatPanel = memo<CollapsibleFloatPanelProps>(({ items }) => {
   const [size, setSize] = useState({ height: minHeight, width: minWidth });
   const [isClient, setIsClient] = useState(false);
 
-  const pathname = usePathname();
-
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -117,25 +113,7 @@ const CollapsibleFloatPanel = memo<CollapsibleFloatPanelProps>(({ items }) => {
 
   return (
     <>
-      {
-        // desktop devtools 下隐藏
-        pathname !== '/desktop/devtools' && isClient && (
-          <FloatButton
-            className={styles.floatButton}
-            icon={<Icon icon={isExpanded ? BugOff : BugIcon} />}
-            onClick={async () => {
-              if (isDesktop) {
-                const { electronDevtoolsService } = await import('@/services/electron/devtools');
-
-                await electronDevtoolsService.openDevtools();
-
-                return;
-              }
-              setIsExpanded(!isExpanded);
-            }}
-          />
-        )
-      }
+      {/* Floating button removed as requested */}
       {isExpanded && (
         <Rnd
           bounds="window"

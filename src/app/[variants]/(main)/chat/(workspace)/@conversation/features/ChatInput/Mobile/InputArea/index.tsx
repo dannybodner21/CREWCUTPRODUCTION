@@ -18,6 +18,14 @@ const useStyles = createStyles(({ css, token }) => {
       padding-block: 12px 12px;
       border-block-start: 1px solid ${rgba(token.colorBorder, 0.25)};
       background: ${token.colorFillQuaternary};
+      border-radius: 8px;
+      transition: all 0.2s ease-in-out;
+      margin: 0 8px;
+    `,
+    containerFocused: css`
+      outline: 1px solid #6b7280;
+      outline-offset: 0px;
+      background: ${rgba(token.colorFillQuaternary, 0.8)};
     `,
     expand: css`
       position: absolute;
@@ -30,6 +38,7 @@ const useStyles = createStyles(({ css, token }) => {
     textarea: css`
       flex: 1;
       transition: none !important;
+      padding-top: 12px;
     `,
   };
 });
@@ -86,7 +95,7 @@ const MobileChatInputArea = forwardRef<TextAreaRef, MobileChatInputAreaProps>(
 
     return (
       <Flexbox
-        className={cx(styles.container, expand && styles.expand, className)}
+        className={cx(styles.container, expand && styles.expand, isFocused && styles.containerFocused, className)}
         gap={12}
         style={style}
       >

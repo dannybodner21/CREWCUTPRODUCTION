@@ -2,6 +2,7 @@
 
 import { ActionIcon } from '@lobehub/ui';
 import { ChatHeader } from '@lobehub/ui/mobile';
+import { useTheme } from 'antd-style';
 import { MessageSquarePlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { memo } from 'react';
@@ -16,6 +17,7 @@ import { useSessionStore } from '@/store/session';
 import { mobileHeaderSticky } from '@/styles/mobileHeader';
 
 const Header = memo(() => {
+  const theme = useTheme();
   const [createSession] = useSessionStore((s) => [s.createSession]);
   const router = useRouter();
   const { enableWebrtc, showCreateSession } = useServerConfigStore(featureFlagsSelectors);
@@ -25,18 +27,21 @@ const Header = memo(() => {
       left={
         <Flexbox align={'center'} gap={8} horizontal style={{ marginLeft: 8 }}>
           <UserAvatar onClick={() => router.push('/me')} size={32} />
-          <ProductLogo type={'text'} />
+          <ProductLogo type={'flat'} />
           {enableWebrtc && <SyncStatusInspector placement={'bottom'} />}
         </Flexbox>
       }
       right={
-        showCreateSession && (
-          <ActionIcon
-            icon={MessageSquarePlus}
-            onClick={() => createSession()}
-            size={MOBILE_HEADER_ICON_SIZE}
-          />
-        )
+        <Flexbox align={'center'} gap={8} horizontal>
+          <span style={{ fontSize: 16, fontWeight: 600, color: theme.colorText }}>Assistant Panel</span>
+          {showCreateSession && (
+            <ActionIcon
+              icon={MessageSquarePlus}
+              onClick={() => createSession()}
+              size={MOBILE_HEADER_ICON_SIZE}
+            />
+          )}
+        </Flexbox>
       }
       style={mobileHeaderSticky}
     />

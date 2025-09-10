@@ -583,15 +583,94 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
         try {
             console.log('🔧 LEWIS TOOL: rankJurisdictions called with:', params);
 
-            // Use direct service call instead of HTTP request for better reliability
-            const { jurisdictionRankingService } = await import('./jurisdiction-ranking-service');
-            const result = await jurisdictionRankingService.rankJurisdictions(params);
+            // Use API endpoint to ensure server-side execution
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'rankJurisdictions',
+                    params: params
+                })
+            });
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
             console.log('🔧 LEWIS TOOL: rankJurisdictions result:', result);
-            return result;
+
+            // Process the JSON result and return conversational response
+            if (result.success && result.data && result.data.length > 0) {
+                const rankings = result.data;
+                const projectType = params.projectType || 'construction project';
+                const projectValue = params.projectValue || 0;
+                const projectUnits = params.projectUnits || 0;
+                const squareFootage = params.squareFootage || 0;
+
+                let responseMessage = `I've analyzed all jurisdictions in our database to find the best locations for your ${projectType}. `;
+
+                if (projectValue > 0) {
+                    responseMessage += `For your $${projectValue.toLocaleString()} project`;
+                }
+                if (projectUnits > 0) {
+                    responseMessage += ` with ${projectUnits} units`;
+                }
+                if (squareFootage > 0) {
+                    responseMessage += ` (${squareFootage.toLocaleString()} sq ft)`;
+                }
+                responseMessage += `, here are the top-ranked locations:\n\n`;
+
+                // Show top 10 results
+                const topResults = rankings.slice(0, 10);
+                topResults.forEach((ranking: any, index: number) => {
+                    const jurisdiction = ranking.jurisdiction;
+                    const totalFees = ranking.totalFees;
+                    const overallScore = ranking.overallScore;
+                    const marketSize = ranking.marketSize;
+                    const strengths = ranking.strengths || [];
+                    const considerations = ranking.considerations || [];
+
+                    responseMessage += `**#${index + 1} ${jurisdiction.name}** - Total fees: $${totalFees.toLocaleString()}`;
+                    if (projectValue > 0) {
+                        const feePercentage = ((totalFees / projectValue) * 100).toFixed(2);
+                        responseMessage += ` (${feePercentage}% of project value)`;
+                    }
+                    responseMessage += `\n`;
+                    responseMessage += `• Overall Score: ${overallScore}/100\n`;
+                    responseMessage += `• Market Size: ${marketSize}\n`;
+
+                    if (strengths.length > 0) {
+                        responseMessage += `• Key Strengths: ${strengths.join(', ')}\n`;
+                    }
+                    if (considerations.length > 0) {
+                        responseMessage += `• Considerations: ${considerations.join(', ')}\n`;
+                    }
+                    responseMessage += `\n`;
+                });
+
+                // Add summary insights
+                const bestOption = topResults[0];
+                const averageFees = topResults.reduce((sum: number, r: any) => sum + r.totalFees, 0) / topResults.length;
+
+                responseMessage += `**My Recommendation:** ${bestOption.jurisdiction.name} offers the best combination of low fees and strong market fundamentals. `;
+                if (projectValue > 0) {
+                    const bestFeePercentage = ((bestOption.totalFees / projectValue) * 100).toFixed(2);
+                    responseMessage += `At ${bestFeePercentage}% of project value, the fee structure is exceptional - most jurisdictions charge 1-3% of project value. `;
+                }
+                responseMessage += `The market has strong fundamentals and development-friendly policies.\n\n`;
+
+                responseMessage += `**Next Steps:** I can provide detailed fee breakdowns for any of these locations or help you compare specific jurisdictions side-by-side. The Construction Fee Portal on the right can show you the complete fee structure for any jurisdiction you're interested in. What would you like to explore further?`;
+
+                return responseMessage;
+            } else {
+                return `I'm sorry, I couldn't find any jurisdiction data to analyze. This might be due to a temporary issue with our database. Please try again or let me know if you need help with something else.`;
+            }
         } catch (error) {
             console.error('💥 LEWIS TOOL: rankJurisdictions error:', error);
-            return { success: false, error: 'Failed to rank jurisdictions' };
+            return `I'm sorry, I encountered an error while analyzing jurisdictions: ${error instanceof Error ? error.message : 'Failed to rank jurisdictions'}. Please try again or let me know if you need help with something else.`;
         }
     },
 
@@ -599,15 +678,95 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
         try {
             console.log('🔧 LEWIS TOOL: getTopJurisdictions called with:', params);
 
-            // Use direct service call instead of HTTP request for better reliability
-            const { jurisdictionRankingService } = await import('./jurisdiction-ranking-service');
-            const result = await jurisdictionRankingService.getTopJurisdictions(params, params.limit);
+            // Use API endpoint to ensure server-side execution
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'getTopJurisdictions',
+                    params: params
+                })
+            });
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
             console.log('🔧 LEWIS TOOL: getTopJurisdictions result:', result);
-            return result;
+
+            // Process the JSON result and return conversational response
+            if (result.success && result.data && result.data.length > 0) {
+                const rankings = result.data;
+                const projectType = params.projectType || 'construction project';
+                const projectValue = params.projectValue || 0;
+                const projectUnits = params.projectUnits || 0;
+                const squareFootage = params.squareFootage || 0;
+                const limit = params.limit || 10;
+
+                let responseMessage = `I've analyzed all jurisdictions in our database to find the best locations for your ${projectType}. `;
+
+                if (projectValue > 0) {
+                    responseMessage += `For your $${projectValue.toLocaleString()} project`;
+                }
+                if (projectUnits > 0) {
+                    responseMessage += ` with ${projectUnits} units`;
+                }
+                if (squareFootage > 0) {
+                    responseMessage += ` (${squareFootage.toLocaleString()} sq ft)`;
+                }
+                responseMessage += `, here are the top ${Math.min(limit, rankings.length)} locations:\n\n`;
+
+                // Show results up to the limit
+                const topResults = rankings.slice(0, limit);
+                topResults.forEach((ranking: any, index: number) => {
+                    const jurisdiction = ranking.jurisdiction;
+                    const totalFees = ranking.totalFees;
+                    const overallScore = ranking.overallScore;
+                    const marketSize = ranking.marketSize;
+                    const strengths = ranking.strengths || [];
+                    const considerations = ranking.considerations || [];
+
+                    responseMessage += `**#${index + 1} ${jurisdiction.name}** - Total fees: $${totalFees.toLocaleString()}`;
+                    if (projectValue > 0) {
+                        const feePercentage = ((totalFees / projectValue) * 100).toFixed(2);
+                        responseMessage += ` (${feePercentage}% of project value)`;
+                    }
+                    responseMessage += `\n`;
+                    responseMessage += `• Overall Score: ${overallScore}/100\n`;
+                    responseMessage += `• Market Size: ${marketSize}\n`;
+
+                    if (strengths.length > 0) {
+                        responseMessage += `• Key Strengths: ${strengths.join(', ')}\n`;
+                    }
+                    if (considerations.length > 0) {
+                        responseMessage += `• Considerations: ${considerations.join(', ')}\n`;
+                    }
+                    responseMessage += `\n`;
+                });
+
+                // Add summary insights
+                const bestOption = topResults[0];
+                const averageFees = topResults.reduce((sum: number, r: any) => sum + r.totalFees, 0) / topResults.length;
+
+                responseMessage += `**My Recommendation:** ${bestOption.jurisdiction.name} offers the best combination of low fees and strong market fundamentals. `;
+                if (projectValue > 0) {
+                    const bestFeePercentage = ((bestOption.totalFees / projectValue) * 100).toFixed(2);
+                    responseMessage += `At ${bestFeePercentage}% of project value, the fee structure is exceptional - most jurisdictions charge 1-3% of project value. `;
+                }
+                responseMessage += `The market has strong fundamentals and development-friendly policies.\n\n`;
+
+                responseMessage += `**Next Steps:** I can provide detailed fee breakdowns for any of these locations or help you compare specific jurisdictions side-by-side. The Construction Fee Portal on the right can show you the complete fee structure for any jurisdiction you're interested in. What would you like to explore further?`;
+
+                return responseMessage;
+            } else {
+                return `I'm sorry, I couldn't find any jurisdiction data to analyze. This might be due to a temporary issue with our database. Please try again or let me know if you need help with something else.`;
+            }
         } catch (error) {
             console.error('💥 LEWIS TOOL: getTopJurisdictions error:', error);
-            return { success: false, error: 'Failed to get top jurisdictions' };
+            return `I'm sorry, I encountered an error while analyzing jurisdictions: ${error instanceof Error ? error.message : 'Failed to get top jurisdictions'}. Please try again or let me know if you need help with something else.`;
         }
     },
 

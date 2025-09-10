@@ -1,7 +1,7 @@
 'use client';
 
 import { ActionIcon } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
+import { createStyles, useTheme } from 'antd-style';
 import { MessageSquarePlus } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +30,7 @@ export const useStyles = createStyles(({ css, token }) => ({
 }));
 
 const Header = memo(() => {
+  const theme = useTheme();
   const { styles } = useStyles();
   const { t } = useTranslation('chat');
   const [createSession] = useSessionStore((s) => [s.createSession]);
@@ -49,10 +50,11 @@ const Header = memo(() => {
             paddingTop: 2,
           }}
         >
-          <ProductLogo className={styles.logo} size={36} type={'text'} />
+          <ProductLogo className={styles.logo} size={36} type={'flat'} />
           {enableWebrtc && <SyncStatusTag />}
         </Flexbox>
-        <Flexbox align={'center'} gap={4} horizontal>
+        <Flexbox align={'center'} gap={8} horizontal>
+          <span style={{ fontSize: 18, fontWeight: 600, color: theme.colorText }}>Assistant Panel</span>
           <TogglePanelButton />
           {showCreateSession && (
             <ActionIcon

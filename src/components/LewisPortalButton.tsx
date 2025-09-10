@@ -48,6 +48,8 @@ const LewisPortalButton = memo(() => {
             justify="center"
             style={{
                 padding: '16px 0',
+                marginTop: '20px',
+                marginBottom: '20px',
                 borderBottom: '1px solid #f0f0f0',
                 backgroundColor: '#fafafa'
             }}
@@ -58,13 +60,13 @@ const LewisPortalButton = memo(() => {
                 size="large"
                 style={{
                     height: 56,
-                    fontSize: 18,
+                    fontSize: 14,
                     paddingInline: 32,
                     borderRadius: 12,
                     backgroundColor: '#ffffff',
                     borderColor: '#d9d9d9',
                     color: '#000000',
-                    fontWeight: 600,
+                    fontWeight: 400,
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 }}
                 type="default"

@@ -74,15 +74,8 @@ const Main = memo<{ className?: string }>(({ className }) => {
 
   return (
     <Flexbox align={'center'} className={className} gap={12} horizontal>
-      {!isPinned && !showSessionPanel && <TogglePanelButton />}
-      <Avatar
-        avatar={avatar}
-        background={backgroundColor}
-        onClick={() => openChatSettings()}
-        size={32}
-        title={title}
-      />
-      <Flexbox align={'center'} className={styles.container} gap={8} horizontal>
+      <Flexbox align={'center'} gap={8} horizontal>
+        {!isPinned && !showSessionPanel && <TogglePanelButton />}
         <div className={styles.title}>{displayTitle}</div>
         <Tags />
       </Flexbox>

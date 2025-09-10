@@ -414,11 +414,13 @@ export class JurisdictionRankingService {
         try {
             const supabase = this.getSupabaseClient();
 
-            // Get all jurisdictions with fees
+            // Get all jurisdictions with fees, excluding state-level jurisdictions
+            // Focus on counties and municipalities for construction fee analysis
             const { data: jurisdictions, error: jurisdictionsError } = await supabase
                 .from('jurisdictions')
                 .select('id, name, type, kind, state_fips, population')
                 .eq('is_active', true)
+                .in('type', ['county', 'municipality'])
                 .order('population', { ascending: false });
 
             if (jurisdictionsError || !jurisdictions) {

@@ -1,7 +1,7 @@
 import { TextArea } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { TextAreaRef } from 'antd/es/input/TextArea';
-import { RefObject, memo, useEffect, useRef } from 'react';
+import { RefObject, memo, useEffect, useRef, useState } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
 
@@ -19,7 +19,7 @@ const useStyles = createStyles(({ css }) => {
       resize: none !important;
 
       height: 100% !important;
-      padding-block: 0;
+      padding-block: 12px 0;
       padding-inline: 16px;
 
       line-height: 1.5;
@@ -29,6 +29,14 @@ const useStyles = createStyles(({ css }) => {
     textareaContainer: css`
       position: relative;
       flex: 1;
+      border-radius: 8px;
+      transition: all 0.2s ease-in-out;
+      margin: 0 8px;
+    `,
+    textareaContainerFocused: css`
+      outline: 1px solid #6b7280;
+      outline-offset: 0px;
+      background-color: rgba(249, 250, 251, 0.5);
     `,
   };
 });
@@ -47,6 +55,7 @@ const InputArea = memo<InputAreaProps>(({ onSend, value, loading, onChange }) =>
 
   const ref = useRef<TextAreaRef>(null);
   const isChineseInput = useRef(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const useCmdEnterToSend = useUserStore(preferenceSelectors.useCmdEnterToSend);
 
@@ -70,13 +79,14 @@ const InputArea = memo<InputAreaProps>(({ onSend, value, loading, onChange }) =>
   }, [hasValue]);
 
   return (
-    <div className={styles.textareaContainer}>
+    <div className={`${styles.textareaContainer} ${isFocused ? styles.textareaContainerFocused : ''}`}>
       <TextArea
         autoFocus
         className={styles.textarea}
         onBlur={(e) => {
           onChange?.(e.target.value);
           disableScope(HotkeyEnum.AddUserMessage);
+          setIsFocused(false);
         }}
         onChange={(e) => {
           onChange?.(e.target.value);
@@ -102,6 +112,7 @@ const InputArea = memo<InputAreaProps>(({ onSend, value, loading, onChange }) =>
         }}
         onFocus={() => {
           enableScope(HotkeyEnum.AddUserMessage);
+          setIsFocused(true);
         }}
         onPressEnter={(e) => {
           if (loading || e.altKey || e.shiftKey || isChineseInput.current) return;

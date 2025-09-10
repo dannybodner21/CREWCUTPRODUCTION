@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   ...(isStandaloneMode ? standaloneConfig : {}),
   basePath,
   compress: isProd,
+  devIndicators: false,
   eslint: {
     // Let production builds succeed even if there are ESLint errors.
     ignoreDuringBuilds: true,
