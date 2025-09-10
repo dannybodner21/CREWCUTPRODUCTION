@@ -87,26 +87,13 @@ const InboxWelcome = memo(() => {
           })}
         </Markdown>
 
-        {/* Lewis Construction Portal Button */}
-        <Flexbox align="center" justify="center" style={{ marginTop: 20, marginBottom: 20 }}>
-          <Button
-            icon={<Building size={16} style={{ color: '#000000' }} />}
-            onClick={() => togglePortal()}
-            size="large"
-            style={{
-              height: 48,
-              fontSize: 16,
-              paddingInline: 24,
-              borderRadius: 8,
-              backgroundColor: '#ffffff',
-              borderColor: '#d9d9d9',
-              color: '#000000',
-            }}
-            type="default"
-          >
-            {showPortal ? 'Close Portal' : 'Open Portal'}
-          </Button>
-        </Flexbox>
+        {/* Horizontal Rule */}
+        <div style={{
+          width: '60%',
+          height: '1px',
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          margin: '20px auto'
+        }} />
 
         {/* Show Lewis opening questions on the main page */}
         <LewisOpeningQuestions />

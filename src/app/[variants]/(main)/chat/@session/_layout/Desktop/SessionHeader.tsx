@@ -50,7 +50,6 @@ const Header = memo(() => {
             paddingTop: 2,
           }}
         >
-          <ProductLogo className={styles.logo} size={36} type={'flat'} />
           {enableWebrtc && <SyncStatusTag />}
         </Flexbox>
         <Flexbox align={'center'} gap={8} horizontal>

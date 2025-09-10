@@ -25,23 +25,12 @@ export const AssistantBelowMessage = memo<ChatMessage>(({ content }) => {
 
     return (
         <Flexbox align="center" justify="center" style={{ marginTop: 16 }}>
-            <Button
-                icon={<Building size={16} style={{ color: '#000000' }} />}
-                onClick={() => togglePortal()}
-                size="large"
-                style={{
-                    height: 48,
-                    fontSize: 16,
-                    paddingInline: 24,
-                    borderRadius: 8,
-                    backgroundColor: '#ffffff',
-                    borderColor: '#d9d9d9',
-                    color: '#000000',
-                }}
-                type="default"
-            >
-                {showPortal ? 'Close Portal' : 'Open Portal'}
-            </Button>
+            <hr style={{
+                width: '50%',
+                border: 'none',
+                borderTop: '1px solid rgba(0, 0, 0, 0.5)',
+                margin: '20px 0'
+            }} />
         </Flexbox>
     );
 });

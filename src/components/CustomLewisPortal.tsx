@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, Typography, Input, Select, Button, Row, Col, message, Spin, Checkbox } from 'antd';
+import { Card, Typography, Input, Select, Button, Row, Col, message, Spin, Checkbox, AutoComplete } from 'antd';
 import { Building, MapPin } from 'lucide-react';
 import { Flexbox } from 'react-layout-kit';
 import { useChatStore } from '@/store/chat';
@@ -427,21 +427,27 @@ const CustomLewisPortal = () => {
     return (
         <div style={{ padding: '24px', height: '100%', overflow: 'auto', backgroundColor: '#ffffff' }}>
             {/* Header */}
-            <Card
+            <div
                 style={{
                     marginBottom: '24px',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '12px'
+                    padding: '16px',
+                    backgroundColor: '#ffffff'
                 }}
             >
-                <Flexbox align="center" gap={16} style={{ marginBottom: '8px' }}>
+                <Flexbox align="center" gap={16} style={{ marginBottom: '20px' }}>
                     <Building size={32} style={{ color: '#000000' }} />
-                    <Title level={2} style={{ margin: 0, color: '#1f2937' }}>
+                    <Title level={4} style={{ margin: 0, color: '#1f2937', fontSize: '22px' }}>
                         LEWIS Construction Portal
                     </Title>
                 </Flexbox>
+                <div style={{
+                    width: '60%',
+                    height: '1px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    margin: '0 auto 16px auto'
+                }} />
 
-            </Card>
+            </div>
 
             {/* Jurisdiction Selection Section */}
             <Card
@@ -467,11 +473,37 @@ const CustomLewisPortal = () => {
                 <Row gutter={16} style={{ marginBottom: '30px' }}>
                     <Col span={12}>
                         <Text strong style={{ display: 'block', marginBottom: '8px' }}>Search Jurisdictions:</Text>
-                        <SearchInput
-                            onChange={(e) => setSearchJurisdiction(e.target.value)}
-                            placeholder="Search cities, towns, counties..."
-                            style={{ borderRadius: '8px' }}
+                        <AutoComplete
                             value={searchJurisdiction}
+                            onChange={(value) => setSearchJurisdiction(value)}
+                            onSelect={(value) => {
+                                setSearchJurisdiction(value);
+                                // Find and select the jurisdiction
+                                const jurisdiction = jurisdictions.find(j =>
+                                    j.name.toLowerCase() === value.toLowerCase() ||
+                                    `${j.name} (${j.kind || j.type})`.toLowerCase() === value.toLowerCase()
+                                );
+                                if (jurisdiction) {
+                                    setSelectedJurisdiction(jurisdiction);
+                                }
+                            }}
+                            placeholder="Search cities, towns, counties..."
+                            style={{ width: '100%', borderRadius: '8px' }}
+                            options={filteredJurisdictions.map(jurisdiction => ({
+                                value: jurisdiction.name,
+                                label: (
+                                    <div style={{ padding: '4px 0' }}>
+                                        <div style={{ fontWeight: 500 }}>{jurisdiction.name}</div>
+                                        <div style={{ fontSize: '12px', color: '#666' }}>
+                                            {jurisdiction.kind || jurisdiction.type} • {jurisdiction.population ? jurisdiction.population.toLocaleString() : 'N/A'} people
+                                        </div>
+                                    </div>
+                                )
+                            }))}
+                            filterOption={(inputValue, option) => {
+                                if (!inputValue) return true;
+                                return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
+                            }}
                         />
                     </Col>
                     <Col span={12}>
@@ -498,23 +530,23 @@ const CustomLewisPortal = () => {
                     <div style={{ display: 'flex', width: '100%' }}>
                         <div style={{ width: '25%', textAlign: 'left' }}>
                             <Text strong style={{ display: 'block', marginBottom: '8px' }}>Jurisdiction</Text>
-                            <Text style={{ fontSize: '18px', color: '#4a5568' }}>{selectedJurisdiction.name}</Text>
+                            <Text style={{ fontSize: '14px', color: '#000000' }}>{selectedJurisdiction.name}</Text>
                         </div>
                         <div style={{ width: '25%', textAlign: 'left' }}>
                             <Text strong style={{ display: 'block', marginBottom: '8px' }}>Type</Text>
-                            <Text style={{ fontSize: '18px', color: '#4a5568' }}>
+                            <Text style={{ fontSize: '14px', color: '#000000' }}>
                                 {selectedJurisdiction.kind || selectedJurisdiction.type}
                             </Text>
                         </div>
                         <div style={{ width: '25%', textAlign: 'left' }}>
                             <Text strong style={{ display: 'block', marginBottom: '8px' }}>Population</Text>
-                            <Text style={{ fontSize: '18px', color: '#4a5568' }}>
+                            <Text style={{ fontSize: '14px', color: '#000000' }}>
                                 {selectedJurisdiction.population ? selectedJurisdiction.population.toLocaleString() : 'N/A'}
                             </Text>
                         </div>
                         <div style={{ width: '25%', textAlign: 'left' }}>
                             <Text strong style={{ display: 'block', marginBottom: '8px' }}>Fee Records</Text>
-                            <Text style={{ fontSize: '18px', color: '#4a5568' }}>{jurisdictionFees.length}</Text>
+                            <Text style={{ fontSize: '14px', color: '#000000' }}>{jurisdictionFees.length}</Text>
                         </div>
                     </div>
                 )}
@@ -531,11 +563,37 @@ const CustomLewisPortal = () => {
                         <Row gutter={16} style={{ marginBottom: '20px' }}>
                             <Col span={12}>
                                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Search Jurisdictions:</Text>
-                                <SearchInput
-                                    onChange={(e) => setSearchJurisdiction2(e.target.value)}
-                                    placeholder="Search cities, towns, counties..."
-                                    style={{ borderRadius: '8px' }}
+                                <AutoComplete
                                     value={searchJurisdiction2}
+                                    onChange={(value) => setSearchJurisdiction2(value)}
+                                    onSelect={(value) => {
+                                        setSearchJurisdiction2(value);
+                                        // Find and select the jurisdiction
+                                        const jurisdiction = jurisdictions.find(j =>
+                                            j.name.toLowerCase() === value.toLowerCase() ||
+                                            `${j.name} (${j.kind || j.type})`.toLowerCase() === value.toLowerCase()
+                                        );
+                                        if (jurisdiction) {
+                                            setSelectedJurisdiction2(jurisdiction);
+                                        }
+                                    }}
+                                    placeholder="Search cities, towns, counties..."
+                                    style={{ width: '100%', borderRadius: '8px' }}
+                                    options={filteredJurisdictions2.map(jurisdiction => ({
+                                        value: jurisdiction.name,
+                                        label: (
+                                            <div style={{ padding: '4px 0' }}>
+                                                <div style={{ fontWeight: 500 }}>{jurisdiction.name}</div>
+                                                <div style={{ fontSize: '12px', color: '#666' }}>
+                                                    {jurisdiction.kind || jurisdiction.type} • {jurisdiction.population ? jurisdiction.population.toLocaleString() : 'N/A'} people
+                                                </div>
+                                            </div>
+                                        )
+                                    }))}
+                                    filterOption={(inputValue, option) => {
+                                        if (!inputValue) return true;
+                                        return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
+                                    }}
                                 />
                             </Col>
                             <Col span={12}>
@@ -562,23 +620,23 @@ const CustomLewisPortal = () => {
                             <div style={{ display: 'flex', width: '100%' }}>
                                 <div style={{ width: '25%', textAlign: 'left' }}>
                                     <Text strong style={{ display: 'block', marginBottom: '8px' }}>Jurisdiction</Text>
-                                    <Text style={{ fontSize: '18px', color: '#4a5568' }}>{selectedJurisdiction2.name}</Text>
+                                    <Text style={{ fontSize: '14px', color: '#000000' }}>{selectedJurisdiction2.name}</Text>
                                 </div>
                                 <div style={{ width: '25%', textAlign: 'left' }}>
                                     <Text strong style={{ display: 'block', marginBottom: '8px' }}>Type</Text>
-                                    <Text style={{ fontSize: '18px', color: '#4a5568' }}>
+                                    <Text style={{ fontSize: '14px', color: '#000000' }}>
                                         {selectedJurisdiction2.kind || selectedJurisdiction2.type}
                                     </Text>
                                 </div>
                                 <div style={{ width: '25%', textAlign: 'left' }}>
                                     <Text strong style={{ display: 'block', marginBottom: '8px' }}>Population</Text>
-                                    <Text style={{ fontSize: '18px', color: '#4a5568' }}>
+                                    <Text style={{ fontSize: '14px', color: '#000000' }}>
                                         {selectedJurisdiction2.population ? selectedJurisdiction2.population.toLocaleString() : 'N/A'}
                                     </Text>
                                 </div>
                                 <div style={{ width: '25%', textAlign: 'left' }}>
                                     <Text strong style={{ display: 'block', marginBottom: '8px' }}>Fee Records</Text>
-                                    <Text style={{ fontSize: '18px', color: '#4a5568' }}>{jurisdictionFees2.length}</Text>
+                                    <Text style={{ fontSize: '14px', color: '#000000' }}>{jurisdictionFees2.length}</Text>
                                 </div>
                             </div>
                         )}
@@ -694,13 +752,13 @@ const CustomLewisPortal = () => {
                                         </Text>
                                         <Row gutter={24}>
                                             <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Total Fee Records</Text>
                                                     <Text strong style={{ fontSize: '32px', color: '#000000' }}>{jurisdictionFees.length}</Text>
                                                 </div>
                                             </Col>
                                             <Col span={12}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Calculated Total Cost</Text>
                                                     <Text strong style={{ fontSize: '32px', color: '#000000' }}>
                                                         ${total.toLocaleString()}
@@ -708,7 +766,7 @@ const CustomLewisPortal = () => {
                                                 </div>
                                             </Col>
                                             <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Applicable Fees</Text>
                                                     <Text strong style={{ fontSize: '32px', color: '#000000' }}>
                                                         {applicableFees.length}
@@ -725,13 +783,13 @@ const CustomLewisPortal = () => {
                                         </Text>
                                         <Row gutter={24}>
                                             <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Total Fee Records</Text>
                                                     <Text strong style={{ fontSize: '32px', color: '#000000' }}>{jurisdictionFees2.length}</Text>
                                                 </div>
                                             </Col>
                                             <Col span={12}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Calculated Total Cost</Text>
                                                     <Text strong style={{ fontSize: '32px', color: '#000000' }}>
                                                         ${total2.toLocaleString()}
@@ -739,7 +797,7 @@ const CustomLewisPortal = () => {
                                                 </div>
                                             </Col>
                                             <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Applicable Fees</Text>
                                                     <Text strong style={{ fontSize: '32px', color: '#000000' }}>
                                                         {applicableFees2.length}
@@ -822,13 +880,13 @@ const CustomLewisPortal = () => {
                             <>
                                 <Row gutter={24}>
                                     <Col span={6}>
-                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                             <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Total Fee Records</Text>
                                             <Text strong style={{ fontSize: '32px', color: '#000000' }}>{jurisdictionFees.length}</Text>
                                         </div>
                                     </Col>
                                     <Col span={12}>
-                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                             <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Calculated Total Cost</Text>
                                             <Text strong style={{ fontSize: '32px', color: '#000000' }}>
                                                 ${total.toLocaleString()}
@@ -836,7 +894,7 @@ const CustomLewisPortal = () => {
                                         </div>
                                     </Col>
                                     <Col span={6}>
-                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                             <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Applicable Fees</Text>
                                             <Text strong style={{ fontSize: '32px', color: '#000000' }}>
                                                 {applicableFees.length}

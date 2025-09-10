@@ -41,21 +41,31 @@ const Inbox = memo(() => {
         }
       }}
     >
-      <ListItem
-        active={activeId === INBOX_SESSION_ID}
-        avatar={DEFAULT_INBOX_AVATAR}
-        key={INBOX_SESSION_ID}
-        styles={{
-          container: {
-            gap: 12,
-          },
-          content: {
-            gap: 6,
-            maskImage: `linear-gradient(90deg, #000 90%, transparent)`,
-          },
-        }}
-        title={t('inbox.title')}
-      />
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px 16px',
+        backgroundColor: 'transparent',
+        cursor: 'default',
+        borderRadius: '8px',
+        margin: '2px 0',
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundImage: `url(${DEFAULT_INBOX_AVATAR})`,
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+        }} />
+      </div>
     </Link>
   );
 });

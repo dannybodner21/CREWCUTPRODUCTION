@@ -101,35 +101,15 @@ const WelcomeMessage = () => {
           )
         )}
 
-        {/* Lewis Construction Portal Button */}
-        {isLewisSession && (
-          <Flexbox align="center" justify="center" style={{ marginTop: 40 }}>
-            <Button
-              icon={<Building size={16} />}
-              onClick={() => togglePortal()}
-              size="large"
-              style={{
-                height: 48,
-                fontSize: 16,
-                paddingInline: 24,
-                borderRadius: 8,
-                backgroundColor: '#ffffff',
-                borderColor: '#6b7280',
-                borderWidth: '1px',
-                color: '#000000',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
-                backgroundSize: '200% 200%',
-                animation: 'shimmer 3s ease-in-out infinite',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-              type="default"
-            >
-              {showPortal ? 'Close Portal' : 'Open Portal'}
-            </Button>
-          </Flexbox>
-        )}
+        {/* Horizontal Rule - Always show for debugging */}
+        <Flexbox align="center" justify="center" style={{ marginTop: 40 }}>
+          <div style={{
+            width: '50%',
+            height: '2px',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            margin: '20px 0'
+          }} />
+        </Flexbox>
       </Flexbox>
     </>
   );

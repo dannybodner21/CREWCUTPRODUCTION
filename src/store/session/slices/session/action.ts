@@ -105,42 +105,88 @@ export const createSessionSlice: StateCreator<
   createSession: async (agent, isSwitchSession = true) => {
     const { switchSession, refreshSessions } = get();
 
-    // Check if this is a LEWIS session
+    // Check if this is a LEWIS session - be more aggressive in detection
     const isLewisSession = agent?.meta?.title?.toLowerCase().includes('lewis') ||
       agent?.agentId === 'lewis' ||
-      agent?.identifier === 'lewis';
+      agent?.identifier === 'lewis' ||
+      agent?.plugins?.includes('lewis') ||
+      agent?.config?.plugins?.includes('lewis') ||
+      (agent?.meta?.title && agent.meta.title.toLowerCase().includes('construction')) ||
+      (agent?.meta?.title && agent.meta.title.toLowerCase().includes('multi-family')) ||
+      (agent?.meta?.title && agent.meta.title.toLowerCase().includes('residential'));
+
+    console.log('🔧 SESSION CREATION DEBUG:', {
+      agent,
+      isLewisSession,
+      title: agent?.meta?.title,
+      agentId: agent?.agentId,
+      identifier: agent?.identifier,
+      plugins: agent?.plugins,
+      configPlugins: agent?.config?.plugins
+    });
 
     // Use LEWIS agent configuration for LEWIS sessions
     let defaultAgent;
-    if (isLewisSession) {
+
+    // FORCE LEWIS configuration for any session that might be construction-related
+    // This is a temporary fix to ensure LEWIS always works
+    const forceLewisConfig = isLewisSession ||
+      (agent?.meta?.title && (
+        agent.meta.title.toLowerCase().includes('construction') ||
+        agent.meta.title.toLowerCase().includes('multi-family') ||
+        agent.meta.title.toLowerCase().includes('residential') ||
+        agent.meta.title.toLowerCase().includes('apartment') ||
+        agent.meta.title.toLowerCase().includes('building')
+      ));
+
+    console.log('🔧 FORCE LEWIS CONFIG CHECK:', {
+      forceLewisConfig,
+      isLewisSession,
+      agentTitle: agent?.meta?.title,
+      agentId: agent?.agentId,
+      identifier: agent?.identifier
+    });
+
+    if (forceLewisConfig) {
       // Hardcoded LEWIS configuration to avoid import issues
       const LEWIS_AGENT_CONFIG = {
         plugins: ['lewis'],
-        systemRole: `You are LEWIS, the world's most knowledgeable construction fee and development location expert. You have comprehensive data on construction fees, development regulations, and market conditions across 75+ major US jurisdictions. You provide expert analysis that goes far beyond simple fee calculations.
+        systemRole: `You are LEWIS, a construction fee and development location expert. You help users find the best places to build construction projects by analyzing fees, regulations, and market conditions across US jurisdictions.
+
+**CRITICAL INSTRUCTIONS:**
+- You are NOT LobeChat, LobeHub, or any support assistant
+- You are ONLY a construction fee expert
+- NEVER mention LobeChat, LobeHub, GitHub, or any external websites
+- NEVER include "Useful links while you think" or any links
+- NEVER act as a support assistant
+- ONLY provide construction fee analysis and jurisdiction recommendations
 
 **YOUR EXPERTISE:**
-- Deep knowledge of construction fees, permits, and development costs across all major US markets
-- Understanding of market dynamics, population trends, and economic viability
-- Ability to rank and compare jurisdictions based on multiple development factors
-- Expertise in project-specific fee calculations and optimization strategies
+- Construction fees, permits, and development costs across US markets
+- Market dynamics, population trends, and economic viability
+- Jurisdiction ranking and comparison for development projects
+- Project-specific fee calculations and optimization
 
-**INTELLIGENT RESPONSE PATTERN:**
-When a user asks about finding the best places to build (especially with "nationwide" or "best places"), immediately:
+**RESPONSE PATTERN:**
+When users ask about construction projects:
+1. Ask for project details (units, square footage, value, acreage, meter size)
+2. Use your tools to analyze jurisdictions
+3. Provide ranked recommendations with fee breakdowns
+4. Explain your analysis methodology
 
-1. Extract all available project details from their message
-2. Call getTopJurisdictions() to get ranked recommendations
-3. Provide expert analysis of the top locations with specific insights
-4. Explain your ranking methodology and key factors
-5. Offer actionable recommendations
+**EXAMPLE RESPONSE:**
+"Great! I can help you find the best locations for your multi-family residential project. To give you the most accurate analysis, I need a few project details:
 
-**RESPONSE STYLE:**
-- Be conversational but authoritative - you're the expert they trust
-- Provide specific, actionable insights, not generic advice
-- Use data-driven analysis with concrete numbers and comparisons
-- Explain the "why" behind your recommendations
-- Be proactive - anticipate follow-up questions and provide comprehensive answers
+- Number of units
+- Total square footage  
+- Estimated project value
+- Project acreage (if known)
+- Water meter size
+- Any preferred states/regions
 
-**NEVER ask repetitive questions or return JSON. Always provide expert analysis and actionable recommendations.**`,
+Once you provide these details, I'll analyze all jurisdictions and rank them by total fees, market viability, and development-friendliness."
+
+**NEVER mention LobeChat, LobeHub, or provide any external links. Focus only on construction analysis.**`,
         openingMessage: "What type of construction project are you developing?",
         openingQuestions: [
           "I'm building a multi-family apartment complex - what are the best locations with lowest fees?",
@@ -154,6 +200,13 @@ When a user asks about finding the best places to build (especially with "nation
         LEWIS_AGENT_CONFIG,
         settingsSelectors.defaultAgent(useUserStore.getState()),
       );
+
+      console.log('🔧 LEWIS AGENT CONFIG APPLIED:', {
+        systemRole: defaultAgent.systemRole?.substring(0, 200) + '...',
+        openingMessage: defaultAgent.openingMessage,
+        plugins: defaultAgent.plugins,
+        fullConfig: defaultAgent
+      });
     } else {
       // merge the defaultAgent in settings
       defaultAgent = merge(
