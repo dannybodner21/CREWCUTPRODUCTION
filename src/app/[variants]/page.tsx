@@ -3,10 +3,10 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/store/session';
 import { useUserStore } from '@/store/user';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { UpgradeModal } from '@/components/UpgradeModal';
 
-export default function VariantsPage() {
+function VariantsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useUserStore();
@@ -517,5 +517,24 @@ export default function VariantsPage() {
                 onClose={() => setShowUpgradeModal(false)}
             />
         </>
+    );
+}
+
+export default function VariantsPage() {
+    return (
+        <Suspense fallback={
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100vh',
+                fontSize: '18px',
+                color: '#6b7280'
+            }}>
+                Loading...
+            </div>
+        }>
+            <VariantsPageContent />
+        </Suspense>
     );
 }
