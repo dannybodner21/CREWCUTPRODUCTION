@@ -205,7 +205,7 @@ function VariantsPageContent() {
                     top: '20px',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '50%',
+                    width: '60%',
                     height: '70px',
                     backgroundColor: 'white',
                     border: '1px solid #d1d5db',
@@ -229,7 +229,7 @@ function VariantsPageContent() {
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '12px'
                             }}>
                                 {userInfo.avatar && (
                                     <img
@@ -260,15 +260,39 @@ function VariantsPageContent() {
                                         {userInfo.name || userInfo.email || 'User'}
                                     </div>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        // Sign out using NextAuth
+                                        window.location.href = '/api/auth/signout';
+                                    }}
+                                    style={{
+                                        backgroundColor: '#f3f4f6',
+                                        color: '#374151',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.backgroundColor = '#e5e7eb';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.backgroundColor = '#f3f4f6';
+                                    }}
+                                >
+                                    Logout
+                                </button>
                             </div>
                         ) : (
                             <a
                                 href="/next-auth/signin"
                                 style={{
                                     display: 'inline-block',
-                                    backgroundColor: '#000000',
-                                    color: 'white',
-                                    border: 'none',
+                                    backgroundColor: '#ffffff',
+                                    color: '#000000',
+                                    border: '1px solid #d1d5db',
                                     borderRadius: '20px',
                                     padding: '8px 16px',
                                     fontSize: '14px',
@@ -277,10 +301,10 @@ function VariantsPageContent() {
                                     transition: 'all 0.2s ease'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.target.style.backgroundColor = '#374151';
+                                    e.target.style.backgroundColor = '#f9fafb';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.target.style.backgroundColor = '#000000';
+                                    e.target.style.backgroundColor = '#ffffff';
                                 }}
                             >
                                 Login with Google
