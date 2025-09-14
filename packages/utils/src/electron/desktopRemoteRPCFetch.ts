@@ -1,7 +1,19 @@
-import { ProxyTRPCRequestParams, dispatch, streamInvoke } from '@lobechat/electron-client-ipc';
 import debug from 'debug';
 
 import { isDesktop } from '@/const/version';
+
+// Conditional import for Electron modules
+let ProxyTRPCRequestParams: any, dispatch: any, streamInvoke: any;
+if (isDesktop) {
+  try {
+    const electronModule = require('@lobechat/electron-client-ipc');
+    ProxyTRPCRequestParams = electronModule.ProxyTRPCRequestParams;
+    dispatch = electronModule.dispatch;
+    streamInvoke = electronModule.streamInvoke;
+  } catch (error) {
+    console.warn('Electron module not available:', error);
+  }
+}
 import { getElectronStoreState } from '@/store/electron';
 import { electronSyncSelectors } from '@/store/electron/selectors';
 import { getRequestBody, headersToRecord } from '@/utils/fetch';

@@ -45,7 +45,7 @@ const Header = () => {
         </Flexbox>
         <Flexbox style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
           <img
-            src="/images/logo/crewcut_logo.png"
+            src={`/images/logo/crewcut_logo.png?v=${Date.now()}`}
             alt="CREW CUT"
             onClick={() => openChatSettings()}
             style={{ height: 64, width: 'auto', cursor: 'pointer' }}

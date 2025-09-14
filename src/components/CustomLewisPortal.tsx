@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Card, Typography, Input, Select, Button, Row, Col, message, Spin, Checkbox, AutoComplete } from 'antd';
+import { useTheme } from 'antd-style';
 import { Building, MapPin } from 'lucide-react';
 import { Flexbox } from 'react-layout-kit';
 import { useChatStore } from '@/store/chat';
+import { PaywallGuard } from './PaywallGuard';
 
 const { Title, Text } = Typography;
 const { Search: SearchInput } = Input;
@@ -29,6 +31,16 @@ interface Fee {
     applies_to: string | null;
     use_subtype: string | null;
     formula: string | null;
+    // New fee_versions fields
+    calc_method: string;
+    base_rate: number;
+    min_fee: number | null;
+    max_fee: number | null;
+    unit_id: string;
+    formula_json: any;
+    status: string;
+    effective_start: string;
+    effective_end: string | null;
 }
 
 interface ProjectParameters {
@@ -37,9 +49,11 @@ interface ProjectParameters {
     projectValue: number;
     acreage?: number;
     meterSize?: string;
+    trips?: number;
 }
 
 const CustomLewisPortal = () => {
+    const theme = useTheme();
     const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
     const [jurisdictionFees, setJurisdictionFees] = useState<Fee[]>([]);
     const [loading, setLoading] = useState(true);
@@ -269,50 +283,159 @@ const CustomLewisPortal = () => {
         }
     }, [selectedJurisdiction2]);
 
-    // Fee calculation function
+    // Fee calculation function using proper fee_versions logic
     const calculateFeeAmount = (fee: Fee, projectParams: ProjectParameters): number => {
         const { units, squareFootage, projectValue, acreage = 0, meterSize = '6"' } = projectParams;
 
-        // Handle formula-based fees
-        if (fee.formula && fee.category === 'formula') {
-            // For now, return 0 for complex formulas - we'll implement these later
-            return 0;
-        }
+        // Debug logging
+        console.log('🔧 FEE CALCULATION DEBUG:', {
+            feeName: fee.name,
+            calcMethod: fee.calc_method,
+            baseRate: fee.base_rate,
+            unitId: fee.unit_id,
+            minFee: fee.min_fee,
+            maxFee: fee.max_fee,
+            squareFootage,
+            units,
+            projectValue,
+            meterSize
+        });
 
-        // Handle flat fees
-        if (fee.category === 'flat') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                return parseFloat(fee.rate);
+        // Check if we have valid fee_versions data
+        if (!fee.calc_method || fee.base_rate === null || fee.base_rate === undefined) {
+            console.log('🔧 FALLBACK TO LEGACY RATE:', { feeName: fee.name, legacyRate: fee.rate });
+            // Fallback to legacy rate if fee_versions data is missing
+            if (!fee.rate || isNaN(parseFloat(fee.rate))) {
+                return 0;
             }
-            return 0;
+            return parseFloat(fee.rate);
         }
 
-        // Handle per_unit fees
-        if (fee.category === 'per_unit') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                return parseFloat(fee.rate) * units;
-            }
-            return 0;
+        let amount = 0;
+        const baseRate = fee.base_rate;
+
+        // Calculate based on calc_method
+        switch (fee.calc_method) {
+            case 'flat':
+                amount = baseRate;
+                console.log('🔧 FLAT FEE:', { feeName: fee.name, baseRate, amount });
+                break;
+
+            case 'per_sqft':
+                amount = baseRate * squareFootage;
+                console.log('🔧 PER SQFT FEE:', { feeName: fee.name, baseRate, squareFootage, amount });
+                break;
+
+            case 'per_unit':
+                amount = baseRate * units;
+                console.log('🔧 PER UNIT FEE:', { feeName: fee.name, baseRate, units, amount });
+                break;
+
+            case 'percent_of_valuation':
+                amount = baseRate * projectValue;
+                console.log('🔧 PERCENT OF VALUATION FEE:', { feeName: fee.name, baseRate, projectValue, amount });
+                break;
+
+            case 'per_trip':
+                // For now, assume trips are passed in projectParams or derive from units
+                const trips = projectParams.trips || (units * 2); // Simple fallback: 2 trips per unit
+                amount = baseRate * trips;
+                console.log('🔧 PER TRIP FEE:', { feeName: fee.name, baseRate, trips, amount });
+                break;
+
+            case 'meter_size':
+                if (fee.formula_json && typeof fee.formula_json === 'object') {
+                    const meterKey = `METER_${meterSize.replace(/"/g, '').replace('.', '_')}IN`;
+                    amount = fee.formula_json[meterKey] || baseRate;
+                    console.log('🔧 METER SIZE FEE:', { feeName: fee.name, meterSize, meterKey, amount });
+                } else {
+                    amount = baseRate;
+                }
+                break;
+
+            case 'custom':
+                if (fee.formula_json) {
+                    try {
+                        if (fee.formula_json.expr) {
+                            // Simple expression evaluation
+                            const expr = fee.formula_json.expr;
+                            const context: Record<string, any> = {
+                                units,
+                                squareFootage,
+                                projectValue,
+                                valuation: projectValue,
+                                res_sqft: squareFootage,
+                                nonres_sqft: 0,
+                                total_sqft: squareFootage,
+                                trips: projectParams.trips || (units * 2),
+                                meter_size: meterSize
+                            };
+
+                            // Simple expression parser (you might want to use a proper math expression library)
+                            let evaluatedExpr = expr;
+                            Object.keys(context).forEach(key => {
+                                const regex = new RegExp(`\\b${key}\\b`, 'g');
+                                evaluatedExpr = evaluatedExpr.replace(regex, context[key]);
+                            });
+
+                            amount = eval(evaluatedExpr);
+                            console.log('🔧 CUSTOM EXPR FEE:', { feeName: fee.name, expr, context, amount });
+                        } else if (fee.formula_json.switch) {
+                            // Switch statement evaluation
+                            const context: Record<string, any> = {
+                                units,
+                                squareFootage,
+                                projectValue,
+                                valuation: projectValue,
+                                res_sqft: squareFootage,
+                                nonres_sqft: 0,
+                                total_sqft: squareFootage,
+                                trips: projectParams.trips || (units * 2),
+                                meter_size: meterSize
+                            };
+
+                            for (const case_ of fee.formula_json.switch) {
+                                const condition = case_.when.replace(/\bunits\b/g, units)
+                                    .replace(/\bvaluation\b/g, projectValue)
+                                    .replace(/\bsquareFootage\b/g, squareFootage);
+
+                                if (eval(condition)) {
+                                    const expr = case_.expr.replace(/\bunits\b/g, units)
+                                        .replace(/\bvaluation\b/g, projectValue)
+                                        .replace(/\bsquareFootage\b/g, squareFootage);
+                                    amount = eval(expr);
+                                    break;
+                                }
+                            }
+                            console.log('🔧 CUSTOM SWITCH FEE:', { feeName: fee.name, switch: fee.formula_json.switch, amount });
+                        }
+                    } catch (error) {
+                        console.error('🔧 CUSTOM FEE EVALUATION ERROR:', error);
+                        amount = baseRate;
+                    }
+                } else {
+                    amount = baseRate;
+                }
+                break;
+
+            default:
+                console.log('🔧 UNKNOWN CALC METHOD, USING BASE RATE:', { feeName: fee.name, calcMethod: fee.calc_method, baseRate });
+                amount = baseRate;
         }
 
-        // Handle per_sqft fees
-        if (fee.category === 'per_sqft') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                return parseFloat(fee.rate) * squareFootage;
-            }
-            return 0;
+        // Apply min/max fee constraints
+        if (fee.min_fee !== null && fee.min_fee !== undefined) {
+            amount = Math.max(amount, fee.min_fee);
+        }
+        if (fee.max_fee !== null && fee.max_fee !== undefined) {
+            amount = Math.min(amount, fee.max_fee);
         }
 
-        // Handle per_meter_size fees (monthly)
-        if (fee.category === 'per_meter_size') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                // For monthly fees, we'll calculate for 12 months
-                return parseFloat(fee.rate) * 12;
-            }
-            return 0;
-        }
+        // Round to 2 decimal places
+        amount = Math.round(amount * 100) / 100;
 
-        return 0;
+        console.log('🔧 FINAL FEE AMOUNT:', { feeName: fee.name, amount, minFee: fee.min_fee, maxFee: fee.max_fee });
+        return amount;
     };
 
     // Filter fees to show only relevant ones for the project type
@@ -414,9 +537,17 @@ const CustomLewisPortal = () => {
     if (jurisdictions.length === 0) {
         return (
             <div style={{ padding: '24px', textAlign: 'center' }}>
-                <Card style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <Card style={{
+                    maxWidth: '600px',
+                    margin: '0 auto',
+                    backgroundColor: theme.appearance === 'dark' ? '#111111' : '#ffffff',
+                    border: theme.appearance === 'dark' ? '1px solid #333333' : '1px solid #d9d9d9'
+                }}>
                     <Title level={3} style={{ color: '#faad14' }}>No Jurisdictions with Fee Data</Title>
-                    <Text type="secondary" style={{ fontSize: '16px' }}>
+                    <Text type="secondary" style={{
+                        fontSize: '16px',
+                        color: theme.appearance === 'dark' ? '#cccccc' : undefined
+                    }}>
                         There was an error retrieving jurisdiction fee data. Please refresh and try again.
                     </Text>
                 </Card>
@@ -425,528 +556,555 @@ const CustomLewisPortal = () => {
     }
 
     return (
-        <div style={{ padding: '24px', height: '100%', overflow: 'auto', backgroundColor: '#ffffff' }}>
-            {/* Header */}
-            <div
-                style={{
-                    marginBottom: '24px',
-                    padding: '16px',
-                    backgroundColor: '#ffffff'
-                }}
-            >
-                <Flexbox align="center" gap={16} style={{ marginBottom: '20px' }}>
-                    <Building size={32} style={{ color: '#000000' }} />
-                    <Title level={4} style={{ margin: 0, color: '#1f2937', fontSize: '22px' }}>
-                        LEWIS Construction Portal
-                    </Title>
-                </Flexbox>
-                <div style={{
-                    width: '60%',
-                    height: '1px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    margin: '0 auto 16px auto'
-                }} />
+        <PaywallGuard>
+            <div style={{
+                padding: '24px',
+                height: '100%',
+                overflow: 'auto',
+                backgroundColor: theme.appearance === 'dark' ? '#000000' : '#ffffff'
+            }}>
+                {/* Header */}
+                <div
+                    style={{
+                        marginBottom: '24px',
+                        padding: '16px',
+                        backgroundColor: theme.appearance === 'dark' ? '#000000' : '#ffffff'
+                    }}
+                >
+                    <Flexbox align="center" gap={16} style={{ marginBottom: '20px' }}>
+                        <Building size={32} style={{ color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }} />
+                        <Title level={4} style={{
+                            margin: 0,
+                            color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937',
+                            fontSize: '22px'
+                        }}>
+                            LEWIS Construction Portal
+                        </Title>
+                    </Flexbox>
+                    <div style={{
+                        width: '60%',
+                        height: '1px',
+                        backgroundColor: theme.appearance === 'dark' ? '#666666' : 'rgba(0, 0, 0, 0.3)',
+                        margin: '0 auto 16px auto'
+                    }} />
 
-            </div>
-
-            {/* Jurisdiction Selection Section */}
-            <Card
-                style={{
-                    marginBottom: '24px',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '12px'
-                }}
-            >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <Title level={4} style={{ margin: 0, color: '#1f2937' }}>
-                        Jurisdiction Selection
-                    </Title>
-                    <Checkbox
-                        checked={compareTwoLocations}
-                        onChange={(e) => setCompareTwoLocations(e.target.checked)}
-                        style={{ fontSize: '14px' }}
-                    >
-                        Compare two locations
-                    </Checkbox>
                 </div>
 
-                <Row gutter={16} style={{ marginBottom: '30px' }}>
-                    <Col span={12}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Search Jurisdictions:</Text>
-                        <AutoComplete
-                            value={searchJurisdiction}
-                            onChange={(value) => setSearchJurisdiction(value)}
-                            onSelect={(value) => {
-                                setSearchJurisdiction(value);
-                                // Find and select the jurisdiction
-                                const jurisdiction = jurisdictions.find(j =>
-                                    j.name.toLowerCase() === value.toLowerCase() ||
-                                    `${j.name} (${j.kind || j.type})`.toLowerCase() === value.toLowerCase()
-                                );
-                                if (jurisdiction) {
-                                    setSelectedJurisdiction(jurisdiction);
-                                }
+                {/* Jurisdiction Selection Section */}
+                <Card
+                    style={{
+                        marginBottom: '24px',
+                        border: theme.appearance === 'dark' ? '1px solid #333333' : '1px solid #d9d9d9',
+                        borderRadius: '12px',
+                        backgroundColor: theme.appearance === 'dark' ? '#111111' : '#ffffff'
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                        <Title level={4} style={{
+                            margin: 0,
+                            color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937'
+                        }}>
+                            Jurisdiction Selection
+                        </Title>
+                        <Checkbox
+                            checked={compareTwoLocations}
+                            onChange={(e) => setCompareTwoLocations(e.target.checked)}
+                            style={{
+                                fontSize: '14px',
+                                color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
                             }}
-                            placeholder="Search cities, towns, counties..."
-                            style={{ width: '100%', borderRadius: '8px' }}
-                            options={filteredJurisdictions.map(jurisdiction => ({
-                                value: jurisdiction.name,
-                                label: (
-                                    <div style={{ padding: '4px 0' }}>
-                                        <div style={{ fontWeight: 500 }}>{jurisdiction.name}</div>
-                                        <div style={{ fontSize: '12px', color: '#666' }}>
-                                            {jurisdiction.kind || jurisdiction.type} • {jurisdiction.population ? jurisdiction.population.toLocaleString() : 'N/A'} people
-                                        </div>
-                                    </div>
-                                )
-                            }))}
-                            filterOption={(inputValue, option) => {
-                                if (!inputValue) return true;
-                                return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
-                            }}
-                        />
-                    </Col>
-                    <Col span={12}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Jurisdiction:</Text>
-                        <Select
-                            onChange={(jurisdictionId) => {
-                                const jurisdiction = jurisdictions.find(j => j.id === jurisdictionId);
-                                setSelectedJurisdiction(jurisdiction || null);
-                            }}
-                            placeholder="Choose a jurisdiction"
-                            style={{ width: '100%', borderRadius: '8px' }}
-                            value={selectedJurisdiction?.id}
                         >
-                            {filteredJurisdictions.map(jurisdiction => (
-                                <Option key={jurisdiction.id} value={jurisdiction.id}>
-                                    {jurisdiction.name} ({jurisdiction.kind || jurisdiction.type})
-                                </Option>
-                            ))}
-                        </Select>
-                    </Col>
-                </Row>
-
-                {selectedJurisdiction && (
-                    <div style={{ display: 'flex', width: '100%' }}>
-                        <div style={{ width: '25%', textAlign: 'left' }}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Jurisdiction</Text>
-                            <Text style={{ fontSize: '14px', color: '#000000' }}>{selectedJurisdiction.name}</Text>
-                        </div>
-                        <div style={{ width: '25%', textAlign: 'left' }}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Type</Text>
-                            <Text style={{ fontSize: '14px', color: '#000000' }}>
-                                {selectedJurisdiction.kind || selectedJurisdiction.type}
-                            </Text>
-                        </div>
-                        <div style={{ width: '25%', textAlign: 'left' }}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Population</Text>
-                            <Text style={{ fontSize: '14px', color: '#000000' }}>
-                                {selectedJurisdiction.population ? selectedJurisdiction.population.toLocaleString() : 'N/A'}
-                            </Text>
-                        </div>
-                        <div style={{ width: '25%', textAlign: 'left' }}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Fee Records</Text>
-                            <Text style={{ fontSize: '14px', color: '#000000' }}>{jurisdictionFees.length}</Text>
-                        </div>
+                            Compare two locations
+                        </Checkbox>
                     </div>
-                )}
 
-                {/* Second Jurisdiction Selection - Only show when comparison is enabled */}
-                {compareTwoLocations && (
-                    <>
-                        <div style={{ marginTop: '30px', marginBottom: '20px' }}>
-                            <Title level={5} style={{ marginBottom: '15px', color: '#1f2937' }}>
-                                Second Location
-                            </Title>
-                        </div>
-
-                        <Row gutter={16} style={{ marginBottom: '20px' }}>
-                            <Col span={12}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Search Jurisdictions:</Text>
-                                <AutoComplete
-                                    value={searchJurisdiction2}
-                                    onChange={(value) => setSearchJurisdiction2(value)}
-                                    onSelect={(value) => {
-                                        setSearchJurisdiction2(value);
-                                        // Find and select the jurisdiction
-                                        const jurisdiction = jurisdictions.find(j =>
-                                            j.name.toLowerCase() === value.toLowerCase() ||
-                                            `${j.name} (${j.kind || j.type})`.toLowerCase() === value.toLowerCase()
-                                        );
-                                        if (jurisdiction) {
-                                            setSelectedJurisdiction2(jurisdiction);
-                                        }
-                                    }}
-                                    placeholder="Search cities, towns, counties..."
-                                    style={{ width: '100%', borderRadius: '8px' }}
-                                    options={filteredJurisdictions2.map(jurisdiction => ({
-                                        value: jurisdiction.name,
-                                        label: (
-                                            <div style={{ padding: '4px 0' }}>
-                                                <div style={{ fontWeight: 500 }}>{jurisdiction.name}</div>
-                                                <div style={{ fontSize: '12px', color: '#666' }}>
-                                                    {jurisdiction.kind || jurisdiction.type} • {jurisdiction.population ? jurisdiction.population.toLocaleString() : 'N/A'} people
-                                                </div>
+                    <Row gutter={16} style={{ marginBottom: '30px' }}>
+                        <Col span={12}>
+                            <Text strong style={{
+                                display: 'block',
+                                marginBottom: '8px',
+                                color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                            }}>Search Jurisdictions:</Text>
+                            <AutoComplete
+                                value={searchJurisdiction}
+                                onChange={(value) => setSearchJurisdiction(value)}
+                                onSelect={(value) => {
+                                    setSearchJurisdiction(value);
+                                    // Find and select the jurisdiction
+                                    const jurisdiction = jurisdictions.find(j =>
+                                        j.name.toLowerCase() === value.toLowerCase() ||
+                                        `${j.name} (${j.kind || j.type})`.toLowerCase() === value.toLowerCase()
+                                    );
+                                    if (jurisdiction) {
+                                        setSelectedJurisdiction(jurisdiction);
+                                    }
+                                }}
+                                placeholder="Search cities, towns, counties..."
+                                style={{ width: '100%', borderRadius: '8px' }}
+                                options={filteredJurisdictions.map(jurisdiction => ({
+                                    value: jurisdiction.name,
+                                    label: (
+                                        <div style={{ padding: '4px 0' }}>
+                                            <div style={{ fontWeight: 500 }}>{jurisdiction.name}</div>
+                                            <div style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                                {jurisdiction.kind || jurisdiction.type} • {jurisdiction.population ? jurisdiction.population.toLocaleString() : 'N/A'} people
                                             </div>
-                                        )
-                                    }))}
-                                    filterOption={(inputValue, option) => {
-                                        if (!inputValue) return true;
-                                        return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
-                                    }}
+                                        </div>
+                                    )
+                                }))}
+                                filterOption={(inputValue, option) => {
+                                    if (!inputValue) return true;
+                                    return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
+                                }}
+                            />
+                        </Col>
+                        <Col span={12}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Jurisdiction:</Text>
+                            <Select
+                                onChange={(jurisdictionId) => {
+                                    const jurisdiction = jurisdictions.find(j => j.id === jurisdictionId);
+                                    setSelectedJurisdiction(jurisdiction || null);
+                                }}
+                                placeholder="Choose a jurisdiction"
+                                style={{ width: '100%', borderRadius: '8px' }}
+                                value={selectedJurisdiction?.id}
+                            >
+                                {filteredJurisdictions.map(jurisdiction => (
+                                    <Option key={jurisdiction.id} value={jurisdiction.id}>
+                                        {jurisdiction.name} ({jurisdiction.kind || jurisdiction.type})
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Col>
+                    </Row>
+
+                    {selectedJurisdiction && (
+                        <div style={{ display: 'flex', width: '100%' }}>
+                            <div style={{ width: '25%', textAlign: 'left' }}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Jurisdiction</Text>
+                                <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{selectedJurisdiction.name}</Text>
+                            </div>
+                            <div style={{ width: '25%', textAlign: 'left' }}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Type</Text>
+                                <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                    {selectedJurisdiction.kind || selectedJurisdiction.type}
+                                </Text>
+                            </div>
+                            <div style={{ width: '25%', textAlign: 'left' }}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Population</Text>
+                                <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                    {selectedJurisdiction.population ? selectedJurisdiction.population.toLocaleString() : 'N/A'}
+                                </Text>
+                            </div>
+                            <div style={{ width: '25%', textAlign: 'left' }}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Fee Records</Text>
+                                <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees.length}</Text>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Second Jurisdiction Selection - Only show when comparison is enabled */}
+                    {compareTwoLocations && (
+                        <>
+                            <div style={{ marginTop: '30px', marginBottom: '20px' }}>
+                                <Title level={5} style={{ marginBottom: '15px', color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937' }}>
+                                    Second Location
+                                </Title>
+                            </div>
+
+                            <Row gutter={16} style={{ marginBottom: '20px' }}>
+                                <Col span={12}>
+                                    <Text strong style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                    }}>Search Jurisdictions:</Text>
+                                    <AutoComplete
+                                        value={searchJurisdiction2}
+                                        onChange={(value) => setSearchJurisdiction2(value)}
+                                        onSelect={(value) => {
+                                            setSearchJurisdiction2(value);
+                                            // Find and select the jurisdiction
+                                            const jurisdiction = jurisdictions.find(j =>
+                                                j.name.toLowerCase() === value.toLowerCase() ||
+                                                `${j.name} (${j.kind || j.type})`.toLowerCase() === value.toLowerCase()
+                                            );
+                                            if (jurisdiction) {
+                                                setSelectedJurisdiction2(jurisdiction);
+                                            }
+                                        }}
+                                        placeholder="Search cities, towns, counties..."
+                                        style={{ width: '100%', borderRadius: '8px' }}
+                                        options={filteredJurisdictions2.map(jurisdiction => ({
+                                            value: jurisdiction.name,
+                                            label: (
+                                                <div style={{ padding: '4px 0' }}>
+                                                    <div style={{ fontWeight: 500 }}>{jurisdiction.name}</div>
+                                                    <div style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                                        {jurisdiction.kind || jurisdiction.type} • {jurisdiction.population ? jurisdiction.population.toLocaleString() : 'N/A'} people
+                                                    </div>
+                                                </div>
+                                            )
+                                        }))}
+                                        filterOption={(inputValue, option) => {
+                                            if (!inputValue) return true;
+                                            return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
+                                        }}
+                                    />
+                                </Col>
+                                <Col span={12}>
+                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Jurisdiction:</Text>
+                                    <Select
+                                        onChange={(jurisdictionId) => {
+                                            const jurisdiction = jurisdictions.find(j => j.id === jurisdictionId);
+                                            setSelectedJurisdiction2(jurisdiction || null);
+                                        }}
+                                        placeholder="Choose a jurisdiction"
+                                        style={{ width: '100%', borderRadius: '8px' }}
+                                        value={selectedJurisdiction2?.id}
+                                    >
+                                        {filteredJurisdictions2.map(jurisdiction => (
+                                            <Option key={jurisdiction.id} value={jurisdiction.id}>
+                                                {jurisdiction.name} ({jurisdiction.kind || jurisdiction.type})
+                                            </Option>
+                                        ))}
+                                    </Select>
+                                </Col>
+                            </Row>
+
+                            {selectedJurisdiction2 && (
+                                <div style={{ display: 'flex', width: '100%' }}>
+                                    <div style={{ width: '25%', textAlign: 'left' }}>
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Jurisdiction</Text>
+                                        <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{selectedJurisdiction2.name}</Text>
+                                    </div>
+                                    <div style={{ width: '25%', textAlign: 'left' }}>
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Type</Text>
+                                        <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                            {selectedJurisdiction2.kind || selectedJurisdiction2.type}
+                                        </Text>
+                                    </div>
+                                    <div style={{ width: '25%', textAlign: 'left' }}>
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Population</Text>
+                                        <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                            {selectedJurisdiction2.population ? selectedJurisdiction2.population.toLocaleString() : 'N/A'}
+                                        </Text>
+                                    </div>
+                                    <div style={{ width: '25%', textAlign: 'left' }}>
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Fee Records</Text>
+                                        <Text style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees2.length}</Text>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </Card>
+
+                {/* Total Fees Section */}
+                {selectedJurisdiction && (
+                    <Card
+                        style={{
+                            marginBottom: '24px',
+                            border: theme.appearance === 'dark' ? '1px solid #333333' : '1px solid #d9d9d9',
+                            boxShadow: theme.appearance === 'dark' ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.06)',
+                            borderRadius: '12px',
+                            backgroundColor: theme.appearance === 'dark' ? '#111111' : '#ffffff'
+                        }}
+                    >
+                        <Title level={4} style={{ marginBottom: '30px', color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937' }}>
+                            Project Fee Calculator
+                        </Title>
+
+                        {/* Project Parameters */}
+                        <Row gutter={16} style={{ marginBottom: '20px' }}>
+                            <Col span={8}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Type</Text>
+                                <Select
+                                    value={projectType}
+                                    onChange={setProjectType}
+                                    style={{ width: '100%', borderRadius: '8px' }}
+                                >
+                                    <Option value="Single Family Residential">Single Family Residential</Option>
+                                    <Option value="Multi-Family Residential">Multi-Family Residential</Option>
+                                    <Option value="Commercial">Commercial</Option>
+                                    <Option value="Restaurant/Food Service">Restaurant/Food Service</Option>
+                                    <Option value="Industrial">Industrial</Option>
+                                </Select>
+                            </Col>
+                            <Col span={8}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Units</Text>
+                                <Input
+                                    value={projectUnits}
+                                    onChange={(e) => setProjectUnits(e.target.value)}
+                                    placeholder="100"
+                                    style={{ borderRadius: '8px' }}
                                 />
                             </Col>
-                            <Col span={12}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Jurisdiction:</Text>
+                            <Col span={8}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Square Footage</Text>
+                                <Input
+                                    value={squareFootage}
+                                    onChange={(e) => setSquareFootage(e.target.value)}
+                                    placeholder="80000"
+                                    style={{ borderRadius: '8px' }}
+                                />
+                            </Col>
+                        </Row>
+
+                        <Row gutter={16} style={{ marginBottom: '50px' }}>
+                            <Col span={8}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Value ($)</Text>
+                                <Input
+                                    value={projectValue}
+                                    onChange={(e) => setProjectValue(e.target.value)}
+                                    placeholder="15000000"
+                                    style={{ borderRadius: '8px' }}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Acreage</Text>
+                                <Input
+                                    value={projectAcreage}
+                                    onChange={(e) => setProjectAcreage(e.target.value)}
+                                    placeholder="5"
+                                    style={{ borderRadius: '8px' }}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Meter Size</Text>
                                 <Select
-                                    onChange={(jurisdictionId) => {
-                                        const jurisdiction = jurisdictions.find(j => j.id === jurisdictionId);
-                                        setSelectedJurisdiction2(jurisdiction || null);
-                                    }}
-                                    placeholder="Choose a jurisdiction"
+                                    value={meterSize}
+                                    onChange={setMeterSize}
                                     style={{ width: '100%', borderRadius: '8px' }}
-                                    value={selectedJurisdiction2?.id}
                                 >
-                                    {filteredJurisdictions2.map(jurisdiction => (
-                                        <Option key={jurisdiction.id} value={jurisdiction.id}>
-                                            {jurisdiction.name} ({jurisdiction.kind || jurisdiction.type})
-                                        </Option>
-                                    ))}
+                                    <Option value="5/8&quot;">5/8"</Option>
+                                    <Option value="3/4&quot;">3/4"</Option>
+                                    <Option value="1&quot;">1"</Option>
+                                    <Option value="1 1/2&quot;">1 1/2"</Option>
+                                    <Option value="2&quot;">2"</Option>
+                                    <Option value="3&quot;">3"</Option>
+                                    <Option value="4&quot;">4"</Option>
+                                    <Option value="6&quot;">6"</Option>
+                                    <Option value="6&quot; and greater">6" and greater</Option>
                                 </Select>
                             </Col>
                         </Row>
 
-                        {selectedJurisdiction2 && (
-                            <div style={{ display: 'flex', width: '100%' }}>
-                                <div style={{ width: '25%', textAlign: 'left' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>Jurisdiction</Text>
-                                    <Text style={{ fontSize: '14px', color: '#000000' }}>{selectedJurisdiction2.name}</Text>
-                                </div>
-                                <div style={{ width: '25%', textAlign: 'left' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>Type</Text>
-                                    <Text style={{ fontSize: '14px', color: '#000000' }}>
-                                        {selectedJurisdiction2.kind || selectedJurisdiction2.type}
-                                    </Text>
-                                </div>
-                                <div style={{ width: '25%', textAlign: 'left' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>Population</Text>
-                                    <Text style={{ fontSize: '14px', color: '#000000' }}>
-                                        {selectedJurisdiction2.population ? selectedJurisdiction2.population.toLocaleString() : 'N/A'}
-                                    </Text>
-                                </div>
-                                <div style={{ width: '25%', textAlign: 'left' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>Fee Records</Text>
-                                    <Text style={{ fontSize: '14px', color: '#000000' }}>{jurisdictionFees2.length}</Text>
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </Card>
+                        {/* Calculated Results */}
+                        {(() => {
+                            const { total, breakdown } = calculateTotalFees();
+                            const applicableFees = breakdown.filter(item => item.amount > 0);
 
-            {/* Total Fees Section */}
-            {selectedJurisdiction && (
-                <Card
-                    style={{
-                        marginBottom: '24px',
-                        border: '1px solid #d9d9d9',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                        borderRadius: '12px'
-                    }}
-                >
-                    <Title level={4} style={{ marginBottom: '30px', color: '#1f2937' }}>
-                        Project Fee Calculator
-                    </Title>
+                            // If comparing two locations, show side-by-side comparison
+                            if (compareTwoLocations && selectedJurisdiction2) {
+                                const { total: total2, breakdown: breakdown2 } = calculateTotalFees2();
+                                const applicableFees2 = breakdown2.filter(item => item.amount > 0);
 
-                    {/* Project Parameters */}
-                    <Row gutter={16} style={{ marginBottom: '20px' }}>
-                        <Col span={8}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Type</Text>
-                            <Select
-                                value={projectType}
-                                onChange={setProjectType}
-                                style={{ width: '100%', borderRadius: '8px' }}
-                            >
-                                <Option value="Single Family Residential">Single Family Residential</Option>
-                                <Option value="Multi-Family Residential">Multi-Family Residential</Option>
-                                <Option value="Commercial">Commercial</Option>
-                                <Option value="Restaurant/Food Service">Restaurant/Food Service</Option>
-                                <Option value="Industrial">Industrial</Option>
-                            </Select>
-                        </Col>
-                        <Col span={8}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Units</Text>
-                            <Input
-                                value={projectUnits}
-                                onChange={(e) => setProjectUnits(e.target.value)}
-                                placeholder="100"
-                                style={{ borderRadius: '8px' }}
-                            />
-                        </Col>
-                        <Col span={8}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Square Footage</Text>
-                            <Input
-                                value={squareFootage}
-                                onChange={(e) => setSquareFootage(e.target.value)}
-                                placeholder="80000"
-                                style={{ borderRadius: '8px' }}
-                            />
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16} style={{ marginBottom: '50px' }}>
-                        <Col span={8}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Value ($)</Text>
-                            <Input
-                                value={projectValue}
-                                onChange={(e) => setProjectValue(e.target.value)}
-                                placeholder="15000000"
-                                style={{ borderRadius: '8px' }}
-                            />
-                        </Col>
-                        <Col span={8}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Acreage</Text>
-                            <Input
-                                value={projectAcreage}
-                                onChange={(e) => setProjectAcreage(e.target.value)}
-                                placeholder="5"
-                                style={{ borderRadius: '8px' }}
-                            />
-                        </Col>
-                        <Col span={8}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>Meter Size</Text>
-                            <Select
-                                value={meterSize}
-                                onChange={setMeterSize}
-                                style={{ width: '100%', borderRadius: '8px' }}
-                            >
-                                <Option value="5/8&quot;">5/8"</Option>
-                                <Option value="3/4&quot;">3/4"</Option>
-                                <Option value="1&quot;">1"</Option>
-                                <Option value="1 1/2&quot;">1 1/2"</Option>
-                                <Option value="2&quot;">2"</Option>
-                                <Option value="3&quot;">3"</Option>
-                                <Option value="4&quot;">4"</Option>
-                                <Option value="6&quot;">6"</Option>
-                                <Option value="6&quot; and greater">6" and greater</Option>
-                            </Select>
-                        </Col>
-                    </Row>
-
-                    {/* Calculated Results */}
-                    {(() => {
-                        const { total, breakdown } = calculateTotalFees();
-                        const applicableFees = breakdown.filter(item => item.amount > 0);
-
-                        // If comparing two locations, show side-by-side comparison
-                        if (compareTwoLocations && selectedJurisdiction2) {
-                            const { total: total2, breakdown: breakdown2 } = calculateTotalFees2();
-                            const applicableFees2 = breakdown2.filter(item => item.amount > 0);
-
-                            return (
-                                <>
-                                    {/* First Location Summary */}
-                                    <div style={{ marginBottom: '30px' }}>
-                                        <Text strong style={{ display: 'block', marginBottom: '15px', fontSize: '16px', color: '#1f2937' }}>
-                                            {selectedJurisdiction.name}
-                                        </Text>
-                                        <Row gutter={24}>
-                                            <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Total Fee Records</Text>
-                                                    <Text strong style={{ fontSize: '32px', color: '#000000' }}>{jurisdictionFees.length}</Text>
-                                                </div>
-                                            </Col>
-                                            <Col span={12}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Calculated Total Cost</Text>
-                                                    <Text strong style={{ fontSize: '32px', color: '#000000' }}>
-                                                        ${total.toLocaleString()}
-                                                    </Text>
-                                                </div>
-                                            </Col>
-                                            <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Applicable Fees</Text>
-                                                    <Text strong style={{ fontSize: '32px', color: '#000000' }}>
-                                                        {applicableFees.length}
-                                                    </Text>
-                                                </div>
-                                            </Col>
-                                        </Row>
-                                    </div>
-
-                                    {/* Second Location Summary */}
-                                    <div style={{ marginBottom: '30px' }}>
-                                        <Text strong style={{ display: 'block', marginBottom: '15px', fontSize: '16px', color: '#1f2937' }}>
-                                            {selectedJurisdiction2.name}
-                                        </Text>
-                                        <Row gutter={24}>
-                                            <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Total Fee Records</Text>
-                                                    <Text strong style={{ fontSize: '32px', color: '#000000' }}>{jurisdictionFees2.length}</Text>
-                                                </div>
-                                            </Col>
-                                            <Col span={12}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Calculated Total Cost</Text>
-                                                    <Text strong style={{ fontSize: '32px', color: '#000000' }}>
-                                                        ${total2.toLocaleString()}
-                                                    </Text>
-                                                </div>
-                                            </Col>
-                                            <Col span={6}>
-                                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Applicable Fees</Text>
-                                                    <Text strong style={{ fontSize: '32px', color: '#000000' }}>
-                                                        {applicableFees2.length}
-                                                    </Text>
-                                                </div>
-                                            </Col>
-                                        </Row>
-                                    </div>
-
-                                    {/* Fee Breakdowns */}
-                                    <Row gutter={24}>
-                                        {/* First Location Fee Breakdown */}
-                                        <Col span={12}>
-                                            {applicableFees.length > 0 && (
-                                                <div>
-                                                    <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px', color: '#1f2937' }}>
-                                                        {selectedJurisdiction.name} - Fee Breakdown
-                                                    </Text>
-                                                    <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '8px', padding: '12px' }}>
-                                                        {applicableFees
-                                                            .sort((a, b) => b.amount - a.amount)
-                                                            .map((item, index) => (
-                                                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                                                                    <div style={{ flex: 1 }}>
-                                                                        <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
-                                                                        <Text style={{ fontSize: '12px', color: '#666' }}>
-                                                                            {item.fee.category} • {item.fee.unit_label}
-                                                                        </Text>
-                                                                    </div>
-                                                                    <Text strong style={{ fontSize: '14px', color: '#000000', marginLeft: '12px' }}>
-                                                                        ${item.amount.toLocaleString()}
-                                                                    </Text>
-                                                                </div>
-                                                            ))}
-                                                    </div>
-                                                    <Text style={{ fontSize: '12px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-                                                        {applicableFees.length} applicable fees
-                                                    </Text>
-                                                </div>
-                                            )}
-                                        </Col>
-
-                                        {/* Second Location Fee Breakdown */}
-                                        <Col span={12}>
-                                            {applicableFees2.length > 0 && (
-                                                <div>
-                                                    <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px', color: '#1f2937' }}>
-                                                        {selectedJurisdiction2.name} - Fee Breakdown
-                                                    </Text>
-                                                    <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '8px', padding: '12px' }}>
-                                                        {applicableFees2
-                                                            .sort((a, b) => b.amount - a.amount)
-                                                            .map((item, index) => (
-                                                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees2.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                                                                    <div style={{ flex: 1 }}>
-                                                                        <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
-                                                                        <Text style={{ fontSize: '12px', color: '#666' }}>
-                                                                            {item.fee.category} • {item.fee.unit_label}
-                                                                        </Text>
-                                                                    </div>
-                                                                    <Text strong style={{ fontSize: '14px', color: '#000000', marginLeft: '12px' }}>
-                                                                        ${item.amount.toLocaleString()}
-                                                                    </Text>
-                                                                </div>
-                                                            ))}
-                                                    </div>
-                                                    <Text style={{ fontSize: '12px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-                                                        {applicableFees2.length} applicable fees
-                                                    </Text>
-                                                </div>
-                                            )}
-                                        </Col>
-                                    </Row>
-                                </>
-                            );
-                        }
-
-                        // Single location view (original behavior)
-                        return (
-                            <>
-                                <Row gutter={24}>
-                                    <Col span={6}>
-                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                            <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Total Fee Records</Text>
-                                            <Text strong style={{ fontSize: '32px', color: '#000000' }}>{jurisdictionFees.length}</Text>
-                                        </div>
-                                    </Col>
-                                    <Col span={12}>
-                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                            <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Calculated Total Cost</Text>
-                                            <Text strong style={{ fontSize: '32px', color: '#000000' }}>
-                                                ${total.toLocaleString()}
+                                return (
+                                    <>
+                                        {/* First Location Summary */}
+                                        <div style={{ marginBottom: '30px' }}>
+                                            <Text strong style={{ display: 'block', marginBottom: '15px', fontSize: '16px', color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937' }}>
+                                                {selectedJurisdiction.name}
                                             </Text>
-                                        </div>
-                                    </Col>
-                                    <Col span={6}>
-                                        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                            <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666666' }}>Applicable Fees</Text>
-                                            <Text strong style={{ fontSize: '32px', color: '#000000' }}>
-                                                {applicableFees.length}
-                                            </Text>
-                                        </div>
-                                    </Col>
-                                </Row>
-
-                                {/* Fee Breakdown */}
-                                {applicableFees.length > 0 && (
-                                    <div style={{ marginTop: '20px' }}>
-                                        <Text strong style={{ display: 'block', marginBottom: '12px' }}>Fee Breakdown:</Text>
-                                        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '8px', padding: '12px' }}>
-                                            {applicableFees
-                                                .sort((a, b) => b.amount - a.amount)
-                                                .map((item, index) => (
-                                                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
-                                                            <Text style={{ fontSize: '12px', color: '#666' }}>
-                                                                {item.fee.category} • {item.fee.unit_label}
-                                                            </Text>
-                                                        </div>
-                                                        <Text strong style={{ fontSize: '14px', color: '#000000', marginLeft: '12px' }}>
-                                                            ${item.amount.toLocaleString()}
+                                            <Row gutter={24}>
+                                                <Col span={6}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Total Fee Records</Text>
+                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees.length}</Text>
+                                                    </div>
+                                                </Col>
+                                                <Col span={12}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
+                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                            ${total.toLocaleString()}
                                                         </Text>
                                                     </div>
-                                                ))}
+                                                </Col>
+                                                <Col span={6}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Applicable Fees</Text>
+                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                            {applicableFees.length}
+                                                        </Text>
+                                                    </div>
+                                                </Col>
+                                            </Row>
                                         </div>
 
-                                        <Text style={{ fontSize: '12px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-                                            Showing all {applicableFees.length} applicable fees
-                                        </Text>
-                                    </div>
-                                )}
-                            </>
-                        );
-                    })()}
+                                        {/* Second Location Summary */}
+                                        <div style={{ marginBottom: '30px' }}>
+                                            <Text strong style={{ display: 'block', marginBottom: '15px', fontSize: '16px', color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937' }}>
+                                                {selectedJurisdiction2.name}
+                                            </Text>
+                                            <Row gutter={24}>
+                                                <Col span={6}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Total Fee Records</Text>
+                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees2.length}</Text>
+                                                    </div>
+                                                </Col>
+                                                <Col span={12}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
+                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                            ${total2.toLocaleString()}
+                                                        </Text>
+                                                    </div>
+                                                </Col>
+                                                <Col span={6}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Applicable Fees</Text>
+                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                            {applicableFees2.length}
+                                                        </Text>
+                                                    </div>
+                                                </Col>
+                                            </Row>
+                                        </div>
 
-                    <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
-                        <Text style={{ fontSize: '14px' }} type="secondary">
-                            <strong>Note:</strong> Calculations based on current project parameters.
-                            Formula-based fees and complex calculations are not yet implemented.
-                        </Text>
-                    </div>
-                </Card>
-            )}
+                                        {/* Fee Breakdowns */}
+                                        <Row gutter={24}>
+                                            {/* First Location Fee Breakdown */}
+                                            <Col span={12}>
+                                                {applicableFees.length > 0 && (
+                                                    <div>
+                                                        <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px', color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937' }}>
+                                                            {selectedJurisdiction.name} - Fee Breakdown
+                                                        </Text>
+                                                        <div style={{ maxHeight: '400px', overflowY: 'auto', border: theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9', borderRadius: '8px', padding: '12px' }}>
+                                                            {applicableFees
+                                                                .sort((a, b) => b.amount - a.amount)
+                                                                .map((item, index) => (
+                                                                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
+                                                                            <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                                                                {item.fee.category} • {item.fee.unit_label}
+                                                                            </Text>
+                                                                        </div>
+                                                                        <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
+                                                                            ${item.amount.toLocaleString()}
+                                                                        </Text>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                        <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
+                                                            {applicableFees.length} applicable fees
+                                                        </Text>
+                                                    </div>
+                                                )}
+                                            </Col>
+
+                                            {/* Second Location Fee Breakdown */}
+                                            <Col span={12}>
+                                                {applicableFees2.length > 0 && (
+                                                    <div>
+                                                        <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px', color: theme.appearance === 'dark' ? '#ffffff' : '#1f2937' }}>
+                                                            {selectedJurisdiction2.name} - Fee Breakdown
+                                                        </Text>
+                                                        <div style={{ maxHeight: '400px', overflowY: 'auto', border: theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9', borderRadius: '8px', padding: '12px' }}>
+                                                            {applicableFees2
+                                                                .sort((a, b) => b.amount - a.amount)
+                                                                .map((item, index) => (
+                                                                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees2.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
+                                                                            <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                                                                {item.fee.category} • {item.fee.unit_label}
+                                                                            </Text>
+                                                                        </div>
+                                                                        <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
+                                                                            ${item.amount.toLocaleString()}
+                                                                        </Text>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                        <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
+                                                            {applicableFees2.length} applicable fees
+                                                        </Text>
+                                                    </div>
+                                                )}
+                                            </Col>
+                                        </Row>
+                                    </>
+                                );
+                            }
+
+                            // Single location view (original behavior)
+                            return (
+                                <>
+                                    <Row gutter={24}>
+                                        <Col span={6}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Total Fee Records</Text>
+                                                <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees.length}</Text>
+                                            </div>
+                                        </Col>
+                                        <Col span={12}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
+                                                <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                    ${total.toLocaleString()}
+                                                </Text>
+                                            </div>
+                                        </Col>
+                                        <Col span={6}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Applicable Fees</Text>
+                                                <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                    {applicableFees.length}
+                                                </Text>
+                                            </div>
+                                        </Col>
+                                    </Row>
+
+                                    {/* Fee Breakdown */}
+                                    {applicableFees.length > 0 && (
+                                        <div style={{ marginTop: '20px' }}>
+                                            <Text strong style={{ display: 'block', marginBottom: '12px' }}>Fee Breakdown:</Text>
+                                            <div style={{ maxHeight: '400px', overflowY: 'auto', border: theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9', borderRadius: '8px', padding: '12px' }}>
+                                                {applicableFees
+                                                    .sort((a, b) => b.amount - a.amount)
+                                                    .map((item, index) => (
+                                                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
+                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                                                    {item.fee.category} • {item.fee.unit_label}
+                                                                </Text>
+                                                            </div>
+                                                            <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
+                                                                ${item.amount.toLocaleString()}
+                                                            </Text>
+                                                        </div>
+                                                    ))}
+                                            </div>
+
+                                            <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
+                                                Showing all {applicableFees.length} applicable fees
+                                            </Text>
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
+
+                        <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
+                            <Text style={{ fontSize: '14px' }} type="secondary">
+                                <strong>Note:</strong> Calculations based on current project parameters.
+                                Formula-based fees and complex calculations are not yet implemented.
+                            </Text>
+                        </div>
+                    </Card>
+                )}
 
 
 
 
-        </div>
+            </div>
+        </PaywallGuard>
     );
 };
 

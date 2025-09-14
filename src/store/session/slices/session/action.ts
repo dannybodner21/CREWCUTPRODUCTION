@@ -107,21 +107,44 @@ export const createSessionSlice: StateCreator<
 
     // Check if this is a LEWIS session - be more aggressive in detection
     const isLewisSession = agent?.meta?.title?.toLowerCase().includes('lewis') ||
-      agent?.agentId === 'lewis' ||
-      agent?.identifier === 'lewis' ||
-      agent?.plugins?.includes('lewis') ||
       agent?.config?.plugins?.includes('lewis') ||
       (agent?.meta?.title && agent.meta.title.toLowerCase().includes('construction')) ||
       (agent?.meta?.title && agent.meta.title.toLowerCase().includes('multi-family')) ||
       (agent?.meta?.title && agent.meta.title.toLowerCase().includes('residential'));
 
+    // Check LEWIS access for LEWIS sessions
+    if (isLewisSession) {
+      console.log('🔧 LEWIS ACCESS: LEWIS session detected, checking access');
+
+      // Get user subscription data
+      const userStore = getUserStoreState();
+      const userId = userProfileSelectors.userId(userStore);
+
+      if (!userId) {
+        message.error('Please log in to access LEWIS features');
+        return '';
+      }
+
+      // Check if user has LEWIS access
+      try {
+        const response = await fetch('/api/subscription');
+        const data = await response.json();
+
+        if (!data.hasLewisAccess) {
+          message.error('LEWIS access required. Please upgrade your subscription.');
+          return '';
+        }
+      } catch (error) {
+        console.error('Failed to check LEWIS access:', error);
+        message.error('Failed to verify LEWIS access. Please try again.');
+        return '';
+      }
+    }
+
     console.log('🔧 SESSION CREATION DEBUG:', {
       agent,
       isLewisSession,
       title: agent?.meta?.title,
-      agentId: agent?.agentId,
-      identifier: agent?.identifier,
-      plugins: agent?.plugins,
       configPlugins: agent?.config?.plugins
     });
 
@@ -130,6 +153,7 @@ export const createSessionSlice: StateCreator<
 
     // FORCE LEWIS configuration for any session that might be construction-related
     // This is a temporary fix to ensure LEWIS always works
+    // Only apply force logic if there's actually an agent with a title
     const forceLewisConfig = isLewisSession ||
       (agent?.meta?.title && (
         agent.meta.title.toLowerCase().includes('construction') ||
@@ -142,9 +166,7 @@ export const createSessionSlice: StateCreator<
     console.log('🔧 FORCE LEWIS CONFIG CHECK:', {
       forceLewisConfig,
       isLewisSession,
-      agentTitle: agent?.meta?.title,
-      agentId: agent?.agentId,
-      identifier: agent?.identifier
+      agentTitle: agent?.meta?.title
     });
 
     if (forceLewisConfig) {

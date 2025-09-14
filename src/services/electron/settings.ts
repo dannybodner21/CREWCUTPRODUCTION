@@ -1,8 +1,15 @@
-import {
-  NetworkProxySettings,
-  ShortcutUpdateResult,
-  dispatch,
-} from '@lobechat/electron-client-ipc';
+// Conditional import for Electron modules
+let NetworkProxySettings: any, ShortcutUpdateResult: any, dispatch: any;
+if (typeof window !== 'undefined' && (window as any).electronAPI) {
+  try {
+    const electronModule = require('@lobechat/electron-client-ipc');
+    NetworkProxySettings = electronModule.NetworkProxySettings;
+    ShortcutUpdateResult = electronModule.ShortcutUpdateResult;
+    dispatch = electronModule.dispatch;
+  } catch (error) {
+    console.warn('Electron module not available:', error);
+  }
+}
 
 class DesktopSettingsService {
   /**

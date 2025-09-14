@@ -14,5 +14,6 @@ export * from './rbac';
 export * from './relations';
 export * from './savedArtifact';
 export * from './session';
+export * from './subscription';
 export * from './topic';
 export * from './user';

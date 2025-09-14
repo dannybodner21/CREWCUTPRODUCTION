@@ -44,6 +44,11 @@ declare global {
       // GOOGLE
       AUTH_GOOGLE_CLIENT_ID?: string;
       AUTH_GOOGLE_CLIENT_SECRET?: string;
+
+      // STRIPE
+      STRIPE_SECRET_KEY?: string;
+      STRIPE_PUBLISHABLE_KEY?: string;
+      STRIPE_WEBHOOK_SECRET?: string;
     }
   }
 }
@@ -207,6 +212,11 @@ export const getAuthConfig = () => {
       AUTH_GOOGLE_CLIENT_ID: z.string().optional(),
       AUTH_GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+      // STRIPE
+      STRIPE_SECRET_KEY: z.string().optional(),
+      STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+      STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
       // LOGTO
       LOGTO_CLIENT_ID: z.string().optional(),
       LOGTO_CLIENT_SECRET: z.string().optional(),
@@ -272,6 +282,11 @@ export const getAuthConfig = () => {
       // GOOGLE
       AUTH_GOOGLE_CLIENT_ID: process.env.AUTH_GOOGLE_CLIENT_ID,
       AUTH_GOOGLE_CLIENT_SECRET: process.env.AUTH_GOOGLE_CLIENT_SECRET,
+
+      // STRIPE
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+      STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
+      STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 
       // LOGTO
       LOGTO_CLIENT_ID: process.env.LOGTO_CLIENT_ID,

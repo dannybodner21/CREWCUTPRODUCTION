@@ -1,8 +1,6 @@
 import { DynamicLayoutProps } from '@/types/next';
 import { RouteVariants } from '@/utils/server/routeVariants';
 
-import LewisPortalButton from '@/components/LewisPortalButton';
-
 import ChatHydration from './features/ChatHydration';
 import ChatInput from './features/ChatInput';
 import ChatList from './features/ChatList';
@@ -15,7 +13,6 @@ const ChatConversation = async (props: DynamicLayoutProps) => {
   return (
     <>
       <ZenModeToast />
-      <LewisPortalButton />
       <ChatList mobile={isMobile} />
       <ChatInput mobile={isMobile} />
       <ChatHydration />

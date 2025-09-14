@@ -6,6 +6,7 @@ import { useSessionStore } from '@/store/session';
 import { sessionSelectors } from '@/store/session/selectors';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
+import { useSubscription } from '@/hooks/useSubscription';
 
 /**
  * Hook that automatically opens the Construction Portal when Lewis is being used
@@ -24,14 +25,17 @@ export const useLewisPortalAutoOpen = () => {
         s.updateSystemStatus,
     ]);
 
+    // Check subscription status
+    const { hasLewisAccess } = useSubscription();
+
     useEffect(() => {
         // Check if we're in a Lewis session
         const isLewisSession = currentSession?.agentId === 'lewis' ||
             currentAgent?.identifier === 'lewis' ||
             currentSession?.meta?.title?.toLowerCase().includes('lewis');
 
-        // If it's a Lewis session and portal is not open, open it automatically
-        if (isLewisSession && !showPortal) {
+        // If it's a Lewis session and user has access and portal is not open, open it automatically
+        if (isLewisSession && hasLewisAccess && !showPortal) {
             console.log('🔧 LEWIS PORTAL: Auto-opening Construction Portal for Lewis session');
             togglePortal(true);
 
@@ -41,7 +45,7 @@ export const useLewisPortalAutoOpen = () => {
                 updateSystemStatus({ portalWidth: 600 });
             }
         }
-    }, [currentSession, currentAgent, showPortal, togglePortal, portalWidth, updateSystemStatus]);
+    }, [currentSession, currentAgent, showPortal, togglePortal, portalWidth, updateSystemStatus, hasLewisAccess]);
 
     // Listen for session changes to detect Lewis sessions immediately
     useEffect(() => {
@@ -80,7 +84,7 @@ export const useLewisPortalAutoOpen = () => {
                     const isLewisSession = session.meta?.title?.toLowerCase().includes('lewis') ||
                         session.agentId === 'lewis';
 
-                    if (isLewisSession && !showPortal) {
+                    if (isLewisSession && hasLewisAccess && !showPortal) {
                         console.log('🔧 LEWIS PORTAL: Current session is Lewis, opening portal immediately');
                         togglePortal(true);
                         if (portalWidth < 600) {
@@ -98,7 +102,7 @@ export const useLewisPortalAutoOpen = () => {
         const timer = setTimeout(checkCurrentSession, 100);
 
         return () => clearTimeout(timer);
-    }, [showPortal, togglePortal, portalWidth, updateSystemStatus]);
+    }, [showPortal, togglePortal, portalWidth, updateSystemStatus, hasLewisAccess]);
 
     return {
         isLewisSession: currentSession?.agentId === 'lewis' ||

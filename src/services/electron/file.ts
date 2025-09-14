@@ -1,4 +1,13 @@
-import { dispatch } from '@lobechat/electron-client-ipc';
+// Conditional import for Electron modules
+let dispatch: any;
+if (typeof window !== 'undefined' && (window as any).electronAPI) {
+  try {
+    const electronModule = require('@lobechat/electron-client-ipc');
+    dispatch = electronModule.dispatch;
+  } catch (error) {
+    console.warn('Electron module not available:', error);
+  }
+}
 
 import { FileMetadata } from '@/types/files';
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Table, message } from 'antd';
+import { useTheme } from 'antd-style';
 import { Building, X } from 'lucide-react';
 import { memo, useState, useEffect } from 'react';
 import { Flexbox } from 'react-layout-kit';
@@ -9,6 +10,7 @@ import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/slices/portal/selectors';
 import { useSessionStore } from '@/store/session';
 import { sessionMetaSelectors, sessionSelectors } from '@/store/session/selectors';
+import { PaywallGuard } from './PaywallGuard';
 
 interface JurisdictionData {
     id: string;
@@ -24,6 +26,16 @@ interface Fee {
     category: string;
     rate: string;
     formula?: string;
+    // New fee_versions fields
+    calc_method: string;
+    base_rate: number;
+    min_fee: number | null;
+    max_fee: number | null;
+    unit_id: string;
+    formula_json: any;
+    status: string;
+    effective_start: string;
+    effective_end: string | null;
 }
 
 interface ProjectParameters {
@@ -32,6 +44,7 @@ interface ProjectParameters {
     projectValue: number;
     acreage: number;
     meterSize: string;
+    trips?: number;
 }
 
 const LewisPortalButton = memo(() => {
@@ -41,6 +54,7 @@ const LewisPortalButton = memo(() => {
     const currentSession = useSessionStore(sessionSelectors.currentSession);
     const currentAgent = useChatStore((s) => s.currentAgent);
     const title = useSessionStore(sessionMetaSelectors.currentAgentTitle);
+    const theme = useTheme();
 
     // Use the same detection logic as useLewisPortalAutoOpen
     const isLewisSession = currentSession?.agentId === 'lewis' ||
@@ -50,50 +64,134 @@ const LewisPortalButton = memo(() => {
     const togglePortal = useChatStore((s) => s.togglePortal);
     const showPortal = useChatStore(chatPortalSelectors.showPortal);
 
-    // Fee calculation function (same as in CustomLewisPortal)
+    // Fee calculation function using proper fee_versions logic
     const calculateFeeAmount = (fee: Fee, projectParams: ProjectParameters): number => {
         const { units, squareFootage, projectValue, acreage = 0, meterSize = '6"' } = projectParams;
 
-        // Handle formula-based fees
-        if (fee.formula && fee.category === 'formula') {
-            // For now, return 0 for complex formulas - we'll implement these later
-            return 0;
-        }
-
-        // Handle flat fees
-        if (fee.category === 'flat') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                return parseFloat(fee.rate);
+        // Check if we have valid fee_versions data
+        if (!fee.calc_method || fee.base_rate === null || fee.base_rate === undefined) {
+            // Fallback to legacy rate if fee_versions data is missing
+            if (!fee.rate || isNaN(parseFloat(fee.rate))) {
+                return 0;
             }
-            return 0;
+            return parseFloat(fee.rate);
         }
 
-        // Handle per_unit fees
-        if (fee.category === 'per_unit') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                return parseFloat(fee.rate) * units;
-            }
-            return 0;
+        let amount = 0;
+        const baseRate = fee.base_rate;
+
+        // Calculate based on calc_method
+        switch (fee.calc_method) {
+            case 'flat':
+                amount = baseRate;
+                break;
+
+            case 'per_sqft':
+                amount = baseRate * squareFootage;
+                break;
+
+            case 'per_unit':
+                amount = baseRate * units;
+                break;
+
+            case 'percent_of_valuation':
+                amount = baseRate * projectValue;
+                break;
+
+            case 'per_trip':
+                // For now, assume trips are passed in projectParams or derive from units
+                const trips = projectParams.trips || (units * 2); // Simple fallback: 2 trips per unit
+                amount = baseRate * trips;
+                break;
+
+            case 'meter_size':
+                if (fee.formula_json && typeof fee.formula_json === 'object') {
+                    const meterKey = `METER_${meterSize.replace(/"/g, '').replace('.', '_')}IN`;
+                    amount = fee.formula_json[meterKey] || baseRate;
+                } else {
+                    amount = baseRate;
+                }
+                break;
+
+            case 'custom':
+                if (fee.formula_json) {
+                    try {
+                        if (fee.formula_json.expr) {
+                            // Simple expression evaluation
+                            const expr = fee.formula_json.expr;
+                            const context = {
+                                units,
+                                squareFootage,
+                                projectValue,
+                                valuation: projectValue,
+                                res_sqft: squareFootage,
+                                nonres_sqft: 0,
+                                total_sqft: squareFootage,
+                                trips: projectParams.trips || (units * 2),
+                                meter_size: meterSize
+                            };
+
+                            // Simple expression parser
+                            let evaluatedExpr = expr;
+                            Object.keys(context).forEach(key => {
+                                const regex = new RegExp(`\\b${key}\\b`, 'g');
+                                evaluatedExpr = evaluatedExpr.replace(regex, context[key]);
+                            });
+
+                            amount = eval(evaluatedExpr);
+                        } else if (fee.formula_json.switch) {
+                            // Switch statement evaluation
+                            const context = {
+                                units,
+                                squareFootage,
+                                projectValue,
+                                valuation: projectValue,
+                                res_sqft: squareFootage,
+                                nonres_sqft: 0,
+                                total_sqft: squareFootage,
+                                trips: projectParams.trips || (units * 2),
+                                meter_size: meterSize
+                            };
+
+                            for (const case_ of fee.formula_json.switch) {
+                                const condition = case_.when.replace(/\bunits\b/g, units)
+                                    .replace(/\bvaluation\b/g, projectValue)
+                                    .replace(/\bsquareFootage\b/g, squareFootage);
+
+                                if (eval(condition)) {
+                                    const expr = case_.expr.replace(/\bunits\b/g, units)
+                                        .replace(/\bvaluation\b/g, projectValue)
+                                        .replace(/\bsquareFootage\b/g, squareFootage);
+                                    amount = eval(expr);
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Custom fee evaluation error:', error);
+                        amount = baseRate;
+                    }
+                } else {
+                    amount = baseRate;
+                }
+                break;
+
+            default:
+                amount = baseRate;
         }
 
-        // Handle per_sqft fees
-        if (fee.category === 'per_sqft') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                return parseFloat(fee.rate) * squareFootage;
-            }
-            return 0;
+        // Apply min/max fee constraints
+        if (fee.min_fee !== null && fee.min_fee !== undefined) {
+            amount = Math.max(amount, fee.min_fee);
+        }
+        if (fee.max_fee !== null && fee.max_fee !== undefined) {
+            amount = Math.min(amount, fee.max_fee);
         }
 
-        // Handle per_meter_size fees (monthly)
-        if (fee.category === 'per_meter_size') {
-            if (fee.rate && !isNaN(parseFloat(fee.rate))) {
-                // For monthly fees, we'll calculate for 12 months
-                return parseFloat(fee.rate) * 12;
-            }
-            return 0;
-        }
+        // Round to 2 decimal places
+        amount = Math.round(amount * 100) / 100;
 
-        return 0;
+        return amount;
     };
 
     // Debug logging
@@ -205,7 +303,7 @@ const LewisPortalButton = memo(() => {
     }
 
     return (
-        <>
+        <PaywallGuard>
             <Flexbox
                 align="center"
                 justify="center"
@@ -215,8 +313,8 @@ const LewisPortalButton = memo(() => {
                     padding: '16px 0',
                     marginTop: '20px',
                     marginBottom: '20px',
-                    borderBottom: '1px solid #f0f0f0',
-                    backgroundColor: '#fafafa'
+                    borderBottom: theme.appearance === 'dark' ? '1px solid #333333' : '1px solid #f0f0f0',
+                    backgroundColor: theme.appearance === 'dark' ? '#000000' : '#fafafa'
                 }}
             >
                 <Button
@@ -228,12 +326,14 @@ const LewisPortalButton = memo(() => {
                         fontSize: 14,
                         paddingInline: 32,
                         borderRadius: 12,
-                        backgroundColor: '#ffffff',
-                        borderColor: '#d9d9d9',
-                        color: '#000000',
+                        backgroundColor: theme.appearance === 'dark' ? '#000000' : '#ffffff',
+                        borderColor: theme.appearance === 'dark' ? '#666666' : '#d9d9d9',
+                        color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
                         fontWeight: 400,
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
+                        background: theme.appearance === 'dark'
+                            ? 'linear-gradient(135deg, #000000 0%, #111111 25%, #000000 50%, #222222 75%, #000000 100%)'
+                            : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
                         backgroundSize: '200% 200%',
                         animation: 'shimmer 3s ease-in-out infinite',
                         position: 'relative',
@@ -266,12 +366,14 @@ const LewisPortalButton = memo(() => {
                         fontSize: 14,
                         paddingInline: 32,
                         borderRadius: 12,
-                        backgroundColor: '#ffffff',
-                        borderColor: '#d9d9d9',
-                        color: '#000000',
+                        backgroundColor: theme.appearance === 'dark' ? '#000000' : '#ffffff',
+                        borderColor: theme.appearance === 'dark' ? '#666666' : '#d9d9d9',
+                        color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
                         fontWeight: 400,
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
+                        background: theme.appearance === 'dark'
+                            ? 'linear-gradient(135deg, #000000 0%, #111111 25%, #000000 50%, #222222 75%, #000000 100%)'
+                            : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
                         backgroundSize: '200% 200%',
                         animation: 'shimmer 3s ease-in-out infinite',
                         position: 'relative',
@@ -414,7 +516,7 @@ const LewisPortalButton = memo(() => {
                     }
                 }
             `}</style>
-        </>
+        </PaywallGuard>
     );
 });
 

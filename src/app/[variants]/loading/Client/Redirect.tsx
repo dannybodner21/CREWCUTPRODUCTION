@@ -19,15 +19,15 @@ const Redirect = memo<RedirectProps>(({ setActiveStage }) => {
 
   const isPgliteNotEnabled = useGlobalStore(systemStatusSelectors.isPgliteNotEnabled);
 
-  const navToChat = () => {
+  const navToHome = () => {
     setActiveStage(AppLoadingStage.GoToChat);
-    router.replace('/chat');
+    router.replace('/home');
   };
 
   useEffect(() => {
-    // if pglite is not enabled, redirect to chat
+    // if pglite is not enabled, redirect to home
     if (isPgliteNotEnabled) {
-      navToChat();
+      navToHome();
       return;
     }
 
@@ -38,7 +38,7 @@ const Redirect = memo<RedirectProps>(({ setActiveStage }) => {
     }
 
     // finally check the conversation status
-    navToChat();
+    navToHome();
   }, [isUserStateInit, isPgliteNotEnabled]);
 
   return null;

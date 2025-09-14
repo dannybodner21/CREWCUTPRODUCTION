@@ -335,18 +335,83 @@ export class LewisDataService {
         });
     }
 
-    // Get fees for a specific jurisdiction
+    // Get fees for a specific jurisdiction with fee_versions data
     async getJurisdictionFees(jurisdictionId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
         return await executeSupabaseQuery(async () => {
             const supabase = this.getSupabaseClient();
-            const { data, error } = await supabase
+
+            // First try to get fees with fee_versions data
+            const { data: feesWithVersions, error: versionsError } = await supabase
                 .from('fees')
-                .select('id, name, category, rate, unit_label, description, applies_to, use_subtype, formula')
+                .select(`
+                    id, name, category, rate, unit_label, description, applies_to, use_subtype, formula,
+                    fee_versions!inner(
+                        calc_method, base_rate, min_fee, max_fee, unit_id, formula_json, 
+                        status, effective_start, effective_end
+                    )
+                `)
                 .eq('jurisdiction_id', jurisdictionId)
                 .eq('active', true)
+                .eq('fee_versions.status', 'verified')
+                .lte('fee_versions.effective_start', new Date().toISOString())
+                .or('fee_versions.effective_end.is.null,fee_versions.effective_end.gte.' + new Date().toISOString())
                 .order('name');
 
-            return { data, error };
+            if (versionsError || !feesWithVersions || feesWithVersions.length === 0) {
+                console.log('🔧 No fee_versions data found, falling back to legacy fees table');
+
+                // Fallback to legacy fees table
+                const { data: legacyFees, error: legacyError } = await supabase
+                    .from('fees')
+                    .select('id, name, category, rate, unit_label, description, applies_to, use_subtype, formula')
+                    .eq('jurisdiction_id', jurisdictionId)
+                    .eq('active', true)
+                    .order('name');
+
+                if (legacyError) {
+                    return { data: null, error: legacyError };
+                }
+
+                // Transform legacy data to match new interface
+                const transformedLegacyFees = legacyFees?.map(fee => ({
+                    ...fee,
+                    calc_method: 'flat', // Default to flat for legacy
+                    base_rate: fee.rate ? parseFloat(fee.rate) : 0,
+                    min_fee: null,
+                    max_fee: null,
+                    unit_id: 'FLAT',
+                    formula_json: null,
+                    status: 'legacy',
+                    effective_start: new Date().toISOString(),
+                    effective_end: null
+                })) || [];
+
+                return { data: transformedLegacyFees, error: null };
+            }
+
+            // Transform the joined data to flatten the fee_versions
+            const transformedFees = feesWithVersions.map(fee => ({
+                id: fee.id,
+                name: fee.name,
+                category: fee.category,
+                rate: fee.rate,
+                unit_label: fee.unit_label,
+                description: fee.description,
+                applies_to: fee.applies_to,
+                use_subtype: fee.use_subtype,
+                formula: fee.formula,
+                calc_method: fee.fee_versions[0]?.calc_method || 'flat',
+                base_rate: fee.fee_versions[0]?.base_rate || 0,
+                min_fee: fee.fee_versions[0]?.min_fee,
+                max_fee: fee.fee_versions[0]?.max_fee,
+                unit_id: fee.fee_versions[0]?.unit_id || 'FLAT',
+                formula_json: fee.fee_versions[0]?.formula_json,
+                status: fee.fee_versions[0]?.status || 'verified',
+                effective_start: fee.fee_versions[0]?.effective_start,
+                effective_end: fee.fee_versions[0]?.effective_end
+            }));
+
+            return { data: transformedFees, error: null };
         });
     }
 

@@ -17,7 +17,7 @@ const Layout = ({ children, topic, conversation, portal }: LayoutProps) => {
       {portal}
       <MainInterfaceTracker />
       {/* Client component that auto-opens Construction Portal for Lewis sessions */}
-      <LewisPortalAutoOpener />
+      {/* <LewisPortalAutoOpener /> */}
     </>
   );
 };

@@ -1,4 +1,14 @@
-import { DataSyncConfig, dispatch } from '@lobechat/electron-client-ipc';
+// Conditional import for Electron modules
+let DataSyncConfig: any, dispatch: any;
+if (typeof window !== 'undefined' && (window as any).electronAPI) {
+  try {
+    const electronModule = require('@lobechat/electron-client-ipc');
+    DataSyncConfig = electronModule.DataSyncConfig;
+    dispatch = electronModule.dispatch;
+  } catch (error) {
+    console.warn('Electron module not available:', error);
+  }
+}
 
 class RemoteServerService {
   /**

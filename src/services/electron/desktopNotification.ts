@@ -1,8 +1,15 @@
-import {
-  DesktopNotificationResult,
-  ShowDesktopNotificationParams,
-  dispatch,
-} from '@lobechat/electron-client-ipc';
+// Conditional import for Electron modules
+let DesktopNotificationResult: any, ShowDesktopNotificationParams: any, dispatch: any;
+if (typeof window !== 'undefined' && (window as any).electronAPI) {
+  try {
+    const electronModule = require('@lobechat/electron-client-ipc');
+    DesktopNotificationResult = electronModule.DesktopNotificationResult;
+    ShowDesktopNotificationParams = electronModule.ShowDesktopNotificationParams;
+    dispatch = electronModule.dispatch;
+  } catch (error) {
+    console.warn('Electron module not available:', error);
+  }
+}
 
 /**
  * 桌面通知服务

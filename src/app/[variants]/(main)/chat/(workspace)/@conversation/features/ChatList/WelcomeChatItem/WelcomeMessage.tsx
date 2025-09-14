@@ -17,6 +17,7 @@ import { sessionMetaSelectors } from '@/store/session/selectors';
 
 import OpeningQuestions from './OpeningQuestions';
 import LewisOpeningQuestions from '@/components/LewisOpeningQuestions';
+import LewisPortalButton from '@/components/LewisPortalButton';
 
 const WelcomeMessage = () => {
   const mobile = useServerConfigStore((s) => s.isMobile);
@@ -94,7 +95,10 @@ const WelcomeMessage = () => {
       <Flexbox>
         {chatItem}
         {isLewisSession ? (
-          <LewisOpeningQuestions />
+          <>
+            <LewisOpeningQuestions />
+            <LewisPortalButton />
+          </>
         ) : (
           openingQuestions.length > 0 && (
             <OpeningQuestions mobile={mobile} questions={openingQuestions} />
@@ -106,7 +110,7 @@ const WelcomeMessage = () => {
           <div style={{
             width: '50%',
             height: '2px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: '#666666',
             margin: '20px 0'
           }} />
         </Flexbox>

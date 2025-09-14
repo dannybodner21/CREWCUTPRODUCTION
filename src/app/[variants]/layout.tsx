@@ -31,34 +31,24 @@ const RootLayout = async ({ children, params, modal }: RootLayoutProps) => {
   const direction = isRtlLang(locale) ? 'rtl' : 'ltr';
 
   return (
-    <html dir={direction} lang={locale}>
-      <head>
-        {process.env.DEBUG_REACT_SCAN === '1' && (
-          // eslint-disable-next-line @next/next/no-sync-scripts
-          <script crossOrigin="anonymous" src="https://unpkg.com/react-scan/dist/auto.global.js" />
-        )}
-      </head>
-      <body>
-        <NuqsAdapter>
-          <GlobalProvider
-            appearance={theme}
-            isMobile={isMobile}
-            locale={locale}
-            neutralColor={neutralColor}
-            primaryColor={primaryColor}
-            variants={variants}
-          >
-            <AuthProvider>
-              {children}
-              {!isMobile && modal}
-            </AuthProvider>
-            {/* <PWAInstall /> */}
-          </GlobalProvider>
-        </NuqsAdapter>
-        <Analytics />
-        {inVercel && <SpeedInsights />}
-      </body>
-    </html>
+    <NuqsAdapter>
+      <GlobalProvider
+        appearance={theme}
+        isMobile={isMobile}
+        locale={locale}
+        neutralColor={neutralColor}
+        primaryColor={primaryColor}
+        variants={variants}
+      >
+        <AuthProvider>
+          {children}
+          {!isMobile && modal}
+        </AuthProvider>
+        {/* <PWAInstall /> */}
+      </GlobalProvider>
+      <Analytics />
+      {inVercel && <SpeedInsights />}
+    </NuqsAdapter>
   );
 };
 

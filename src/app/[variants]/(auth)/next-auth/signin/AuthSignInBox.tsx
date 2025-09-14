@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Text } from '@lobehub/ui';
-import { LobeChat } from '@lobehub/ui/brand';
+// import { LobeChat } from '@lobehub/ui/brand';
 import { Col, Flex, Row, Skeleton } from 'antd';
 import { createStyles } from 'antd-style';
 import { AuthError } from 'next-auth';
@@ -114,9 +114,16 @@ export default memo(() => {
           <div className={styles.text}>
             <Text as={'h4'} className={styles.title}>
               <div>
-                <LobeChat size={48} />
+                <img
+                  src="/images/logo/crewcut_logo.png?v=123"
+                  alt="CREW CUT Logo"
+                  style={{
+                    height: '48px',
+                    width: 'auto'
+                  }}
+                />
               </div>
-              {t('signIn.start.title', { applicationName: 'LobeChat' })}
+              Sign in to CREW CUT
             </Text>
             <Text as={'p'} className={styles.description}>
               {t('signIn.start.subtitle')}

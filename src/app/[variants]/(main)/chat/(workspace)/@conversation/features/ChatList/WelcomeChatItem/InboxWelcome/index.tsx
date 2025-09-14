@@ -91,7 +91,7 @@ const InboxWelcome = memo(() => {
         <div style={{
           width: '60%',
           height: '1px',
-          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          backgroundColor: '#666666',
           margin: '20px auto'
         }} />
 

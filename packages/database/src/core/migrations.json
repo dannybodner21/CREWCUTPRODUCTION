@@ -223,7 +223,10 @@
     "hash": "9646161fa041354714f823d726af27247bcd6e60fa3be5698c0d69f337a5700b"
   },
   {
-    "sql": ["DROP TABLE \"user_budgets\";", "\nDROP TABLE \"user_subscriptions\";"],
+    "sql": [
+      "DROP TABLE \"user_budgets\";",
+      "\nDROP TABLE \"user_subscriptions\";"
+    ],
     "bps": true,
     "folderMillis": 1729699958471,
     "hash": "7dad43a2a25d1aec82124a4e53f8d82f8505c3073f23606c1dc5d2a4598eacf9"
@@ -295,7 +298,9 @@
     "hash": "845a692ceabbfc3caf252a97d3e19a213bc0c433df2689900135f9cfded2cf49"
   },
   {
-    "sql": ["ALTER TABLE \"messages\" ADD COLUMN \"reasoning\" jsonb;"],
+    "sql": [
+      "ALTER TABLE \"messages\" ADD COLUMN \"reasoning\" jsonb;"
+    ],
     "bps": true,
     "folderMillis": 1737609172353,
     "hash": "2cb36ae4fcdd7b7064767e04bfbb36ae34518ff4bb1b39006f2dd394d1893868"
@@ -510,7 +515,9 @@
     "hash": "a7ccf007fd185ff922823148d1eae6fafe652fc98d2fd2793f84a84f29e93cd1"
   },
   {
-    "sql": ["ALTER TABLE \"ai_providers\" ADD COLUMN \"config\" jsonb;"],
+    "sql": [
+      "ALTER TABLE \"ai_providers\" ADD COLUMN \"config\" jsonb;"
+    ],
     "bps": true,
     "folderMillis": 1749309388370,
     "hash": "39cea379f08ee4cb944875c0b67f7791387b508c2d47958bb4cd501ed1ef33eb"
@@ -559,5 +566,22 @@
     "bps": true,
     "folderMillis": 1753201379817,
     "hash": "fe5c0d7c2768189771c42ef93693fc1d58586b468c4bdde7fb6f2dc58cc9931c"
+  },
+  {
+    "sql": [
+      "CREATE TABLE \"saved_artifacts\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"user_id\" text NOT NULL,\n\t\"message_id\" text NOT NULL,\n\t\"type\" text NOT NULL,\n\t\"title\" text,\n\t\"content\" text NOT NULL,\n\t\"language\" text,\n\t\"metadata\" jsonb,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE \"user_budgets\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"free_budget_id\" text,\n\t\"free_budget_key\" text,\n\t\"subscription_budget_id\" text,\n\t\"subscription_budget_key\" text,\n\t\"package_budget_id\" text,\n\t\"package_budget_key\" text,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE \"user_subscriptions\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"user_id\" text NOT NULL,\n\t\"stripe_id\" text,\n\t\"currency\" text,\n\t\"pricing\" integer,\n\t\"billing_paid_at\" integer,\n\t\"billing_cycle_start\" integer,\n\t\"billing_cycle_end\" integer,\n\t\"cancel_at_period_end\" boolean,\n\t\"cancel_at\" integer,\n\t\"next_billing\" jsonb,\n\t\"plan\" text,\n\t\"recurring\" text,\n\t\"storage_limit\" integer,\n\t\"status\" integer,\n\t\"lewis_access\" boolean DEFAULT false,\n\t\"lewis_subscription_tier\" text DEFAULT 'free',\n\t\"lewis_subscription_start\" timestamp with time zone,\n\t\"lewis_subscription_end\" timestamp with time zone,\n\t\"lewis_payment_status\" text DEFAULT 'inactive',\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nALTER TABLE \"agents\" ALTER COLUMN \"opening_questions\" SET DATA TYPE jsonb;",
+      "\nALTER TABLE \"agents\" ALTER COLUMN \"opening_questions\" SET DEFAULT '[]'::jsonb;",
+      "\nALTER TABLE \"user_installed_plugins\" ALTER COLUMN \"manifest\" SET DEFAULT '{}';",
+      "\nALTER TABLE \"user_installed_plugins\" ALTER COLUMN \"settings\" SET DEFAULT '{}';",
+      "\nALTER TABLE \"user_installed_plugins\" ALTER COLUMN \"custom_params\" SET DEFAULT '{}';",
+      "\nALTER TABLE \"user_budgets\" ADD CONSTRAINT \"user_budgets_id_users_id_fk\" FOREIGN KEY (\"id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "\nALTER TABLE \"user_subscriptions\" ADD CONSTRAINT \"user_subscriptions_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;"
+    ],
+    "bps": true,
+    "folderMillis": 1757644249483,
+    "hash": "446331fec79754984d5f1f4c5f1c547aad1e2f08a4dd436a4a3ed72fb21715e4"
   }
 ]
