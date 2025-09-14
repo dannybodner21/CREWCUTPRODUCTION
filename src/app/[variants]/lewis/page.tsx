@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSessionStore } from '@/store/session';
@@ -10,7 +10,7 @@ import LewisPortalButton from '@/components/LewisPortalButton';
 import { useLewisPortalAutoOpen } from '@/hooks/useLewisPortalAutoOpen';
 import { UpgradeModal } from '@/components/UpgradeModal';
 
-export default function LewisPage() {
+function LewisPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { hasLewisAccess, isLoading: subscriptionLoading } = useSubscription();
@@ -250,5 +250,24 @@ export default function LewisPage() {
                 />
             )}
         </PaywallGuard>
+    );
+}
+
+export default function LewisPage() {
+    return (
+        <Suspense fallback={
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100vh',
+                fontSize: '18px',
+                color: '#6b7280'
+            }}>
+                Loading...
+            </div>
+        }>
+            <LewisPageContent />
+        </Suspense>
     );
 }
