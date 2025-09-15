@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerDB } from '@/database/core/db-adaptor';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
     try {
         const db = await getServerDB();
         const userId = 'd4f7286e-0403-4c70-9451-f52cc70bfb56';

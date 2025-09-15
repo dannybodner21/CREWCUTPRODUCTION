@@ -60,28 +60,40 @@ export async function POST(request: NextRequest) {
                 const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
                 try {
-                    // Use Drizzle ORM to insert subscription record
-                    await db
-                        .insert(userSubscriptions)
-                        .values({
-                            id: `sub_${Date.now()}_${userId}`,
-                            userId: userId,
-                            stripeId: subscriptionId,
-                            lewisAccess: true,
-                            lewisSubscriptionTier: 'pro',
-                            lewisPaymentStatus: 'active',
-                            lewisSubscriptionStart: new Date(subscription.current_period_start * 1000),
-                            lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
-                            status: 1, // 1 = active
-                            plan: 'lewis_pro',
-                            recurring: 'true',
-                            billingCycleStart: subscription.current_period_start,
-                            billingCycleEnd: subscription.current_period_end,
-                        });
+                    // Use raw SQL to insert subscription record
+                    const result = await db.execute(`
+                        INSERT INTO user_subscriptions (
+                            id, user_id, stripe_id, lewis_access, lewis_subscription_tier, 
+                            lewis_payment_status, lewis_subscription_start, lewis_subscription_end,
+                            status, plan, recurring, billing_cycle_start, billing_cycle_end
+                        ) VALUES (
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+                        )
+                    `, [
+                        `sub_${Date.now()}_${userId}`,
+                        userId,
+                        subscriptionId,
+                        true,
+                        'pro',
+                        'active',
+                        new Date(subscription.current_period_start * 1000),
+                        new Date(subscription.current_period_end * 1000),
+                        1, // 1 = active
+                        'lewis_pro',
+                        'true',
+                        subscription.current_period_start,
+                        subscription.current_period_end
+                    ]);
 
-                    console.log(`✅ Subscription activated for user ${userId}`);
+                    console.log(`✅ Subscription activated for user ${userId}`, result);
                 } catch (dbError) {
                     console.error('Database error in checkout.session.completed:', dbError);
+                    console.error('Database error details:', {
+                        message: dbError instanceof Error ? dbError.message : 'Unknown error',
+                        stack: dbError instanceof Error ? dbError.stack : undefined,
+                        userId,
+                        subscriptionId
+                    });
                     // Don't throw - let other webhooks handle the subscription
                 }
                 break;
