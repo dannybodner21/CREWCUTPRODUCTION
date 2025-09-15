@@ -168,12 +168,262 @@ const findKnownModelByProvider = async (
   const lowerModelId = modelId.toLowerCase();
 
   try {
-    // 动态构建导入路径
-    const modulePath = `@/config/aiModels/${provider}`;
+    // 静态导入对应的配置文件
+    let providerModels: any[] = [];
 
-    // 尝试动态导入对应的配置文件
-    const moduleImport = await import(modulePath);
-    const providerModels = moduleImport.default;
+    switch (provider) {
+      case 'anthropic':
+        const anthropic = await import('@/config/aiModels/anthropic');
+        providerModels = anthropic.default;
+        break;
+      case 'openai':
+        const openai = await import('@/config/aiModels/openai');
+        providerModels = openai.default;
+        break;
+      case 'google':
+        const google = await import('@/config/aiModels/google');
+        providerModels = google.default;
+        break;
+      case 'deepseek':
+        const deepseek = await import('@/config/aiModels/deepseek');
+        providerModels = deepseek.default;
+        break;
+      case 'mistral':
+        const mistral = await import('@/config/aiModels/mistral');
+        providerModels = mistral.default;
+        break;
+      case 'groq':
+        const groq = await import('@/config/aiModels/groq');
+        providerModels = groq.default;
+        break;
+      case 'cohere':
+        const cohere = await import('@/config/aiModels/cohere');
+        providerModels = cohere.default;
+        break;
+      case 'perplexity':
+        const perplexity = await import('@/config/aiModels/perplexity');
+        providerModels = perplexity.default;
+        break;
+      case 'togetherai':
+        const togetherai = await import('@/config/aiModels/togetherai');
+        providerModels = togetherai.default;
+        break;
+      case 'openrouter':
+        const openrouter = await import('@/config/aiModels/openrouter');
+        providerModels = openrouter.default;
+        break;
+      case 'ollama':
+        const ollama = await import('@/config/aiModels/ollama');
+        providerModels = ollama.default;
+        break;
+      case 'lmstudio':
+        const lmstudio = await import('@/config/aiModels/lmstudio');
+        providerModels = lmstudio.default;
+        break;
+      case 'qwen':
+        const qwen = await import('@/config/aiModels/qwen');
+        providerModels = qwen.default;
+        break;
+      case 'zhipu':
+        const zhipu = await import('@/config/aiModels/zhipu');
+        providerModels = zhipu.default;
+        break;
+      case 'moonshot':
+        const moonshot = await import('@/config/aiModels/moonshot');
+        providerModels = moonshot.default;
+        break;
+      case 'volcengine':
+        const volcengine = await import('@/config/aiModels/volcengine');
+        providerModels = volcengine.default;
+        break;
+      case 'wenxin':
+        const wenxin = await import('@/config/aiModels/wenxin');
+        providerModels = wenxin.default;
+        break;
+      case 'spark':
+        const spark = await import('@/config/aiModels/spark');
+        providerModels = spark.default;
+        break;
+      case 'minimax':
+        const minimax = await import('@/config/aiModels/minimax');
+        providerModels = minimax.default;
+        break;
+      case 'baichuan':
+        const baichuan = await import('@/config/aiModels/baichuan');
+        providerModels = baichuan.default;
+        break;
+      case 'internlm':
+        const internlm = await import('@/config/aiModels/internlm');
+        providerModels = internlm.default;
+        break;
+      case 'hunyuan':
+        const hunyuan = await import('@/config/aiModels/hunyuan');
+        providerModels = hunyuan.default;
+        break;
+      case 'tencentcloud':
+        const tencentcloud = await import('@/config/aiModels/tencentcloud');
+        providerModels = tencentcloud.default;
+        break;
+      case 'stepfun':
+        const stepfun = await import('@/config/aiModels/stepfun');
+        providerModels = stepfun.default;
+        break;
+      case 'zeroone':
+        const zeroone = await import('@/config/aiModels/zeroone');
+        providerModels = zeroone.default;
+        break;
+      case 'xai':
+        const xai = await import('@/config/aiModels/xai');
+        providerModels = xai.default;
+        break;
+      case 'fireworksai':
+        const fireworksai = await import('@/config/aiModels/fireworksai');
+        providerModels = fireworksai.default;
+        break;
+      case 'novita':
+        const novita = await import('@/config/aiModels/novita');
+        providerModels = novita.default;
+        break;
+      case 'ppio':
+        const ppio = await import('@/config/aiModels/ppio');
+        providerModels = ppio.default;
+        break;
+      case 'v0':
+        const v0 = await import('@/config/aiModels/v0');
+        providerModels = v0.default;
+        break;
+      case 'vertexai':
+        const vertexai = await import('@/config/aiModels/vertexai');
+        providerModels = vertexai.default;
+        break;
+      case 'bedrock':
+        const bedrock = await import('@/config/aiModels/bedrock');
+        providerModels = bedrock.default;
+        break;
+      case 'azure':
+        const azure = await import('@/config/aiModels/azure');
+        providerModels = azure.default;
+        break;
+      case 'azureai':
+        const azureai = await import('@/config/aiModels/azureai');
+        providerModels = azureai.default;
+        break;
+      case 'huggingface':
+        const huggingface = await import('@/config/aiModels/huggingface');
+        providerModels = huggingface.default;
+        break;
+      case 'togetherai':
+        const togetherai2 = await import('@/config/aiModels/togetherai');
+        providerModels = togetherai2.default;
+        break;
+      case 'openrouter':
+        const openrouter2 = await import('@/config/aiModels/openrouter');
+        providerModels = openrouter2.default;
+        break;
+      case 'ollama':
+        const ollama2 = await import('@/config/aiModels/ollama');
+        providerModels = ollama2.default;
+        break;
+      case 'lmstudio':
+        const lmstudio2 = await import('@/config/aiModels/lmstudio');
+        providerModels = lmstudio2.default;
+        break;
+      case 'qwen':
+        const qwen2 = await import('@/config/aiModels/qwen');
+        providerModels = qwen2.default;
+        break;
+      case 'zhipu':
+        const zhipu2 = await import('@/config/aiModels/zhipu');
+        providerModels = zhipu2.default;
+        break;
+      case 'moonshot':
+        const moonshot2 = await import('@/config/aiModels/moonshot');
+        providerModels = moonshot2.default;
+        break;
+      case 'volcengine':
+        const volcengine2 = await import('@/config/aiModels/volcengine');
+        providerModels = volcengine2.default;
+        break;
+      case 'wenxin':
+        const wenxin2 = await import('@/config/aiModels/wenxin');
+        providerModels = wenxin2.default;
+        break;
+      case 'spark':
+        const spark2 = await import('@/config/aiModels/spark');
+        providerModels = spark2.default;
+        break;
+      case 'minimax':
+        const minimax2 = await import('@/config/aiModels/minimax');
+        providerModels = minimax2.default;
+        break;
+      case 'baichuan':
+        const baichuan2 = await import('@/config/aiModels/baichuan');
+        providerModels = baichuan2.default;
+        break;
+      case 'internlm':
+        const internlm2 = await import('@/config/aiModels/internlm');
+        providerModels = internlm2.default;
+        break;
+      case 'hunyuan':
+        const hunyuan2 = await import('@/config/aiModels/hunyuan');
+        providerModels = hunyuan2.default;
+        break;
+      case 'tencentcloud':
+        const tencentcloud2 = await import('@/config/aiModels/tencentcloud');
+        providerModels = tencentcloud2.default;
+        break;
+      case 'stepfun':
+        const stepfun2 = await import('@/config/aiModels/stepfun');
+        providerModels = stepfun2.default;
+        break;
+      case 'zeroone':
+        const zeroone2 = await import('@/config/aiModels/zeroone');
+        providerModels = zeroone2.default;
+        break;
+      case 'xai':
+        const xai2 = await import('@/config/aiModels/xai');
+        providerModels = xai2.default;
+        break;
+      case 'fireworksai':
+        const fireworksai2 = await import('@/config/aiModels/fireworksai');
+        providerModels = fireworksai2.default;
+        break;
+      case 'novita':
+        const novita2 = await import('@/config/aiModels/novita');
+        providerModels = novita2.default;
+        break;
+      case 'ppio':
+        const ppio2 = await import('@/config/aiModels/ppio');
+        providerModels = ppio2.default;
+        break;
+      case 'v0':
+        const v02 = await import('@/config/aiModels/v0');
+        providerModels = v02.default;
+        break;
+      case 'vertexai':
+        const vertexai2 = await import('@/config/aiModels/vertexai');
+        providerModels = vertexai2.default;
+        break;
+      case 'bedrock':
+        const bedrock2 = await import('@/config/aiModels/bedrock');
+        providerModels = bedrock2.default;
+        break;
+      case 'azure':
+        const azure2 = await import('@/config/aiModels/azure');
+        providerModels = azure2.default;
+        break;
+      case 'azureai':
+        const azureai2 = await import('@/config/aiModels/azureai');
+        providerModels = azureai2.default;
+        break;
+      case 'huggingface':
+        const huggingface2 = await import('@/config/aiModels/huggingface');
+        providerModels = huggingface2.default;
+        break;
+      default:
+        // 如果 provider 不在支持列表中，返回 null
+        return null;
+    }
 
     // 如果导入成功且有数据，进行查找
     if (Array.isArray(providerModels)) {
@@ -358,8 +608,118 @@ export const processMultiProviderModelList = async (
   let providerLocalConfig: any[] | null = null;
   if (providerid) {
     try {
-      const moduleImport = await import(`@/config/aiModels/${providerid}`);
-      providerLocalConfig = moduleImport.default;
+      // 使用静态导入替代动态导入
+      let moduleImport: any;
+      switch (providerid) {
+        case 'anthropic':
+          moduleImport = await import('@/config/aiModels/anthropic');
+          break;
+        case 'openai':
+          moduleImport = await import('@/config/aiModels/openai');
+          break;
+        case 'google':
+          moduleImport = await import('@/config/aiModels/google');
+          break;
+        case 'deepseek':
+          moduleImport = await import('@/config/aiModels/deepseek');
+          break;
+        case 'mistral':
+          moduleImport = await import('@/config/aiModels/mistral');
+          break;
+        case 'groq':
+          moduleImport = await import('@/config/aiModels/groq');
+          break;
+        case 'cohere':
+          moduleImport = await import('@/config/aiModels/cohere');
+          break;
+        case 'perplexity':
+          moduleImport = await import('@/config/aiModels/perplexity');
+          break;
+        case 'togetherai':
+          moduleImport = await import('@/config/aiModels/togetherai');
+          break;
+        case 'openrouter':
+          moduleImport = await import('@/config/aiModels/openrouter');
+          break;
+        case 'ollama':
+          moduleImport = await import('@/config/aiModels/ollama');
+          break;
+        case 'lmstudio':
+          moduleImport = await import('@/config/aiModels/lmstudio');
+          break;
+        case 'qwen':
+          moduleImport = await import('@/config/aiModels/qwen');
+          break;
+        case 'zhipu':
+          moduleImport = await import('@/config/aiModels/zhipu');
+          break;
+        case 'moonshot':
+          moduleImport = await import('@/config/aiModels/moonshot');
+          break;
+        case 'volcengine':
+          moduleImport = await import('@/config/aiModels/volcengine');
+          break;
+        case 'wenxin':
+          moduleImport = await import('@/config/aiModels/wenxin');
+          break;
+        case 'spark':
+          moduleImport = await import('@/config/aiModels/spark');
+          break;
+        case 'minimax':
+          moduleImport = await import('@/config/aiModels/minimax');
+          break;
+        case 'baichuan':
+          moduleImport = await import('@/config/aiModels/baichuan');
+          break;
+        case 'internlm':
+          moduleImport = await import('@/config/aiModels/internlm');
+          break;
+        case 'hunyuan':
+          moduleImport = await import('@/config/aiModels/hunyuan');
+          break;
+        case 'tencentcloud':
+          moduleImport = await import('@/config/aiModels/tencentcloud');
+          break;
+        case 'stepfun':
+          moduleImport = await import('@/config/aiModels/stepfun');
+          break;
+        case 'zeroone':
+          moduleImport = await import('@/config/aiModels/zeroone');
+          break;
+        case 'xai':
+          moduleImport = await import('@/config/aiModels/xai');
+          break;
+        case 'fireworksai':
+          moduleImport = await import('@/config/aiModels/fireworksai');
+          break;
+        case 'novita':
+          moduleImport = await import('@/config/aiModels/novita');
+          break;
+        case 'ppio':
+          moduleImport = await import('@/config/aiModels/ppio');
+          break;
+        case 'v0':
+          moduleImport = await import('@/config/aiModels/v0');
+          break;
+        case 'vertexai':
+          moduleImport = await import('@/config/aiModels/vertexai');
+          break;
+        case 'bedrock':
+          moduleImport = await import('@/config/aiModels/bedrock');
+          break;
+        case 'azure':
+          moduleImport = await import('@/config/aiModels/azure');
+          break;
+        case 'azureai':
+          moduleImport = await import('@/config/aiModels/azureai');
+          break;
+        case 'huggingface':
+          moduleImport = await import('@/config/aiModels/huggingface');
+          break;
+        default:
+          moduleImport = null;
+      }
+      providerLocalConfig = moduleImport?.default || null;
     } catch {
       // 如果配置文件不存在或导入失败，保持为 null
       providerLocalConfig = null;
