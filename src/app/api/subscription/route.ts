@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
         // Query user subscription data - only select columns that exist
         console.log('🔧 QUERYING SUBSCRIPTION for userId:', userId);
-        let subscription = [];
+        let subscription: any[] = [];
         try {
             subscription = await db
                 .select({
@@ -52,12 +52,12 @@ export async function GET(request: NextRequest) {
 
         // Get user info - only select columns that exist
         console.log('🔧 QUERYING USER INFO for userId:', userId);
-        let userInfo = [];
+        let userInfo: any[] = [];
         try {
             userInfo = await db
                 .select({
                     id: users.id,
-                    name: users.name,
+                    name: users.fullName,
                     email: users.email,
                     avatar: users.avatar,
                 })
@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
             lewisAccess: false,
             lewisSubscriptionTier: 'free',
             lewisPaymentStatus: 'inactive',
+            lewisSubscriptionEnd: null as any,
         };
 
         if (subscription.length > 0) {
