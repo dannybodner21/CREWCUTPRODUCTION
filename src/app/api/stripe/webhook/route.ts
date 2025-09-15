@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/config/stripe';
 import { authEnv } from '@/config/auth';
-import { getServerDB } from '@/database/core/db-adaptor';
+import { getDBInstance } from '@/database/core/web-server';
 import { userSubscriptions } from '@/database/schemas';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     try {
         console.log(`Processing webhook event: ${event.type} (${event.id})`);
-        const db = await getServerDB();
+        const db = getDBInstance();
 
         switch (event.type) {
             case 'checkout.session.completed': {
