@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
                 const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
                 try {
-                    // Use raw SQL to insert subscription record
+                    // Use raw SQL to insert subscription record with correct data types
                     const result = await db.execute(`
                         INSERT INTO user_subscriptions (
                             id, user_id, stripe_id, lewis_access, lewis_subscription_tier, 
@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
                         'active',
                         new Date(subscription.current_period_start * 1000),
                         new Date(subscription.current_period_end * 1000),
-                        1, // 1 = active
+                        'active', // status is now text
                         'lewis_pro',
-                        'true',
-                        subscription.current_period_start,
-                        subscription.current_period_end
+                        true, // recurring is now boolean
+                        new Date(subscription.current_period_start * 1000), // timestamptz
+                        new Date(subscription.current_period_end * 1000) // timestamptz
                     ]);
 
                     console.log(`✅ Subscription activated for user ${userId}`, result);
@@ -134,11 +134,11 @@ export async function POST(request: NextRequest) {
                                 lewisPaymentStatus: 'active',
                                 lewisSubscriptionStart: new Date(subscription.current_period_start * 1000),
                                 lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
-                                status: 1, // 1 = active
+                                status: 'active', // status is now text
                                 plan: 'lewis_pro',
-                                recurring: 'true',
-                                billingCycleStart: subscription.current_period_start,
-                                billingCycleEnd: subscription.current_period_end,
+                                recurring: true, // recurring is now boolean
+                                billingCycleStart: new Date(subscription.current_period_start * 1000),
+                                billingCycleEnd: new Date(subscription.current_period_end * 1000),
                             })
                             .where(eq(userSubscriptions.userId, userId));
                     } else {
@@ -154,11 +154,11 @@ export async function POST(request: NextRequest) {
                                 lewisPaymentStatus: 'active',
                                 lewisSubscriptionStart: new Date(subscription.current_period_start * 1000),
                                 lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
-                                status: 1, // 1 = active
+                                status: 'active', // status is now text
                                 plan: 'lewis_pro',
-                                recurring: 'true',
-                                billingCycleStart: subscription.current_period_start,
-                                billingCycleEnd: subscription.current_period_end,
+                                recurring: true, // recurring is now boolean
+                                billingCycleStart: new Date(subscription.current_period_start * 1000),
+                                billingCycleEnd: new Date(subscription.current_period_end * 1000),
                             });
                     }
 
@@ -192,8 +192,8 @@ export async function POST(request: NextRequest) {
                         .set({
                             lewisPaymentStatus: subscription.status === 'active' ? 'active' : 'inactive',
                             lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
-                            status: subscription.status === 'active' ? 1 : 0,
-                            billingCycleEnd: subscription.current_period_end,
+                            status: subscription.status === 'active' ? 'active' : 'inactive', // status is now text
+                            billingCycleEnd: new Date(subscription.current_period_end * 1000),
                         })
                         .where(eq(userSubscriptions.userId, userId));
 
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
                     .set({
                         lewisAccess: false,
                         lewisPaymentStatus: 'cancelled',
-                        status: 2, // 2 = cancelled
+                        status: 'cancelled', // status is now text
                     })
                     .where(eq(userSubscriptions.userId, userId));
 

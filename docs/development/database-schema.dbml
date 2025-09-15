@@ -835,16 +835,16 @@ table user_subscriptions {
   stripe_id text
   currency text
   pricing integer
-  billing_paid_at integer
-  billing_cycle_start integer
-  billing_cycle_end integer
+  billing_paid_at "timestamp with time zone"
+  billing_cycle_start "timestamp with time zone"
+  billing_cycle_end "timestamp with time zone"
   cancel_at_period_end boolean
-  cancel_at integer
+  cancel_at "timestamp with time zone"
   next_billing jsonb
   plan text
-  recurring text
+  recurring boolean
   storage_limit integer
-  status integer
+  status text
   lewis_access boolean [default: false]
   lewis_subscription_tier text [default: 'free']
   lewis_subscription_start "timestamp with time zone"
