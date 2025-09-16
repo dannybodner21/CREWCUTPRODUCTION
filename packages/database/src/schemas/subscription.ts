@@ -1,7 +1,7 @@
 /* eslint-disable sort-keys-fix/sort-keys-fix  */
 import { boolean, integer, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
 
-import { timestamps, timestamptz } from './_helpers';
+import { timestamptz } from './_helpers';
 import { users } from './user';
 
 export const userSubscriptions = pgTable('user_subscriptions', {
@@ -32,7 +32,8 @@ export const userSubscriptions = pgTable('user_subscriptions', {
     lewisSubscriptionEnd: timestamptz('lewis_subscription_end'),
     lewisPaymentStatus: text('lewis_payment_status').default('inactive'),
 
-    ...timestamps,
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
 export type NewUserSubscription = typeof userSubscriptions.$inferInsert;
@@ -49,7 +50,8 @@ export const userBudgets = pgTable('user_budgets', {
     packageBudgetId: text('package_budget_id'),
     packageBudgetKey: text('package_budget_key'),
 
-    ...timestamps,
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
 export type NewUserBudget = typeof userBudgets.$inferInsert;

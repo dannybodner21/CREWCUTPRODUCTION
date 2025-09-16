@@ -36,7 +36,16 @@ export async function POST(request: NextRequest) {
 
     try {
         console.log(`Processing webhook event: ${event.type} (${event.id})`);
+        console.log('🔍 Event data:', JSON.stringify(event.data, null, 2));
         const db = getDBInstance();
+
+        // Test database connection
+        try {
+            const testQuery = await db.select().from(userSubscriptions).limit(1);
+            console.log('✅ Database connection working');
+        } catch (dbTestError) {
+            console.error('❌ Database connection failed:', dbTestError);
+        }
 
         switch (event.type) {
             case 'checkout.session.completed': {
@@ -44,11 +53,13 @@ export async function POST(request: NextRequest) {
                 const userId = session.metadata?.userId;
                 const subscriptionId = session.subscription as string;
 
-                console.log('Checkout session completed:', {
+                console.log('🔍 Checkout session completed:', {
                     sessionId: session.id,
                     userId,
                     subscriptionId,
                     metadata: session.metadata,
+                    paymentStatus: session.payment_status,
+                    mode: session.mode,
                 });
 
                 if (!userId || !subscriptionId) {
@@ -60,8 +71,31 @@ export async function POST(request: NextRequest) {
                 const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
                 try {
+                    console.log('🔍 Attempting to insert subscription record...');
+                    console.log('🔍 User ID:', userId);
+                    console.log('🔍 Subscription ID:', subscriptionId);
+                    console.log('🔍 Subscription data:', {
+                        current_period_start: subscription.current_period_start,
+                        current_period_end: subscription.current_period_end,
+                        status: subscription.status
+                    });
+
+                    // Safe date conversion with fallbacks
+                    const now = new Date();
+                    const startDate = subscription.current_period_start
+                        ? new Date(subscription.current_period_start * 1000)
+                        : now;
+                    const endDate = subscription.current_period_end
+                        ? new Date(subscription.current_period_end * 1000)
+                        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+
+                    console.log('🔍 Converted dates:', {
+                        startDate: startDate.toISOString(),
+                        endDate: endDate.toISOString()
+                    });
+
                     // Insert subscription record using Drizzle ORM
-                    await db
+                    const result = await db
                         .insert(userSubscriptions)
                         .values({
                             id: `sub_${Date.now()}_${userId}`,
@@ -70,18 +104,20 @@ export async function POST(request: NextRequest) {
                             lewisAccess: true,
                             lewisSubscriptionTier: 'pro',
                             lewisPaymentStatus: 'active',
-                            lewisSubscriptionStart: new Date(subscription.current_period_start * 1000),
-                            lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
+                            lewisSubscriptionStart: startDate,
+                            lewisSubscriptionEnd: endDate,
                             status: 'active',
                             plan: 'lewis_pro',
                             recurring: true,
-                            billingCycleStart: new Date(subscription.current_period_start * 1000),
-                            billingCycleEnd: new Date(subscription.current_period_end * 1000),
-                        });
+                            billingCycleStart: startDate,
+                            billingCycleEnd: endDate,
+                        })
+                        .returning();
 
                     console.log(`✅ Subscription activated for user ${userId}`);
+                    console.log('🔍 Insert result:', result);
                 } catch (dbError) {
-                    console.error('Database error in checkout.session.completed:', dbError);
+                    console.error('❌ Database error in checkout.session.completed:', dbError);
                     console.error('Database error details:', {
                         message: dbError instanceof Error ? dbError.message : 'Unknown error',
                         stack: dbError instanceof Error ? dbError.stack : undefined,
@@ -117,6 +153,15 @@ export async function POST(request: NextRequest) {
                         .where(eq(userSubscriptions.userId, userId))
                         .limit(1);
 
+                    // Safe date conversion with fallbacks
+                    const now = new Date();
+                    const startDate = subscription.current_period_start
+                        ? new Date(subscription.current_period_start * 1000)
+                        : now;
+                    const endDate = subscription.current_period_end
+                        ? new Date(subscription.current_period_end * 1000)
+                        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+
                     if (existingSubscription.length > 0) {
                         // Update existing record
                         await db
@@ -126,13 +171,13 @@ export async function POST(request: NextRequest) {
                                 lewisAccess: true,
                                 lewisSubscriptionTier: 'pro',
                                 lewisPaymentStatus: 'active',
-                                lewisSubscriptionStart: new Date(subscription.current_period_start * 1000),
-                                lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
+                                lewisSubscriptionStart: startDate,
+                                lewisSubscriptionEnd: endDate,
                                 status: 'active',
                                 plan: 'lewis_pro',
                                 recurring: true,
-                                billingCycleStart: new Date(subscription.current_period_start * 1000),
-                                billingCycleEnd: new Date(subscription.current_period_end * 1000),
+                                billingCycleStart: startDate,
+                                billingCycleEnd: endDate,
                             })
                             .where(eq(userSubscriptions.userId, userId));
                     } else {
@@ -146,13 +191,13 @@ export async function POST(request: NextRequest) {
                                 lewisAccess: true,
                                 lewisSubscriptionTier: 'pro',
                                 lewisPaymentStatus: 'active',
-                                lewisSubscriptionStart: new Date(subscription.current_period_start * 1000),
-                                lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
+                                lewisSubscriptionStart: startDate,
+                                lewisSubscriptionEnd: endDate,
                                 status: 'active',
                                 plan: 'lewis_pro',
                                 recurring: true,
-                                billingCycleStart: new Date(subscription.current_period_start * 1000),
-                                billingCycleEnd: new Date(subscription.current_period_end * 1000),
+                                billingCycleStart: startDate,
+                                billingCycleEnd: endDate,
                             });
                     }
 
@@ -180,14 +225,20 @@ export async function POST(request: NextRequest) {
                 }
 
                 try {
+                    // Safe date conversion with fallbacks
+                    const now = new Date();
+                    const endDate = subscription.current_period_end
+                        ? new Date(subscription.current_period_end * 1000)
+                        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+
                     // Update subscription status
                     await db
                         .update(userSubscriptions)
                         .set({
                             lewisPaymentStatus: subscription.status === 'active' ? 'active' : 'inactive',
-                            lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
+                            lewisSubscriptionEnd: endDate,
                             status: subscription.status === 'active' ? 'active' : 'inactive',
-                            billingCycleEnd: new Date(subscription.current_period_end * 1000),
+                            billingCycleEnd: endDate,
                         })
                         .where(eq(userSubscriptions.userId, userId));
 
@@ -234,13 +285,19 @@ export async function POST(request: NextRequest) {
                 if (!userId) break;
 
                 try {
+                    // Safe date conversion with fallbacks
+                    const now = new Date();
+                    const endDate = subscription.current_period_end
+                        ? new Date(subscription.current_period_end * 1000)
+                        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+
                     // Update payment status
                     await db
                         .update(userSubscriptions)
                         .set({
                             lewisPaymentStatus: 'active',
-                            lewisSubscriptionEnd: new Date(subscription.current_period_end * 1000),
-                            billingCycleEnd: new Date(subscription.current_period_end * 1000),
+                            lewisSubscriptionEnd: endDate,
+                            billingCycleEnd: endDate,
                         })
                         .where(eq(userSubscriptions.userId, userId));
 
