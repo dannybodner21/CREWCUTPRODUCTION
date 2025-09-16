@@ -92,16 +92,7 @@ export async function GET(request: NextRequest) {
             response.lewisPaymentStatus = sub.lewisPaymentStatus ?? 'inactive';
             response.lewisSubscriptionEnd = sub.lewisSubscriptionEnd;
         } else {
-            // Check if user has completed a payment by looking for a specific URL parameter or session
-            const url = new URL(request.url);
-            const paymentSuccess = url.searchParams.get('payment') === 'success';
-
-            if (paymentSuccess && userId === 'd4f7286e-0403-4c70-9451-f52cc70bfb56') {
-                console.log('🔧 PAYMENT SUCCESS DETECTED: Granting LEWIS access for user', userId);
-                response.lewisAccess = true;
-                response.lewisSubscriptionTier = 'pro';
-                response.lewisPaymentStatus = 'active';
-            }
+            console.log('🔧 NO SUBSCRIPTION FOUND for user:', userId);
         }
 
         console.log('🔧 FINAL RESPONSE:', response);

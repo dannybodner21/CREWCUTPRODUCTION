@@ -15,6 +15,7 @@ export const useSubscription = () => {
         queryKey: ['subscription', user?.id],
         queryFn: async () => {
             if (!user?.id) {
+                console.log('🔧 useSubscription: No user ID, returning default');
                 return {
                     lewisAccess: false,
                     lewisSubscriptionTier: 'free',
@@ -22,14 +23,18 @@ export const useSubscription = () => {
                 };
             }
 
+            console.log('🔧 useSubscription: Fetching subscription for user:', user.id);
             const response = await fetch(`/api/subscription?userId=${user.id}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch subscription data');
             }
-            return response.json();
+            const data = await response.json();
+            console.log('🔧 useSubscription: Received data:', data);
+            return data;
         },
         enabled: !!user?.id,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 30 * 1000, // 30 seconds - reduced for testing
+        refetchOnWindowFocus: true,
     });
 
     const hasLewisAccess = subscription?.lewisAccess ?? false;

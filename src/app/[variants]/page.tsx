@@ -61,8 +61,9 @@ function VariantsPageContent() {
                 try {
                     const response = await fetch('/api/subscription');
                     const data = await response.json();
-                    setUserInfo(data);
                     console.log('🔧 USER INFO UPDATED AFTER PAYMENT:', data);
+                    console.log('🔧 LEWIS ACCESS STATUS:', data.lewisAccess);
+                    setUserInfo(data);
                 } catch (error) {
                     console.error('Failed to fetch user info after payment:', error);
                 }
@@ -105,7 +106,17 @@ function VariantsPageContent() {
     const handleAccessLewis = async () => {
         console.log('🔧 ACCESS LEWIS CLICKED');
         try {
-            // First check if user is logged in and has LEWIS access
+            // Force refresh user info first
+            console.log('🔧 REFRESHING USER INFO...');
+            const refreshResponse = await fetch('/api/subscription');
+            const refreshData = await refreshResponse.json();
+            console.log('🔧 REFRESHED USER INFO:', refreshData);
+            setUserInfo(refreshData);
+
+            // Wait a moment for state to update
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Now check if user is logged in and has LEWIS access
             const response = await fetch('/api/subscription');
             const data = await response.json();
             console.log('🔧 SUBSCRIPTION DATA:', data);
@@ -118,9 +129,10 @@ function VariantsPageContent() {
                 return;
             }
 
-            if (!data.hasLewisAccess) {
+            if (!data.lewisAccess) {
                 // Logged in but no LEWIS access - show upgrade modal
                 console.log('🔧 LEWIS ACCESS: User logged in but no LEWIS access, showing upgrade modal');
+                console.log('🔧 LEWIS ACCESS: Data received:', data);
                 setShowUpgradeModal(true);
                 return;
             }
@@ -260,6 +272,29 @@ function VariantsPageContent() {
                                         {userInfo.name || userInfo.email || 'User'}
                                     </div>
                                 </div>
+                                <button
+                                    onClick={async () => {
+                                        // Debug: Check subscription status
+                                        console.log('🔧 DEBUG: Checking subscription status...');
+                                        const response = await fetch('/api/subscription');
+                                        const data = await response.json();
+                                        console.log('🔧 DEBUG: Current subscription data:', data);
+                                        alert(`LEWIS Access: ${data.lewisAccess}\nTier: ${data.lewisSubscriptionTier}\nStatus: ${data.lewisPaymentStatus}`);
+                                    }}
+                                    style={{
+                                        backgroundColor: '#dbeafe',
+                                        color: '#1e40af',
+                                        border: '1px solid #93c5fd',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        marginRight: '8px'
+                                    }}
+                                >
+                                    Debug
+                                </button>
                                 <button
                                     onClick={() => {
                                         // Sign out using NextAuth
