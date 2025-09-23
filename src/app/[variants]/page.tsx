@@ -177,6 +177,9 @@ function VariantsPageContent() {
                 .shimmer-button {
                     position: relative;
                     overflow: hidden;
+                    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%);
+                    background-size: 200% 200%;
+                    animation: shimmer 3s ease-in-out infinite;
                 }
                 
                 .shimmer-button::before {
@@ -186,11 +189,23 @@ function VariantsPageContent() {
                     left: -100%;
                     width: 100%;
                     height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-                    animation: shimmer 2s infinite;
+                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+                    animation: shimmerMove 2s infinite;
                 }
                 
                 @keyframes shimmer {
+                    0% {
+                        background-position: 0% 50%;
+                    }
+                    50% {
+                        background-position: 100% 50%;
+                    }
+                    100% {
+                        background-position: 0% 50%;
+                    }
+                }
+                
+                @keyframes shimmerMove {
                     0% {
                         left: -100%;
                     }
@@ -199,10 +214,65 @@ function VariantsPageContent() {
                     }
                 }
                 
+                .shimmer-button:hover {
+                    animation: none;
+                }
+                
                 .shimmer-button:hover::before {
                     animation: none;
                 }
             `}</style>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                    .shimmer-button {
+                        position: relative;
+                        overflow: hidden;
+                        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%);
+                        background-size: 200% 200%;
+                        animation: shimmer 3s ease-in-out infinite;
+                    }
+                    
+                    .shimmer-button::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: -100%;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+                        animation: shimmerMove 2s infinite;
+                    }
+                    
+                    @keyframes shimmer {
+                        0% {
+                            background-position: 0% 50%;
+                        }
+                        50% {
+                            background-position: 100% 50%;
+                        }
+                        100% {
+                            background-position: 0% 50%;
+                        }
+                    }
+                    
+                    @keyframes shimmerMove {
+                        0% {
+                            left: -100%;
+                        }
+                        100% {
+                            left: 100%;
+                        }
+                    }
+                    
+                    .shimmer-button:hover {
+                        animation: none;
+                    }
+                    
+                    .shimmer-button:hover::before {
+                        animation: none;
+                    }
+                `
+            }} />
             <div style={{
                 minHeight: '100vh',
                 backgroundColor: 'white',
@@ -438,7 +508,6 @@ function VariantsPageContent() {
                             className="shimmer-button"
                             style={{
                                 display: 'block',
-                                backgroundColor: '#ffffff',
                                 color: '#000000',
                                 border: '1px solid #6b7280',
                                 borderRadius: '8px',
@@ -448,13 +517,16 @@ function VariantsPageContent() {
                                 width: '100%',
                                 cursor: 'pointer',
                                 position: 'relative',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
                             }}
                             onMouseEnter={(e) => {
                                 e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                                e.target.style.animation = 'none';
                             }}
                             onMouseLeave={(e) => {
-                                e.target.style.boxShadow = 'none';
+                                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)';
+                                e.target.style.animation = 'shimmer 3s ease-in-out infinite';
                             }}
                         >
                             Access Chat
@@ -503,7 +575,6 @@ function VariantsPageContent() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '8px',
-                                backgroundColor: '#ffffff',
                                 color: '#000000',
                                 border: '1px solid #6b7280',
                                 borderRadius: '8px',
@@ -513,13 +584,16 @@ function VariantsPageContent() {
                                 width: '100%',
                                 cursor: 'pointer',
                                 position: 'relative',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
                             }}
                             onMouseEnter={(e) => {
                                 e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                                e.target.style.animation = 'none';
                             }}
                             onMouseLeave={(e) => {
-                                e.target.style.boxShadow = 'none';
+                                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)';
+                                e.target.style.animation = 'shimmer 3s ease-in-out infinite';
                             }}
                         >
                             {(!userInfo || !userInfo.lewisAccess) && (
