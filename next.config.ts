@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
     // Optional: if TS errors also block builds, you can bypass temporarily:
     ignoreBuildErrors: true,
   },
+  images: {
+    unoptimized: true,
+  },
   experimental: {
     optimizePackageImports: [
       'emoji-mart',
