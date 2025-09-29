@@ -12,7 +12,14 @@ import { LobeChatDatabase } from '../type';
 export const getDBInstance = (): LobeChatDatabase => {
   if (!(process.env.NEXT_PUBLIC_SERVICE_MODE === 'server')) return {} as any;
 
+  console.log('🔍 Database connection debug:');
+  console.log('- NEXT_PUBLIC_SERVICE_MODE:', process.env.NEXT_PUBLIC_SERVICE_MODE);
+  console.log('- KEY_VAULTS_SECRET exists:', !!process.env.KEY_VAULTS_SECRET);
+  console.log('- DATABASE_URL exists:', !!process.env.DATABASE_URL);
+  console.log('- serverDBEnv.KEY_VAULTS_SECRET:', !!serverDBEnv.KEY_VAULTS_SECRET);
+
   if (!serverDBEnv.KEY_VAULTS_SECRET) {
+    console.error('❌ KEY_VAULTS_SECRET validation failed');
     throw new Error(
       ` \`KEY_VAULTS_SECRET\` is not set, please set it in your environment variables.
 
