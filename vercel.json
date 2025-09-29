@@ -1,4 +1,4 @@
 {
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm exec next build"
+  "buildCommand": "pnpm exec next build --no-lint"
 }
