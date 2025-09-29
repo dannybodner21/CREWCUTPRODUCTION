@@ -483,7 +483,7 @@ importers:
         specifier: ^7.7.2
         version: 7.7.2
       sharp:
-        specifier: ^0.34.3
+        specifier: ^0.34.4
         version: 0.34.4
       shiki:
         specifier: ^3.9.2

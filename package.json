@@ -275,7 +275,7 @@
     "resolve-accept-language": "^3.1.12",
     "rtl-detect": "^1.1.2",
     "semver": "^7.7.2",
-    "sharp": "^0.34.3",
+    "sharp": "^0.34.4",
     "shiki": "^3.9.2",
     "stripe": "^17.7.0",
     "superjson": "^2.2.2",
