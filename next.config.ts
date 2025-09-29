@@ -50,7 +50,7 @@ const nextConfig: NextConfig = {
     webVitalsAttribution: ['CLS', 'LCP'],
     // Build optimizations
     staticGenerationRetryCount: 1,
-    outputFileTracingRoot: undefined,
+    outputFileTracingRoot: process.cwd(),
     // Memory optimizations
     memoryBasedWorkersCount: true,
     workerThreads: false,
@@ -271,9 +271,12 @@ const nextConfig: NextConfig = {
   // when external packages in dev mode with turbopack, this config will lead to bundle error
   serverExternalPackages: isProd ? ['@electric-sql/pglite'] : undefined,
 
-  transpilePackages: ['pdfjs-dist', 'mermaid'],
+  transpilePackages: ['@lobechat/const', '@lobechat/model-runtime', '@lobechat/types', 'pdfjs-dist', 'mermaid'],
 
+  swcMinify: false,
+  productionBrowserSourceMaps: false,
   webpack(config) {
+    config.cache = false;
     config.experiments = {
       asyncWebAssembly: true,
       layers: true,

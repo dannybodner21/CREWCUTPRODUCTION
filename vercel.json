@@ -1,13 +1,4 @@
 {
-  "buildCommand": "npm run build",
-  "installCommand": "npm install --force --legacy-peer-deps",
-  "functions": {
-    "app/**/*.ts": {
-      "maxDuration": 300
-    }
-  },
-  "env": {
-    "NPM_CONFIG_PACKAGE_MANAGER": "npm",
-    "DISABLE_PNPM": "true"
-  }
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm exec next build"
 }

@@ -352,9 +352,9 @@ function VariantsPageContent() {
                                         alert(`LEWIS Access: ${data.lewisAccess}\nTier: ${data.lewisSubscriptionTier}\nStatus: ${data.lewisPaymentStatus}`);
                                     }}
                                     style={{
-                                        backgroundColor: '#dbeafe',
-                                        color: '#1e40af',
-                                        border: '1px solid #93c5fd',
+                                        backgroundColor: '#dcfce7',
+                                        color: '#166534',
+                                        border: '1px solid #86efac',
                                         borderRadius: '6px',
                                         padding: '6px 12px',
                                         fontSize: '12px',
