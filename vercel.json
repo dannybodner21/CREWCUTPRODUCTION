@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "src/app/**/*.ts": {
-      "runtime": "nodejs22.x"
-    }
-  },
   "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm exec next build --no-lint"
 }
