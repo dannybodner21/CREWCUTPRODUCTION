@@ -18,6 +18,9 @@
   "bugs": {
     "url": "https://github.com/lobehub/lobe-chat/issues/new/choose"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/lobehub/lobe-chat.git"
