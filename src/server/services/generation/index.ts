@@ -2,7 +2,18 @@ import debug from 'debug';
 import { sha256 } from 'js-sha256';
 import mime from 'mime';
 import { nanoid } from 'nanoid';
-import sharp from 'sharp';
+// import sharp from 'sharp';
+
+// Fallback when Sharp is not available
+const getSharpInstance = async (buffer: Buffer) => {
+  try {
+    const sharp = await import('sharp');
+    return sharp.default(buffer);
+  } catch (error) {
+    console.warn('Sharp not available, using fallback image processing');
+    return null;
+  }
+};
 
 import { IMAGE_GENERATION_CONFIG } from '@/const/imageGeneration';
 import { LobeChatDatabase } from '@/database/type';
@@ -89,7 +100,22 @@ export class GenerationService {
     // Calculate hash for original image
     const originalHash = sha256(originalImageBuffer);
 
-    const sharpInstance = sharp(originalImageBuffer);
+    const sharpInstance = await getSharpInstance(originalImageBuffer);
+    if (!sharpInstance) {
+      // Fallback: return original image without processing
+      return {
+        image: {
+          hash: originalHash,
+          mimeType: originalMimeType,
+          url: url,
+        },
+        thumbnailImage: {
+          hash: originalHash,
+          mimeType: originalMimeType,
+          url: url,
+        },
+      };
+    }
     const { format, width, height } = await sharpInstance.metadata();
     log('Image metadata:', { format, height, width });
 
@@ -219,7 +245,13 @@ export class GenerationService {
     const { buffer: originalImageBuffer } = await fetchImageFromUrl(coverUrl);
 
     // Get image metadata to calculate proper cover dimensions
-    const sharpInstance = sharp(originalImageBuffer);
+    const sharpInstance = await getSharpInstance(originalImageBuffer);
+    if (!sharpInstance) {
+      // Fallback: upload original image without processing
+      const coverKey = `covers/${nanoid()}.jpg`;
+      await this.fileService.uploadMedia(coverKey, originalImageBuffer);
+      return coverKey;
+    }
     const { width, height } = await sharpInstance.metadata();
 
     if (!width || !height) {
