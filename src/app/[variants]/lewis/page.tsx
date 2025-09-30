@@ -60,8 +60,7 @@ function LewisPageContent() {
     }
 
     return (
-        <PaywallGuard>
-            <div style={{
+        <div style={{
                 display: 'flex',
                 height: '100vh',
                 backgroundColor: '#f8fafc'
@@ -251,7 +250,7 @@ function LewisPageContent() {
                     onClose={() => setShowUpgradeModal(false)}
                 />
             )}
-        </PaywallGuard>
+        </div>
     );
 }
 
