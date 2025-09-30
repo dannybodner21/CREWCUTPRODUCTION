@@ -252,7 +252,6 @@ function LewisPageContent() {
                 />
             )}
         </div>
-        </>
     );
 }
 
