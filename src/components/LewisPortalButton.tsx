@@ -294,12 +294,9 @@ const LewisPortalButton = memo(() => {
         }
     };
 
-    // TEMPORARY: Force show button for debugging
-    const forceShow = true;
-
-    if (!isLewisSession && !forceShow) {
-        console.log('🔧 LewisPortalButton: Not a Lewis session, returning null');
-        return null;
+    // Always show the button on the LEWIS page
+    if (!isLewisSession) {
+        console.log('🔧 LewisPortalButton: Not a Lewis session, but showing button anyway');
     }
 
     return (
