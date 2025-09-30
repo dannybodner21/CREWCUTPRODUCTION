@@ -164,7 +164,9 @@ function LewisPageContent() {
                             </p>
 
                             {/* Portal Buttons */}
-                            <LewisPortalButton />
+                            <div style={{ marginTop: '20px' }}>
+                                <LewisPortalButton />
+                            </div>
                         </div>
 
                         {/* Chat Interface Placeholder */}

@@ -300,8 +300,7 @@ const LewisPortalButton = memo(() => {
     }
 
     return (
-        <PaywallGuard>
-            <Flexbox
+        <Flexbox
                 align="center"
                 justify="center"
                 horizontal
@@ -513,7 +512,6 @@ const LewisPortalButton = memo(() => {
                     }
                 }
             `}</style>
-        </PaywallGuard>
     );
 });
 
