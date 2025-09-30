@@ -300,6 +300,7 @@ const LewisPortalButton = memo(() => {
     }
 
     return (
+        <>
         <Flexbox
                 align="center"
                 justify="center"
@@ -512,6 +513,7 @@ const LewisPortalButton = memo(() => {
                     }
                 }
             `}</style>
+        </>
     );
 });
 
