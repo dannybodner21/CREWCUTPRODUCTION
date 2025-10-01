@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 interface SubscriptionData {
     lewisAccess: boolean;
-    lewisSubscriptionTier: 'free' | 'paid';
+    lewisSubscriptionTier: 'free' | 'paid' | 'pro';
     lewisPaymentStatus: 'active' | 'inactive' | 'cancelled';
     lewisSubscriptionEnd?: string;
 }
@@ -24,7 +24,7 @@ export const useSubscription = () => {
             }
 
             console.log('🔧 useSubscription: Fetching subscription for user:', user.id);
-            const response = await fetch(`/api/subscription?userId=${user.id}`);
+            const response = await fetch('/api/subscription');
             if (!response.ok) {
                 throw new Error('Failed to fetch subscription data');
             }
@@ -38,7 +38,7 @@ export const useSubscription = () => {
     });
 
     const hasLewisAccess = subscription?.lewisAccess ?? false;
-    const isPaidUser = subscription?.lewisSubscriptionTier === 'paid';
+    const isPaidUser = subscription?.lewisSubscriptionTier === 'paid' || subscription?.lewisSubscriptionTier === 'pro';
     const isActive = subscription?.lewisPaymentStatus === 'active';
 
     return {

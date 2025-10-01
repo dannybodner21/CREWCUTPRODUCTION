@@ -87,13 +87,6 @@ const InboxWelcome = memo(() => {
           })}
         </Markdown>
 
-        {/* Horizontal Rule */}
-        <div style={{
-          width: '60%',
-          height: '1px',
-          backgroundColor: '#666666',
-          margin: '20px auto'
-        }} />
 
         {/* Show Lewis opening questions on the main page */}
         <LewisOpeningQuestions />

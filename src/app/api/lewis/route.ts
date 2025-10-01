@@ -106,6 +106,11 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'calculateProjectFeesWithSQL': {
+        result = await lewisDataService.calculateProjectFeesWithSQL(params);
+        break;
+      }
+
       default: {
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },

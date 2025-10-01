@@ -175,13 +175,13 @@ const DefaultMode = memo(() => {
             borderRadius: 8,
             width: '100%',
             maxWidth: 280,
-            backgroundColor: hasLewisAccess ? '#ffffff' : '#f3f4f6',
             borderColor: hasLewisAccess ? '#6b7280' : '#d1d5db',
             borderWidth: '1px',
             color: hasLewisAccess ? '#000000' : '#9ca3af',
-            background: hasLewisAccess
+            backgroundColor: hasLewisAccess ? '#ffffff' : '#f3f4f6',
+            backgroundImage: hasLewisAccess
               ? 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)'
-              : '#f3f4f6',
+              : 'none',
             backgroundSize: '200% 200%',
             animation: hasLewisAccess ? 'shimmer 3s ease-in-out infinite' : 'none',
             boxShadow: hasLewisAccess

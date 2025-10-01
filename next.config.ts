@@ -48,14 +48,13 @@ const nextConfig: NextConfig = {
     // refs: https://github.com/lobehub/lobe-chat/pull/7430
     serverMinification: false,
     webVitalsAttribution: ['CLS', 'LCP'],
-    // Build optimizations
-    staticGenerationRetryCount: 1,
-    outputFileTracingRoot: process.cwd(),
     // Memory optimizations
     memoryBasedWorkersCount: true,
     workerThreads: false,
     cpus: 1,
   },
+  // Build optimizations
+  staticGenerationRetryCount: 1,
   // Build optimizations
   generateBuildId: async () => {
     return 'build-' + Date.now();
@@ -271,9 +270,8 @@ const nextConfig: NextConfig = {
   // when external packages in dev mode with turbopack, this config will lead to bundle error
   serverExternalPackages: isProd ? ['@electric-sql/pglite'] : undefined,
 
-  transpilePackages: ['@lobechat/const', '@lobechat/model-runtime', '@lobechat/types', 'pdfjs-dist', 'mermaid'],
+  transpilePackages: ['@lobechat/const', '@lobechat/model-runtime', '@lobechat/types', '@lobechat/electron-client-ipc', 'pdfjs-dist', 'mermaid'],
 
-  swcMinify: false,
   productionBrowserSourceMaps: false,
   webpack(config) {
     config.cache = false;

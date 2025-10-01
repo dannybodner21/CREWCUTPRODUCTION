@@ -48,17 +48,16 @@ interface ProjectParameters {
 }
 
 const LewisPortalButton = memo(() => {
+    console.log('🔧 LewisPortalButton: Component is rendering!');
     const [showJurisdictionsPopup, setShowJurisdictionsPopup] = useState(false);
     const [jurisdictionsData, setJurisdictionsData] = useState<JurisdictionData[]>([]);
     const [loading, setLoading] = useState(false);
     const currentSession = useSessionStore(sessionSelectors.currentSession);
-    const currentAgent = useChatStore((s) => s.currentAgent);
     const title = useSessionStore(sessionMetaSelectors.currentAgentTitle);
     const theme = useTheme();
 
     // Use the same detection logic as useLewisPortalAutoOpen
-    const isLewisSession = currentSession?.agentId === 'lewis' ||
-        currentAgent?.identifier === 'lewis' ||
+    const isLewisSession = currentSession?.config?.plugins?.includes('lewis') ||
         currentSession?.meta?.title?.toLowerCase().includes('lewis');
 
     const togglePortal = useChatStore((s) => s.togglePortal);
@@ -135,7 +134,7 @@ const LewisPortalButton = memo(() => {
                             let evaluatedExpr = expr;
                             Object.keys(context).forEach(key => {
                                 const regex = new RegExp(`\\b${key}\\b`, 'g');
-                                evaluatedExpr = evaluatedExpr.replace(regex, context[key]);
+                                evaluatedExpr = evaluatedExpr.replace(regex, String(context[key as keyof typeof context]));
                             });
 
                             amount = eval(evaluatedExpr);
@@ -197,12 +196,10 @@ const LewisPortalButton = memo(() => {
     // Debug logging
     console.log('🔧 LewisPortalButton DEBUG:', {
         currentSession,
-        currentAgent,
         title,
         isLewisSession,
         showPortal,
-        agentId: currentSession?.agentId,
-        identifier: currentAgent?.identifier
+        sessionId: currentSession?.id
     });
 
     // Fetch jurisdictions data for the popup
@@ -295,13 +292,32 @@ const LewisPortalButton = memo(() => {
     };
 
     // Always show the button on the LEWIS page
+    console.log('🔧 LewisPortalButton: Rendering button component');
+    console.log('🔧 LewisPortalButton: currentSession:', currentSession);
+    console.log('🔧 LewisPortalButton: isLewisSession:', isLewisSession);
+    console.log('🔧 LewisPortalButton: showPortal:', showPortal);
+    console.log('🔧 LewisPortalButton: plugins:', currentSession?.config?.plugins);
+
     if (!isLewisSession) {
         console.log('🔧 LewisPortalButton: Not a Lewis session, but showing button anyway');
+        // Still show the button even if not detected as Lewis session
     }
 
     return (
         <>
-        <Flexbox
+            {/* Debug test element */}
+            <div style={{
+                padding: '10px',
+                backgroundColor: 'red',
+                color: 'white',
+                textAlign: 'center',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '20px'
+            }}>
+                DEBUG: LewisPortalButton is rendering!
+            </div>
+            <Flexbox
                 align="center"
                 justify="center"
                 horizontal

@@ -141,7 +141,7 @@ export default function LandingHeader() {
         <nav className={styles.nav}>
           <Link href="/" className={styles.logo}>
             <Image
-              src={`/images/logo/crewcut_logo.png?v=${Date.now()}`}
+              src="/images/logo/crewcut_logo.png?v=123"
               alt="CREW CUT"
               width={32}
               height={32}
@@ -181,7 +181,7 @@ export default function LandingHeader() {
         <div className={styles.mobileMenuHeader}>
           <Link href="/" className={styles.logo} onClick={() => setMobileMenuOpen(false)}>
             <Image
-              src={`/images/logo/crewcut_logo.png?v=${Date.now()}`}
+              src="/images/logo/crewcut_logo.png?v=123"
               alt="CREW CUT"
               width={32}
               height={32}

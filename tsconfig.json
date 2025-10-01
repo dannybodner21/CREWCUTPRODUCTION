@@ -2,7 +2,12 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["dom", "dom.iterable", "esnext", "webworker"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+      "webworker"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -16,16 +21,44 @@
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": ".",
-    "types": ["vitest/globals", "@serwist/next/typings"],
+    "types": [
+      "vitest/globals",
+      "@serwist/next/typings"
+    ],
     "paths": {
-      "@/libs/model-runtime": ["./packages/model-runtime/src/index.ts"],
-      "@/libs/model-runtime/*": ["./packages/model-runtime/src/*"],
-      "@/database/*": ["./packages/database/src/*", "./src/database/*"],
-      "@/const/*": ["./packages/const/src/*"],
-      "@/utils/*": ["./packages/utils/src/*", "./src/utils/*"],
-      "@/types/*": ["./packages/types/src/*", "./src/types/*"],
-      "@/*": ["./src/*"],
-      "~test-utils": ["./tests/utils.tsx"]
+      "@/libs/model-runtime": [
+        "./packages/model-runtime/src/index.ts"
+      ],
+      "@/libs/model-runtime/*": [
+        "./packages/model-runtime/src/*"
+      ],
+      "@/database/*": [
+        "./packages/database/src/*",
+        "./src/database/*"
+      ],
+      "@/const/*": [
+        "./packages/const/src/*"
+      ],
+      "@/utils/*": [
+        "./packages/utils/src/*",
+        "./src/utils/*"
+      ],
+      "@/types/*": [
+        "./packages/types/src/*",
+        "./src/types/*"
+      ],
+      "@lobechat/electron-client-ipc": [
+        "./packages/electron-client-ipc/src/index.ts"
+      ],
+      "@lobechat/electron-client-ipc/*": [
+        "./packages/electron-client-ipc/src/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ],
+      "~test-utils": [
+        "./tests/utils.tsx"
+      ]
     },
     "plugins": [
       {
@@ -33,7 +66,14 @@
       }
     ]
   },
-  "exclude": ["node_modules", "public/sw.js", "apps/desktop", "tmp", "temp", ".temp"],
+  "exclude": [
+    "node_modules",
+    "public/sw.js",
+    "apps/desktop",
+    "tmp",
+    "temp",
+    ".temp"
+  ],
   "include": [
     "**/*.d.ts",
     "**/*.ts",

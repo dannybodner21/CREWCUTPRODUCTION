@@ -4,6 +4,7 @@ import { Flexbox } from 'react-layout-kit';
 import MainInterfaceTracker from '@/components/Analytics/MainInterfaceTracker';
 import BrandTextLoading from '@/components/Loading/BrandTextLoading';
 import LewisPortalAutoOpener from '@/components/LewisPortalAutoOpener';
+import ConstructionPortalSection from '@/components/ConstructionPortalSection';
 
 import { LayoutProps } from '../type';
 import ChatHeader from './ChatHeader';
@@ -14,6 +15,7 @@ const Layout = ({ children, topic, conversation, portal }: LayoutProps) => {
   return (
     <>
       <ChatHeader />
+      <ConstructionPortalSection />
       <Flexbox
         height={'100%'}
         horizontal

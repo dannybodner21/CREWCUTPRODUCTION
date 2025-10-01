@@ -1,0 +1,6 @@
+{
+    "name": "@lobechat/electron-client-ipc",
+    "version": "1.0.0",
+    "main": "electron-client-ipc.ts",
+    "types": "electron-client-ipc.ts"
+}

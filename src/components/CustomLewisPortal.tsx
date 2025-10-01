@@ -471,32 +471,103 @@ const CustomLewisPortal = () => {
         });
     };
 
-    // Calculate total fees for current project
-    const calculateTotalFees = (): { total: number; breakdown: Array<{ fee: Fee; amount: number }> } => {
-        if (!selectedJurisdiction || jurisdictionFees.length === 0) {
-            return { total: 0, breakdown: [] };
+    // Calculate total fees for current project using SQL function
+    const [calculatedFees, setCalculatedFees] = useState<{
+        total: number;
+        breakdown: Array<{ fee: Fee; amount: number }>;
+        byAgency?: Array<{ agency: string; subtotal: number }>;
+        lineItems?: Array<{ agency: string; fee: string; method: string; rate: number; unit: string; qty: number; amount: number }>;
+        needsRules?: Array<{ agency: string; fee: string; method: string; rate: number; unit: string }>;
+    }>({ total: 0, breakdown: [] });
+
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    // Calculate fees using SQL function
+    const calculateTotalFees = async (): Promise<void> => {
+        if (!selectedJurisdiction) {
+            setCalculatedFees({ total: 0, breakdown: [] });
+            return;
         }
 
-        const projectParams: ProjectParameters = {
-            units: parseInt(projectUnits) || 0,
-            squareFootage: parseInt(squareFootage) || 0,
-            projectValue: parseInt(projectValue) || 0,
-            acreage: parseFloat(projectAcreage) || 0,
-            meterSize: meterSize
-        };
+        setIsCalculating(true);
 
-        // Filter fees based on project type
-        const relevantFees = getRelevantFees(jurisdictionFees, projectType);
+        try {
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'calculateProjectFeesWithSQL',
+                    params: {
+                        city: selectedJurisdiction.name,
+                        use: projectType.toLowerCase().includes('residential') ? 'residential' : 'commercial',
+                        useSubtype: projectType.toLowerCase().includes('multi') ? 'multifamily' :
+                            projectType.toLowerCase().includes('single') ? 'single_family' : null,
+                        dwellings: parseInt(projectUnits) || 0,
+                        resSqft: parseInt(squareFootage) || 0,
+                        trips: (parseInt(projectUnits) || 0) * 2, // Simple fallback: 2 trips per unit
+                        valuation: parseInt(projectValue) || 0
+                    }
+                })
+            });
 
-        const breakdown = relevantFees.map(fee => ({
-            fee,
-            amount: calculateFeeAmount(fee, projectParams)
-        }));
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data) {
+                    const sqlResult = result.data;
 
-        const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+                    // Transform SQL result to match our UI format
+                    const breakdown = sqlResult.line_items?.map((item: any) => ({
+                        fee: {
+                            id: item.fee_id,
+                            name: item.fee,
+                            category: item.category,
+                            unit_label: item.unit_label,
+                            description: '',
+                            applies_to: null,
+                            use_subtype: null,
+                            formula: null,
+                            calc_method: item.category,
+                            base_rate: item.amount,
+                            min_fee: null,
+                            max_fee: null,
+                            unit_id: 'FLAT',
+                            formula_json: null,
+                            status: 'verified',
+                            effective_start: new Date().toISOString(),
+                            effective_end: null
+                        },
+                        amount: item.amount
+                    })) || [];
 
-        return { total, breakdown };
+                    setCalculatedFees({
+                        total: sqlResult.grand_total || 0,
+                        breakdown,
+                        byAgency: sqlResult.by_agency || [],
+                        lineItems: sqlResult.line_items || [],
+                        needsRules: sqlResult.needs_rules || []
+                    });
+                } else {
+                    console.error('Error calculating fees:', result.error);
+                    setCalculatedFees({ total: 0, breakdown: [] });
+                }
+            } else {
+                console.error('Failed to calculate fees');
+                setCalculatedFees({ total: 0, breakdown: [] });
+            }
+        } catch (error) {
+            console.error('Error calculating fees:', error);
+            setCalculatedFees({ total: 0, breakdown: [] });
+        } finally {
+            setIsCalculating(false);
+        }
     };
+
+    // Recalculate fees when project parameters change
+    useEffect(() => {
+        if (selectedJurisdiction) {
+            calculateTotalFees();
+        }
+    }, [selectedJurisdiction, projectType, projectUnits, squareFootage, projectValue, projectAcreage, meterSize]);
 
     // Calculate total fees for second jurisdiction
     const calculateTotalFees2 = (): { total: number; breakdown: Array<{ fee: Fee; amount: number }> } => {
@@ -891,8 +962,13 @@ const CustomLewisPortal = () => {
                         </Row>
 
                         {/* Calculated Results */}
-                        {(() => {
-                            const { total, breakdown } = calculateTotalFees();
+                        {isCalculating ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                                <Spin size="large" />
+                                <div style={{ marginTop: '16px', fontSize: '16px' }}>Calculating fees...</div>
+                            </div>
+                        ) : (() => {
+                            const { total, breakdown } = calculatedFees;
                             const applicableFees = breakdown.filter(item => item.amount > 0);
 
                             // If comparing two locations, show side-by-side comparison
@@ -1093,8 +1169,13 @@ const CustomLewisPortal = () => {
 
                         <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
                             <Text style={{ fontSize: '14px' }} type="secondary">
-                                <strong>Note:</strong> Calculations based on current project parameters.
-                                Formula-based fees and complex calculations are not yet implemented.
+                                <strong>Note:</strong> Calculations are now performed using the database SQL function for accurate results.
+                                {calculatedFees.needsRules && calculatedFees.needsRules.length > 0 && (
+                                    <span>
+                                        <br />
+                                        <strong>Fees requiring manual calculation:</strong> {calculatedFees.needsRules.length} fees need custom rules implementation.
+                                    </span>
+                                )}
                             </Text>
                         </div>
                     </Card>

@@ -13,7 +13,7 @@ import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/slices/portal/selectors';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useSessionStore } from '@/store/session';
-import { sessionMetaSelectors } from '@/store/session/selectors';
+import { sessionMetaSelectors, sessionSelectors } from '@/store/session/selectors';
 
 import OpeningQuestions from './OpeningQuestions';
 import LewisOpeningQuestions from '@/components/LewisOpeningQuestions';
@@ -31,7 +31,10 @@ const WelcomeMessage = () => {
   const activeId = useChatStore((s) => s.activeId);
 
   // Check if this is a Lewis session
-  const isLewisSession = meta?.title?.toLowerCase().includes('lewis');
+  const currentSession = useSessionStore(sessionSelectors.currentSession);
+  const isLewisSession = currentSession?.config?.plugins?.includes('lewis') ||
+    meta?.title?.toLowerCase().includes('lewis') ||
+    meta?.title?.toLowerCase().includes('lewis construction');
   const togglePortal = useChatStore((s) => s.togglePortal);
   const showPortal = useChatStore(chatPortalSelectors.showPortal);
 
@@ -43,7 +46,8 @@ const WelcomeMessage = () => {
     showButton: isLewisSession,
     activeId,
     showPortal,
-    currentSession: useSessionStore.getState().currentSession
+    currentSession: useSessionStore.getState().currentSession,
+    plugins: useSessionStore.getState().currentSession?.config?.plugins
   });
 
   const agentSystemRoleMsg = t('agentDefaultMessageWithSystemRole', {
@@ -94,26 +98,16 @@ const WelcomeMessage = () => {
       `}</style>
       <Flexbox>
         {chatItem}
-        {isLewisSession ? (
-          <>
-            <LewisOpeningQuestions />
-            <LewisPortalButton />
-          </>
-        ) : (
-          openingQuestions.length > 0 && (
-            <OpeningQuestions mobile={mobile} questions={openingQuestions} />
-          )
+
+
+        {/* Always show Lewis components for debugging */}
+        <LewisOpeningQuestions />
+        <LewisPortalButton />
+
+        {!isLewisSession && openingQuestions.length > 0 && (
+          <OpeningQuestions mobile={mobile} questions={openingQuestions} />
         )}
 
-        {/* Horizontal Rule - Always show for debugging */}
-        <Flexbox align="center" justify="center" style={{ marginTop: 40 }}>
-          <div style={{
-            width: '50%',
-            height: '2px',
-            backgroundColor: '#666666',
-            margin: '20px 0'
-          }} />
-        </Flexbox>
       </Flexbox>
     </>
   );

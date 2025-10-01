@@ -551,6 +551,194 @@ export class LewisDataService {
             return { data: demoFees, error: null };
         });
     }
+
+    // Calculate project fees using direct RPC call to calc_project_fees
+    async calculateProjectFeesWithSQL(params: {
+        city: string;
+        use: string;
+        useSubtype?: string;
+        dwellings: number;
+        resSqft: number;
+        trips?: number;
+        valuation?: number;
+    }): Promise<{ success: boolean; data?: any; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            console.log('🔧 Calculating project fees with params:', params);
+
+            // First try to call the calc_project_fees function directly
+            const { data: calcData, error: calcError } = await supabase.rpc('calc_project_fees', {
+                p_city: params.city,
+                p_project_use: params.use,
+                p_use_subtype: params.useSubtype || null,
+                p_dwellings: params.dwellings,
+                p_res_sqft: params.resSqft,
+                p_trips: params.trips || 0,
+                p_valuation: params.valuation || null
+            });
+
+            if (calcError) {
+                console.error('❌ Error calling calc_project_fees:', calcError);
+
+                // If the function doesn't exist, fall back to client-side calculation
+                console.log('🔄 Falling back to client-side calculation...');
+                return this.calculateProjectFeesClientSide(params);
+            }
+
+            console.log('✅ calc_project_fees result:', calcData);
+
+            // Get jurisdiction info for additional context
+            const { data: jurisdictionData } = await supabase
+                .from('jurisdictions')
+                .select('id, name')
+                .ilike('name', params.city)
+                .limit(1);
+
+            const jurisdiction = jurisdictionData?.[0];
+
+            // Get fee counts for context
+            const { data: feeCounts } = await supabase
+                .from('fees')
+                .select('id')
+                .eq('jurisdiction_id', jurisdiction?.id)
+                .eq('active', true);
+
+            const result = {
+                jurisdiction: params.city,
+                fee_count: feeCounts?.length || 0,
+                published_versions: feeCounts?.length || 0, // Simplified for now
+                grand_total: calcData?.grand_total || 0,
+                by_agency: calcData?.by_agency || [],
+                line_items: calcData?.line_items || [],
+                needs_rules: calcData?.needs_rules || []
+            };
+
+            return { data: result, error: null };
+        });
+    }
+
+    // Fallback client-side calculation when SQL function is not available
+    private async calculateProjectFeesClientSide(params: {
+        city: string;
+        use: string;
+        useSubtype?: string;
+        dwellings: number;
+        resSqft: number;
+        trips?: number;
+        valuation?: number;
+    }): Promise<{ success: boolean; data?: any; error?: string }> {
+        try {
+            const supabase = this.getSupabaseClient();
+
+            // Get jurisdiction
+            const { data: jurisdictionData } = await supabase
+                .from('jurisdictions')
+                .select('id, name')
+                .ilike('name', params.city)
+                .limit(1);
+
+            if (!jurisdictionData?.[0]) {
+                return { success: false, error: `Jurisdiction '${params.city}' not found` };
+            }
+
+            const jurisdiction = jurisdictionData[0];
+
+            // Get fees for this jurisdiction
+            const { data: feesData } = await supabase
+                .from('fees')
+                .select(`
+                    id, name, category, rate, unit_label, description, applies_to, use_subtype,
+                    agencies!inner(name)
+                `)
+                .eq('jurisdiction_id', jurisdiction.id)
+                .eq('active', true);
+
+            if (!feesData) {
+                return { success: false, error: 'No fees found for this jurisdiction' };
+            }
+
+            // Filter fees based on project type
+            const relevantFees = feesData.filter(fee => {
+                if (fee.applies_to && fee.applies_to !== params.use) return false;
+                if (fee.use_subtype && fee.use_subtype !== params.useSubtype) return false;
+                return true;
+            });
+
+            // Calculate fees
+            const lineItems: any[] = [];
+            const agencyTotals: { [key: string]: number } = {};
+
+            for (const fee of relevantFees) {
+                let amount = 0;
+                let qty = 1;
+
+                // Use rate from fees table, fallback to 0 if null
+                const rate = fee.rate || 0;
+
+                switch (fee.category) {
+                    case 'flat':
+                        amount = rate;
+                        break;
+                    case 'per_sqft':
+                        amount = rate * params.resSqft;
+                        qty = params.resSqft;
+                        break;
+                    case 'per_unit':
+                        amount = rate * params.dwellings;
+                        qty = params.dwellings;
+                        break;
+                    case 'per_trip':
+                        amount = rate * (params.trips || 0);
+                        qty = params.trips || 0;
+                        break;
+                    case 'formula':
+                        // Skip formula fees for now
+                        continue;
+                    default:
+                        continue;
+                }
+
+                if (amount > 0) {
+                    const agencyName = fee.agencies?.name || 'Unknown Agency';
+
+                    lineItems.push({
+                        agency: agencyName,
+                        fee: fee.name,
+                        method: fee.category,
+                        rate: fee.rate || 0,
+                        unit: fee.unit_label || '',
+                        qty,
+                        amount
+                    });
+
+                    agencyTotals[agencyName] = (agencyTotals[agencyName] || 0) + amount;
+                }
+            }
+
+            const byAgency = Object.entries(agencyTotals).map(([agency, subtotal]) => ({
+                agency,
+                subtotal
+            }));
+
+            const grandTotal = Object.values(agencyTotals).reduce((sum, total) => sum + total, 0);
+
+            const result = {
+                jurisdiction: params.city,
+                fee_count: feesData.length,
+                published_versions: feesData.length,
+                grand_total: grandTotal,
+                by_agency: byAgency,
+                line_items: lineItems,
+                needs_rules: [] // No formula fees for now
+            };
+
+            return { success: true, data: result };
+        } catch (error) {
+            console.error('❌ Client-side calculation error:', error);
+            return { success: false, error: error instanceof Error ? error.message : 'Calculation failed' };
+        }
+    }
 }
 
 // Export a singleton instance

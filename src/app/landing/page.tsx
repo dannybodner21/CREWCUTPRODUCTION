@@ -404,7 +404,7 @@ export default function LandingPage() {
         <nav className={styles.nav}>
           <Link href="/" className={styles.logo}>
             <Image
-              src={`/images/logo/crewcut_logo.png?v=${Date.now()}`}
+              src="/images/logo/crewcut_logo.png?v=123"
               alt="CREW CUT"
               width={24}
               height={24}
@@ -620,7 +620,7 @@ const resend = new Resend('re_xxxxxxxxx');
         <div className={styles.footerContent}>
           <div className={styles.footerLogo}>
             <Image
-              src={`/images/logo/crewcut_logo.png?v=${Date.now()}`}
+              src="/images/logo/crewcut_logo.png?v=123"
               alt="CREW CUT"
               width={120}
               height={40}
