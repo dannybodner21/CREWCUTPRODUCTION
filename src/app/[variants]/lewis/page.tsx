@@ -13,38 +13,21 @@ import { UpgradeModal } from '@/components/UpgradeModal';
 function LewisPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { hasLewisAccess, isLoading: subscriptionLoading } = useSubscription();
-    const { createSession } = useSessionStore();
+    const { hasLewisAccess } = useSubscription();
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-    // Auto-open portal for LEWIS sessions
+    // Auto-open portal if specified in URL
     useLewisPortalAutoOpen();
 
-    // Check for unlock parameter and show upgrade modal
+    // Handle URL parameters
     useEffect(() => {
-        const unlock = searchParams.get('unlock');
-        if (unlock === 'true' && !hasLewisAccess) {
-            setShowUpgradeModal(true);
+        const autoOpen = searchParams.get('autoOpen');
+        if (autoOpen === 'true') {
+            // Portal will auto-open via useLewisPortalAutoOpen hook
         }
-    }, [searchParams, hasLewisAccess]);
+    }, [searchParams]);
 
-    useEffect(() => {
-        // Create LEWIS session when page loads
-        if (hasLewisAccess) {
-            const lewisAgent = {
-                agentId: 'lewis',
-                identifier: 'lewis',
-                meta: {
-                    title: 'LEWIS',
-                    description: 'Construction fee and development location expert',
-                    avatar: '🏗️'
-                }
-            };
-            createSession(lewisAgent);
-        }
-    }, [hasLewisAccess, createSession]);
-
-    if (subscriptionLoading) {
+    if (!hasLewisAccess) {
         return (
             <div style={{
                 display: 'flex',
@@ -87,75 +70,78 @@ function LewisPageContent() {
                                 width: '40px',
                                 height: '40px',
                                 borderRadius: '50%',
-                                backgroundColor: '#059669',
+                                backgroundColor: '#3b82f6',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '20px'
+                                color: 'white',
+                                fontSize: '18px',
+                                fontWeight: 'bold'
                             }}>
-                                🏗️
+                                L
                             </div>
                             <div>
                                 <h1 style={{
                                     margin: 0,
-                                    fontSize: '18px',
+                                    fontSize: '20px',
                                     fontWeight: '600',
                                     color: '#111827'
                                 }}>
-                                    LEWIS
+                                    LEWIS Construction AI
                                 </h1>
                                 <p style={{
                                     margin: 0,
                                     fontSize: '14px',
                                     color: '#6b7280'
                                 }}>
-                                    Construction fee and development location expert
+                                    Your AI construction consultant
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => router.push('/')}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#f3f4f6',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                color: '#374151'
-                            }}
-                        >
-                            ← Back to Home
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <button
+                                onClick={() => setShowUpgradeModal(true)}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Upgrade
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Chat Messages Area */}
+                    {/* Chat Content */}
                     <div style={{
                         flex: 1,
                         padding: '24px',
-                        overflow: 'auto',
-                        backgroundColor: '#f8fafc'
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center'
                     }}>
-                        {/* Welcome Message */}
                         <div style={{
-                            backgroundColor: '#ffffff',
-                            borderRadius: '12px',
-                            padding: '24px',
-                            marginBottom: '16px',
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                            maxWidth: '600px',
+                            marginBottom: '32px'
                         }}>
                             <h2 style={{
-                                margin: '0 0 16px 0',
-                                fontSize: '24px',
-                                fontWeight: '600',
-                                color: '#111827'
+                                fontSize: '28px',
+                                fontWeight: '700',
+                                color: '#111827',
+                                marginBottom: '16px'
                             }}>
-                                Welcome to LEWIS
+                                Welcome to LEWIS Construction AI
                             </h2>
                             <p style={{
-                                margin: '0 0 20px 0',
                                 fontSize: '16px',
-                                color: '#4b5563',
+                                color: '#6b7280',
                                 lineHeight: '1.6'
                             }}>
                                 I'm your AI construction consultant. I can help you analyze construction fees,
@@ -177,57 +163,16 @@ function LewisPageContent() {
                             opacity: hasLewisAccess ? 1 : 0.5,
                             pointerEvents: hasLewisAccess ? 'auto' : 'none'
                         }}>
-                            {hasLewisAccess ? (
-                                <p style={{
-                                    margin: 0,
-                                    fontSize: '16px',
-                                    color: '#6b7280',
-                                    textAlign: 'center'
-                                }}>
-                                    Chat interface will be integrated here
-                                </p>
-                            ) : (
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: '20px'
-                                }}>
-                                    <div style={{
-                                        fontSize: '48px',
-                                        marginBottom: '16px'
-                                    }}>
-                                        🔒
-                                    </div>
-                                    <h3 style={{
-                                        margin: '0 0 8px 0',
-                                        fontSize: '18px',
-                                        color: '#374151'
-                                    }}>
-                                        LEWIS Access Required
-                                    </h3>
-                                    <p style={{
-                                        margin: '0 0 16px 0',
-                                        fontSize: '14px',
-                                        color: '#6b7280'
-                                    }}>
-                                        Please upgrade your subscription to access LEWIS features
-                                    </p>
-                                    <button
-                                        onClick={() => setShowUpgradeModal(true)}
-                                        style={{
-                                            backgroundColor: '#000000',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            padding: '12px 24px',
-                                            fontSize: '14px',
-                                            cursor: 'pointer',
-                                            fontWeight: '500'
-                                        }}
-                                    >
-                                        Unlock LEWIS
-                                    </button>
-                                </div>
-                            )}
+                            <p style={{
+                                margin: 0,
+                                fontSize: '14px',
+                                color: '#6b7280'
+                            }}>
+                                {hasLewisAccess 
+                                    ? 'Start a conversation with LEWIS to get construction insights and analysis.'
+                                    : 'Upgrade to access the full LEWIS Construction AI experience.'
+                                }
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -241,16 +186,15 @@ function LewisPageContent() {
                 }}>
                     <CustomLewisPortal />
                 </div>
-            </div>
 
-            {/* Upgrade Modal */}
-            {showUpgradeModal && (
-                <UpgradeModal
-                    open={showUpgradeModal}
-                    onClose={() => setShowUpgradeModal(false)}
-                />
-            )}
-        </div>
+                {/* Upgrade Modal */}
+                {showUpgradeModal && (
+                    <UpgradeModal
+                        open={showUpgradeModal}
+                        onClose={() => setShowUpgradeModal(false)}
+                    />
+                )}
+            </div>
     );
 }
 
