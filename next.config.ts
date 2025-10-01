@@ -54,7 +54,6 @@ const nextConfig: NextConfig = {
     cpus: 1,
   },
   // Build optimizations
-  staticGenerationRetryCount: 1,
   // Build optimizations
   generateBuildId: async () => {
     return 'build-' + Date.now();
@@ -270,7 +269,7 @@ const nextConfig: NextConfig = {
   // when external packages in dev mode with turbopack, this config will lead to bundle error
   serverExternalPackages: isProd ? ['@electric-sql/pglite'] : undefined,
 
-  transpilePackages: ['@lobechat/const', '@lobechat/model-runtime', '@lobechat/types', '@lobechat/electron-client-ipc', 'pdfjs-dist', 'mermaid'],
+  transpilePackages: ['@lobechat/const', '@lobechat/model-runtime', '@lobechat/types', '@lobechat/electron-client-ipc', '@lobechat/file-loaders', 'pdfjs-dist', 'mermaid'],
 
   productionBrowserSourceMaps: false,
   webpack(config) {
