@@ -46,8 +46,8 @@ const WelcomeMessage = () => {
     showButton: isLewisSession,
     activeId,
     showPortal,
-    currentSession: useSessionStore.getState().currentSession,
-    plugins: useSessionStore.getState().currentSession?.config?.plugins
+    currentSession: useSessionStore.getState().sessions[useSessionStore.getState().activeId] || null,
+    plugins: useSessionStore.getState().sessions[useSessionStore.getState().activeId]?.config?.plugins
   });
 
   const agentSystemRoleMsg = t('agentDefaultMessageWithSystemRole', {

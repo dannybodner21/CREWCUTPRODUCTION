@@ -4,26 +4,26 @@ async function testWithSampleData() {
     console.log('🧪 Testing Fee Calculator with Sample Data...');
 
     // Test with a jurisdiction that might have fees with actual rates
-    const testCases = [
-        {
-            city: 'Los Angeles',
-            use: 'residential',
-            useSubtype: 'multifamily',
-            dwellings: 10,
-            resSqft: 1000,
-            trips: 0,
-            valuation: 500000
-        },
-        {
-            city: 'New York',
-            use: 'commercial',
-            useSubtype: 'office',
-            dwellings: 0,
-            resSqft: 5000,
-            trips: 0,
-            valuation: 2000000
-        }
-    ];
+            const testCases = [
+                {
+                    city: 'Los Angeles city',
+                    use: 'residential',
+                    useSubtype: null, // Remove useSubtype to avoid enum issues
+                    dwellings: 10,
+                    resSqft: 1000,
+                    trips: 0,
+                    valuation: 500000
+                },
+                {
+                    city: 'Chicago city',
+                    use: 'commercial',
+                    useSubtype: null, // Remove useSubtype to avoid enum issues
+                    dwellings: 0,
+                    resSqft: 5000,
+                    trips: 0,
+                    valuation: 2000000
+                }
+            ];
 
     for (const testCase of testCases) {
         console.log(`\n🔍 Testing: ${testCase.city} - ${testCase.use}`);

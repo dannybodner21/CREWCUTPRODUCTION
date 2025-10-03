@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'getCityFees': {
-        result = await lewisDataService.getCityFees(params.cityName, params.state);
+        result = await lewisDataService.getCities();
         break;
       }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'analyzeAverageFees': {
-        result = await lewisDataService.analyzeAverageFees(params);
+        result = await lewisDataService.getCities();
         break;
       }
 

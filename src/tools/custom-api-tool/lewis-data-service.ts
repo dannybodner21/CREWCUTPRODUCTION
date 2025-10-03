@@ -567,15 +567,28 @@ export class LewisDataService {
 
             console.log('🔧 Calculating project fees with params:', params);
 
+            // Map use types to valid enum values
+            const useDomainMap: { [key: string]: string } = {
+                'residential': 'residential',
+                'commercial': 'commercial',
+                'multifamily': 'residential', // Map multifamily to residential
+                'office': 'commercial', // Map office to commercial
+                'industrial': 'commercial',
+                'mixed-use': 'commercial'
+            };
+
+            const mappedUse = useDomainMap[params.use] || params.use;
+
             // First try to call the calc_project_fees function directly
             const { data: calcData, error: calcError } = await supabase.rpc('calc_project_fees', {
-                p_city: params.city,
-                p_project_use: params.use,
+                p_jur_name: params.city,
+                p_use_domain: mappedUse,
                 p_use_subtype: params.useSubtype || null,
                 p_dwellings: params.dwellings,
                 p_res_sqft: params.resSqft,
                 p_trips: params.trips || 0,
-                p_valuation: params.valuation || null
+                p_valuation: params.valuation || null,
+                p_net_loss: 0 // Default value for net loss
             });
 
             if (calcError) {
