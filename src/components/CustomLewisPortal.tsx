@@ -471,21 +471,22 @@ const CustomLewisPortal = () => {
         });
     };
 
-    // Calculate total fees for current project using SQL function
+    // Calculate total fees for current project using calc_simple_fees
     const [calculatedFees, setCalculatedFees] = useState<{
-        total: number;
-        breakdown: Array<{ fee: Fee; amount: number }>;
-        byAgency?: Array<{ agency: string; subtotal: number }>;
-        lineItems?: Array<{ agency: string; fee: string; method: string; rate: number; unit: string; qty: number; amount: number }>;
-        needsRules?: Array<{ agency: string; fee: string; method: string; rate: number; unit: string }>;
-    }>({ total: 0, breakdown: [] });
+        jurisdiction: string;
+        items: Array<{ fee: string; method: string; base_rate: number; qty: number; amount: number }>;
+        per_sqft_total: string;
+        per_unit_total: string;
+        flat_total: string;
+        grand_total: string;
+    } | null>(null);
 
     const [isCalculating, setIsCalculating] = useState(false);
 
     // Calculate fees using SQL function
     const calculateTotalFees = async (): Promise<void> => {
         if (!selectedJurisdiction) {
-            setCalculatedFees({ total: 0, breakdown: [] });
+            setCalculatedFees(null);
             return;
         }
 
@@ -513,50 +514,19 @@ const CustomLewisPortal = () => {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success && result.data) {
-                    const sqlResult = result.data;
-
-                    // Transform SQL result to match our UI format
-                    const breakdown = sqlResult.line_items?.map((item: any) => ({
-                        fee: {
-                            id: item.fee_id,
-                            name: item.fee,
-                            category: item.category,
-                            unit_label: item.unit_label,
-                            description: '',
-                            applies_to: null,
-                            use_subtype: null,
-                            formula: null,
-                            calc_method: item.category,
-                            base_rate: item.amount,
-                            min_fee: null,
-                            max_fee: null,
-                            unit_id: 'FLAT',
-                            formula_json: null,
-                            status: 'verified',
-                            effective_start: new Date().toISOString(),
-                            effective_end: null
-                        },
-                        amount: item.amount
-                    })) || [];
-
-                    setCalculatedFees({
-                        total: sqlResult.grand_total || 0,
-                        breakdown,
-                        byAgency: sqlResult.by_agency || [],
-                        lineItems: sqlResult.line_items || [],
-                        needsRules: sqlResult.needs_rules || []
-                    });
+                    // Use the data exactly as returned by calc_simple_fees
+                    setCalculatedFees(result.data);
                 } else {
                     console.error('Error calculating fees:', result.error);
-                    setCalculatedFees({ total: 0, breakdown: [] });
+                    setCalculatedFees(null);
                 }
             } else {
                 console.error('Failed to calculate fees');
-                setCalculatedFees({ total: 0, breakdown: [] });
+                setCalculatedFees(null);
             }
         } catch (error) {
             console.error('Error calculating fees:', error);
-            setCalculatedFees({ total: 0, breakdown: [] });
+            setCalculatedFees(null);
         } finally {
             setIsCalculating(false);
         }
@@ -968,8 +938,18 @@ const CustomLewisPortal = () => {
                                 <div style={{ marginTop: '16px', fontSize: '16px' }}>Calculating fees...</div>
                             </div>
                         ) : (() => {
-                            const { total, breakdown } = calculatedFees;
-                            const applicableFees = breakdown.filter(item => item.amount > 0);
+                            if (!calculatedFees) {
+                                return (
+                                    <div style={{ textAlign: 'center', padding: '40px' }}>
+                                        <Text style={{ fontSize: '16px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                            Click "Calculate Fees" to see results
+                                        </Text>
+                                    </div>
+                                );
+                            }
+
+                            const { items, per_sqft_total, per_unit_total, flat_total, grand_total } = calculatedFees;
+                            const applicableFees = items.filter(item => item.amount > 0);
 
                             // If comparing two locations, show side-by-side comparison
                             if (compareTwoLocations && selectedJurisdiction2) {
@@ -994,7 +974,7 @@ const CustomLewisPortal = () => {
                                                     <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
                                                         <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                            ${total.toLocaleString()}
+                                                            {grand_total}
                                                         </Text>
                                                     </div>
                                                 </Col>
@@ -1055,9 +1035,9 @@ const CustomLewisPortal = () => {
                                                                 .map((item, index) => (
                                                                     <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
                                                                         <div style={{ flex: 1 }}>
-                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
+                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee}</Text>
                                                                             <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
-                                                                                {item.fee.category} • {item.fee.unit_label}
+                                                                                {item.method} • ${item.base_rate} × {item.qty}
                                                                             </Text>
                                                                         </div>
                                                                         <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
@@ -1066,11 +1046,42 @@ const CustomLewisPortal = () => {
                                                                     </div>
                                                                 ))}
                                                         </div>
-                                                        <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
-                                                            {applicableFees.length} applicable fees
-                                                        </Text>
-                                                    </div>
-                                                )}
+                                            <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
+                                                {applicableFees.length} applicable fees
+                                            </Text>
+                                        </div>
+                                    )}
+
+                                    {/* Subtotals */}
+                                    <div style={{ marginTop: '20px', padding: '16px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#f8f9fa', borderRadius: '8px' }}>
+                                        <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>Fee Summary:</Text>
+                                        <Row gutter={16}>
+                                            <Col span={8}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Sq Ft</Text>
+                                                    <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        {per_sqft_total}
+                                                    </Text>
+                                                </div>
+                                            </Col>
+                                            <Col span={8}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Unit</Text>
+                                                    <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        {per_unit_total}
+                                                    </Text>
+                                                </div>
+                                            </Col>
+                                            <Col span={8}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Flat Fees</Text>
+                                                    <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        {flat_total}
+                                                    </Text>
+                                                </div>
+                                            </Col>
+                                        </Row>
+                                    </div>
                                             </Col>
 
                                             {/* Second Location Fee Breakdown */}
@@ -1122,7 +1133,7 @@ const CustomLewisPortal = () => {
                                             <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
                                                 <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                    ${total.toLocaleString()}
+                                                    {grand_total}
                                                 </Text>
                                             </div>
                                         </Col>
@@ -1146,9 +1157,9 @@ const CustomLewisPortal = () => {
                                                     .map((item, index) => (
                                                         <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
                                                             <div style={{ flex: 1 }}>
-                                                                <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
+                                                                <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee}</Text>
                                                                 <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
-                                                                    {item.fee.category} • {item.fee.unit_label}
+                                                                    {item.method} • ${item.base_rate} × {item.qty}
                                                                 </Text>
                                                             </div>
                                                             <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
@@ -1169,13 +1180,7 @@ const CustomLewisPortal = () => {
 
                         <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fafafa', borderRadius: '8px' }}>
                             <Text style={{ fontSize: '14px' }} type="secondary">
-                                <strong>Note:</strong> Calculations are now performed using the database SQL function for accurate results.
-                                {calculatedFees.needsRules && calculatedFees.needsRules.length > 0 && (
-                                    <span>
-                                        <br />
-                                        <strong>Fees requiring manual calculation:</strong> {calculatedFees.needsRules.length} fees need custom rules implementation.
-                                    </span>
-                                )}
+                                <strong>Note:</strong> Calculations are performed using the calc_simple_fees database function for accurate results.
                             </Text>
                         </div>
                     </Card>

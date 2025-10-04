@@ -565,69 +565,24 @@ export class LewisDataService {
         return await executeSupabaseQuery(async () => {
             const supabase = this.getSupabaseClient();
 
-            console.log('🔧 Calculating project fees with params:', params);
+            console.log('🔧 Calculating project fees with calc_simple_fees:', params);
 
-            // Map use types to valid enum values
-            const useDomainMap: { [key: string]: string } = {
-                'residential': 'residential',
-                'commercial': 'commercial',
-                'multifamily': 'residential', // Map multifamily to residential
-                'office': 'commercial', // Map office to commercial
-                'industrial': 'commercial',
-                'mixed-use': 'commercial'
-            };
-
-            const mappedUse = useDomainMap[params.use] || params.use;
-
-            // First try to call the calc_project_fees function directly
-            const { data: calcData, error: calcError } = await supabase.rpc('calc_project_fees', {
+            // Call the calc_simple_fees function directly
+            const { data: calcData, error: calcError } = await supabase.rpc('calc_simple_fees', {
                 p_jur_name: params.city,
-                p_use_domain: mappedUse,
-                p_use_subtype: params.useSubtype || null,
-                p_dwellings: params.dwellings,
-                p_res_sqft: params.resSqft,
-                p_trips: params.trips || 0,
-                p_valuation: params.valuation || null,
-                p_net_loss: 0 // Default value for net loss
+                p_sqft: params.resSqft,
+                p_units: params.dwellings
             });
 
             if (calcError) {
-                console.error('❌ Error calling calc_project_fees:', calcError);
-
-                // If the function doesn't exist, fall back to client-side calculation
-                console.log('🔄 Falling back to client-side calculation...');
-                return this.calculateProjectFeesClientSide(params);
+                console.error('❌ Error calling calc_simple_fees:', calcError);
+                return { success: false, error: calcError.message };
             }
 
-            console.log('✅ calc_project_fees result:', calcData);
+            console.log('✅ calc_simple_fees result:', calcData);
 
-            // Get jurisdiction info for additional context
-            const { data: jurisdictionData } = await supabase
-                .from('jurisdictions')
-                .select('id, name')
-                .ilike('name', params.city)
-                .limit(1);
-
-            const jurisdiction = jurisdictionData?.[0];
-
-            // Get fee counts for context
-            const { data: feeCounts } = await supabase
-                .from('fees')
-                .select('id')
-                .eq('jurisdiction_id', jurisdiction?.id)
-                .eq('active', true);
-
-            const result = {
-                jurisdiction: params.city,
-                fee_count: feeCounts?.length || 0,
-                published_versions: feeCounts?.length || 0, // Simplified for now
-                grand_total: calcData?.grand_total || 0,
-                by_agency: calcData?.by_agency || [],
-                line_items: calcData?.line_items || [],
-                needs_rules: calcData?.needs_rules || []
-            };
-
-            return { data: result, error: null };
+            // Return the data exactly as the function provides it
+            return { data: calcData, error: null };
         });
     }
 
