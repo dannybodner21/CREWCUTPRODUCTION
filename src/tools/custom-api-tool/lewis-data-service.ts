@@ -657,12 +657,12 @@ export class LewisDataService {
 
             const jurisdiction = jurisdictionData[0];
 
-            // Get fees for this jurisdiction
+            // Get fees for this jurisdiction with agency information
             const { data: feesData } = await supabase
                 .from('fees')
                 .select(`
-                    id, name, category, rate, unit_label, description, applies_to, use_subtype,
-                    agencies!inner(name)
+                    id, name, category, rate, unit_label, description, applies_to, use_subtype, agency_id,
+                    agencies(id, name)
                 `)
                 .eq('jurisdiction_id', jurisdiction.id)
                 .eq('active', true);
@@ -671,12 +671,46 @@ export class LewisDataService {
                 return { success: false, error: 'No fees found for this jurisdiction' };
             }
 
+            // Get fee_versions for these fees
+            const feeIds = feesData.map(f => f.id);
+            const { data: feeVersionsData } = await supabase
+                .from('fee_versions')
+                .select('fee_id, calc_method, base_rate, min_fee, max_fee, unit_id, formula_json, status, effective_start, effective_end')
+                .in('fee_id', feeIds)
+                .eq('status', 'published')
+                .lte('effective_start', new Date().toISOString())
+                .or('effective_end.is.null,effective_end.gte.' + new Date().toISOString());
+
+            // Create a map of fee_id to fee_version for quick lookup
+            const feeVersionsMap = new Map();
+            if (feeVersionsData) {
+                feeVersionsData.forEach(fv => {
+                    if (!feeVersionsMap.has(fv.fee_id) || new Date(fv.effective_start) > new Date(feeVersionsMap.get(fv.fee_id).effective_start)) {
+                        feeVersionsMap.set(fv.fee_id, fv);
+                    }
+                });
+            }
+
+            // Merge fee data with fee_versions
+            const mergedFeesData = feesData.map(fee => ({
+                ...fee,
+                fee_versions: feeVersionsMap.has(fee.id) ? [feeVersionsMap.get(fee.id)] : []
+            }));
+
+            if (!feesData) {
+                return { success: false, error: 'No fees found for this jurisdiction' };
+            }
+
+            console.log('🔧 Client-side: Found', mergedFeesData.length, 'fees for jurisdiction');
+
             // Filter fees based on project type
-            const relevantFees = feesData.filter(fee => {
+            const relevantFees = mergedFeesData.filter(fee => {
                 if (fee.applies_to && fee.applies_to !== params.use) return false;
                 if (fee.use_subtype && fee.use_subtype !== params.useSubtype) return false;
                 return true;
             });
+
+            console.log('🔧 Client-side: Filtered to', relevantFees.length, 'relevant fees');
 
             // Calculate fees
             const lineItems: any[] = [];
@@ -686,8 +720,10 @@ export class LewisDataService {
                 let amount = 0;
                 let qty = 1;
 
-                // Use rate from fees table, fallback to 0 if null
-                const rate = fee.rate || 0;
+                // Use base_rate from fee_versions, fallback to rate from fees table, then 0
+                const rate = fee.fee_versions?.[0]?.base_rate || fee.rate || 0;
+                
+                console.log('🔧 Client-side: Processing fee', fee.name, 'rate:', rate, 'category:', fee.category, 'base_rate:', fee.fee_versions?.[0]?.base_rate);
 
                 switch (fee.category) {
                     case 'flat':
