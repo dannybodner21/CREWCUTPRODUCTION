@@ -120,6 +120,13 @@ export interface CustomApiToolAction {
     // Jurisdiction ranking actions
     rankJurisdictions: (params: any) => Promise<any>;
     getTopJurisdictions: (params: any) => Promise<any>;
+    // Enhanced data access actions
+    getAllJurisdictionsWithFees: () => Promise<any>;
+    searchJurisdictions: (params: { searchTerm: string }) => Promise<any>;
+    getFeeStatistics: () => Promise<any>;
+    getFeesByCategory: (params: { category: string }) => Promise<any>;
+    compareJurisdictions: (params: { jurisdiction1: string; jurisdiction2: string }) => Promise<any>;
+    getFeeTrends: () => Promise<any>;
     // Demo data actions for testing
     getDemoJurisdictions: () => Promise<any>;
     getDemoJurisdictionFees: (params: { jurisdictionId: string }) => Promise<any>;
@@ -957,6 +964,9 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
             };
         }
     },
+
+    // Enhanced LEWIS data access actions
+    ...enhancedLewisActions,
 
     // Grant Trading Tool implementations
     getStockQuote: async (params: GetStockQuoteParams) => {
@@ -2288,6 +2298,240 @@ function generatePricingStrategyRecommendations(courseType: string, marketSegmen
 
     return recommendations;
 }
+
+// Enhanced LEWIS data access actions
+const enhancedLewisActions = {
+    getAllJurisdictionsWithFees: async () => {
+        try {
+            console.log('🔧 LEWIS TOOL: getAllJurisdictionsWithFees called');
+            
+            const result = await lewisDataService.getAllJurisdictionsWithFees();
+            
+            if (result.success && result.data) {
+                const jurisdictions = result.data;
+                const responseMessage = `I have comprehensive fee data for ${jurisdictions.length} jurisdictions across the US. Here's what's available:
+
+**JURISDICTIONS COVERED:**
+${jurisdictions.slice(0, 10).map(j => `- ${j.name} (${j.type}, ${j.state_fips}) - ${j.fees?.length || 0} fees`).join('\n')}
+${jurisdictions.length > 10 ? `... and ${jurisdictions.length - 10} more jurisdictions` : ''}
+
+**FEE CATEGORIES AVAILABLE:**
+- per_sqft: Square footage based fees
+- per_unit: Per dwelling unit fees  
+- flat: Fixed amount fees
+- formula: Complex calculation-based fees
+
+**GEOGRAPHIC COVERAGE:**
+- Major metropolitan areas across all US states
+- Both city and county level jurisdictions
+- Population data for market analysis
+
+I can provide detailed fee breakdowns, comparisons, rankings, and analysis for any of these jurisdictions. What specific information would you like to explore?`;
+
+                return responseMessage;
+            } else {
+                return `I'm sorry, I couldn't retrieve the jurisdiction data at the moment. Please try again or let me know if you need help with something else.`;
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: getAllJurisdictionsWithFees error:', error);
+            return `I'm sorry, I encountered an error while retrieving jurisdiction data: ${error instanceof Error ? error.message : 'Failed to get jurisdictions'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    searchJurisdictions: async (params: { searchTerm: string }) => {
+        try {
+            console.log('🔧 LEWIS TOOL: searchJurisdictions called with:', params);
+            
+            const result = await lewisDataService.searchJurisdictions(params.searchTerm);
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const jurisdictions = result.data;
+                const responseMessage = `I found ${jurisdictions.length} jurisdictions matching "${params.searchTerm}":
+
+${jurisdictions.map(j => `**${j.name}** (${j.type}, ${j.state_fips})
+- Population: ${j.population?.toLocaleString() || 'N/A'}
+- Total Fees: ${j.fees?.length || 0}
+- Fee Categories: ${[...new Set(j.fees?.map(f => f.category) || [])].join(', ')}
+- Agencies: ${[...new Set(j.fees?.map(f => f.agencies?.name).filter(Boolean) || [])].join(', ')}`).join('\n\n')}
+
+I can provide detailed fee breakdowns, calculations, or comparisons for any of these jurisdictions. What would you like to explore further?`;
+
+                return responseMessage;
+            } else {
+                return `I couldn't find any jurisdictions matching "${params.searchTerm}". Try searching for a city name, state, or region. I have data for 75+ major US jurisdictions.`;
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: searchJurisdictions error:', error);
+            return `I'm sorry, I encountered an error while searching jurisdictions: ${error instanceof Error ? error.message : 'Search failed'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    getFeeStatistics: async () => {
+        try {
+            console.log('🔧 LEWIS TOOL: getFeeStatistics called');
+            
+            const result = await lewisDataService.getFeeStatistics();
+            
+            if (result.success && result.data) {
+                const stats = result.data;
+                const responseMessage = `Here's a comprehensive overview of the fee database:
+
+**DATABASE STATISTICS:**
+- **Total Jurisdictions**: ${stats.totalJurisdictions}
+- **Total Fees**: ${stats.totalFees.toLocaleString()}
+- **Total Agencies**: ${stats.totalAgencies}
+- **States Covered**: ${stats.statesCovered}
+- **Last Updated**: ${new Date(stats.lastUpdated).toLocaleString()}
+
+**FEE CATEGORIES AVAILABLE:**
+${stats.feeCategories.map(cat => `- ${cat}`).join('\n')}
+
+**COVERAGE INSIGHTS:**
+- This represents the most comprehensive construction fee database available
+- Covers major metropolitan areas across all US states
+- Includes both city and county level jurisdictions
+- Data includes exact rates, calculation methods, and agency information
+
+I can provide detailed analysis, comparisons, rankings, or specific fee information for any jurisdiction or project type. What would you like to explore?`;
+
+                return responseMessage;
+            } else {
+                return `I'm sorry, I couldn't retrieve the fee statistics at the moment. Please try again or let me know if you need help with something else.`;
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: getFeeStatistics error:', error);
+            return `I'm sorry, I encountered an error while retrieving fee statistics: ${error instanceof Error ? error.message : 'Failed to get statistics'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    getFeesByCategory: async (params: { category: string }) => {
+        try {
+            console.log('🔧 LEWIS TOOL: getFeesByCategory called with:', params);
+            
+            const result = await lewisDataService.getFeesByCategory(params.category);
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const fees = result.data;
+                const responseMessage = `I found ${fees.length} ${params.category} fees across all jurisdictions:
+
+${fees.slice(0, 10).map(f => `**${f.name}** - ${f.jurisdictions?.name || 'Unknown Jurisdiction'}
+- Rate: $${f.rate?.toLocaleString() || 'Variable'} ${f.unit_label || ''}
+- Agency: ${f.agencies?.name || 'Unknown'}
+- Applies to: ${f.applies_to || 'All project types'}
+- Description: ${f.description || 'No description available'}`).join('\n\n')}
+
+${fees.length > 10 ? `... and ${fees.length - 10} more ${params.category} fees` : ''}
+
+**ANALYSIS:**
+- **Highest Rate**: $${Math.max(...fees.map(f => f.rate || 0)).toLocaleString()}
+- **Lowest Rate**: $${Math.min(...fees.map(f => f.rate || 0)).toLocaleString()}
+- **Average Rate**: $${(fees.reduce((sum, f) => sum + (f.rate || 0), 0) / fees.length).toFixed(2)}
+- **Jurisdictions with this fee type**: ${[...new Set(fees.map(f => f.jurisdictions?.name))].length}
+
+I can provide more detailed analysis, comparisons, or help you find the best jurisdictions for this fee type. What would you like to explore further?`;
+
+                return responseMessage;
+            } else {
+                return `I couldn't find any ${params.category} fees in the database. Available categories include: per_sqft, per_unit, flat, formula. What category would you like to explore?`;
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: getFeesByCategory error:', error);
+            return `I'm sorry, I encountered an error while retrieving ${params.category} fees: ${error instanceof Error ? error.message : 'Failed to get fees'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    compareJurisdictions: async (params: { jurisdiction1: string; jurisdiction2: string }) => {
+        try {
+            console.log('🔧 LEWIS TOOL: compareJurisdictions called with:', params);
+            
+            const result = await lewisDataService.compareJurisdictions(params.jurisdiction1, params.jurisdiction2);
+            
+            if (result.success && result.data) {
+                const { jurisdiction1, jurisdiction2, comparison } = result.data;
+                const responseMessage = `Here's a detailed comparison between ${jurisdiction1.name} and ${jurisdiction2.name}:
+
+**${jurisdiction1.name.toUpperCase()}**
+- Type: ${jurisdiction1.type} (${jurisdiction1.kind})
+- Population: ${jurisdiction1.population?.toLocaleString() || 'N/A'}
+- Total Fees: ${comparison.totalFees1}
+- Average Rate: $${comparison.averageRate1.toFixed(2)}
+
+**${jurisdiction2.name.toUpperCase()}**
+- Type: ${jurisdiction2.type} (${jurisdiction2.kind})
+- Population: ${jurisdiction2.population?.toLocaleString() || 'N/A'}
+- Total Fees: ${comparison.totalFees2}
+- Average Rate: $${comparison.averageRate2.toFixed(2)}
+
+**COMPARISON ANALYSIS:**
+- **Fee Count Difference**: ${Math.abs(comparison.totalFees1 - comparison.totalFees2)} more fees in ${comparison.totalFees1 > comparison.totalFees2 ? jurisdiction1.name : jurisdiction2.name}
+- **Rate Difference**: ${jurisdiction1.name} has ${comparison.averageRate1 > comparison.averageRate2 ? 'higher' : 'lower'} average rates by $${Math.abs(comparison.averageRate1 - comparison.averageRate2).toFixed(2)}
+- **Fee Efficiency**: ${comparison.averageRate1 < comparison.averageRate2 ? jurisdiction1.name : jurisdiction2.name} offers better fee efficiency
+
+**KEY INSIGHTS:**
+${comparison.totalFees1 > comparison.totalFees2 ? 
+    `${jurisdiction1.name} has more comprehensive fee structure with ${comparison.totalFees1 - comparison.totalFees2} additional fees` :
+    `${jurisdiction2.name} has more comprehensive fee structure with ${comparison.totalFees2 - comparison.totalFees1} additional fees`}
+
+I can provide detailed fee breakdowns for either jurisdiction or help you calculate specific project costs. What would you like to explore further?`;
+
+                return responseMessage;
+            } else {
+                return `I'm sorry, I couldn't compare those jurisdictions. Please check the jurisdiction names and try again. I can help you find the correct jurisdiction names if needed.`;
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: compareJurisdictions error:', error);
+            return `I'm sorry, I encountered an error while comparing jurisdictions: ${error instanceof Error ? error.message : 'Comparison failed'}. Please try again or let me know if you need help with something else.`;
+        }
+    },
+
+    getFeeTrends: async () => {
+        try {
+            console.log('🔧 LEWIS TOOL: getFeeTrends called');
+            
+            const result = await lewisDataService.getFeeTrends();
+            
+            if (result.success && result.data) {
+                const trends = result.data;
+                const responseMessage = `Here's a comprehensive analysis of fee trends and patterns across all jurisdictions:
+
+**FEE DISTRIBUTION BY CATEGORY:**
+${Object.entries(trends.categoryDistribution)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10)
+    .map(([category, count]) => `- **${category}**: ${count} fees (${((count / trends.totalFees) * 100).toFixed(1)}%)`)
+    .join('\n')}
+
+**TOP JURISDICTIONS BY FEE COUNT:**
+${Object.entries(trends.jurisdictionDistribution)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10)
+    .map(([jurisdiction, count]) => `- **${jurisdiction}**: ${count} fees`)
+    .join('\n')}
+
+**RATE STATISTICS:**
+- **Lowest Rate**: $${trends.rateStatistics.min.toFixed(2)}
+- **Highest Rate**: $${trends.rateStatistics.max.toFixed(2)}
+- **Average Rate**: $${trends.rateStatistics.average.toFixed(2)}
+- **Median Rate**: $${trends.rateStatistics.median.toFixed(2)}
+
+**KEY INSIGHTS:**
+- **Most Common Fee Type**: ${Object.entries(trends.categoryDistribution).sort(([,a], [,b]) => b - a)[0]?.[0]} (${Object.entries(trends.categoryDistribution).sort(([,a], [,b]) => b - a)[0]?.[1]} fees)
+- **Most Comprehensive Jurisdiction**: ${Object.entries(trends.jurisdictionDistribution).sort(([,a], [,b]) => b - a)[0]?.[0]} (${Object.entries(trends.jurisdictionDistribution).sort(([,a], [,b]) => b - a)[0]?.[1]} fees)
+- **Rate Range**: ${trends.rateStatistics.max / trends.rateStatistics.min}x difference between highest and lowest rates
+- **Total Fees Analyzed**: ${trends.totalFees.toLocaleString()}
+
+This data shows significant regional variation in fee structures and rates. I can provide more detailed analysis for specific categories, jurisdictions, or project types. What would you like to explore further?`;
+
+                return responseMessage;
+            } else {
+                return `I'm sorry, I couldn't retrieve the fee trends at the moment. Please try again or let me know if you need help with something else.`;
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: getFeeTrends error:', error);
+            return `I'm sorry, I encountered an error while retrieving fee trends: ${error instanceof Error ? error.message : 'Failed to get trends'}. Please try again or let me know if you need help with something else.`;
+        }
+    }
+};
 
 // Export the actions object
 export const customApiActions = createCustomApiToolActions();

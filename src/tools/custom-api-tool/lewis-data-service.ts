@@ -743,6 +743,229 @@ export class LewisDataService {
             return { success: false, error: error instanceof Error ? error.message : 'Calculation failed' };
         }
     }
+
+    // Get comprehensive fee data for all jurisdictions
+    async getAllJurisdictionsWithFees(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            const { data, error } = await supabase
+                .from('jurisdictions')
+                .select(`
+                    id, name, type, kind, state_fips, population,
+                    fees!inner(
+                        id, name, category, rate, unit_label, description, applies_to, use_subtype, active,
+                        agencies(id, name)
+                    )
+                `)
+                .eq('fees.active', true)
+                .order('name');
+
+            return { data, error };
+        });
+    }
+
+    // Search jurisdictions by name, state, or other criteria
+    async searchJurisdictions(searchTerm: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            const { data, error } = await supabase
+                .from('jurisdictions')
+                .select(`
+                    id, name, type, kind, state_fips, population,
+                    fees!inner(
+                        id, name, category, rate, unit_label, description, applies_to, use_subtype, active,
+                        agencies(id, name)
+                    )
+                `)
+                .or(`name.ilike.%${searchTerm}%,state_fips.ilike.%${searchTerm}%`)
+                .eq('fees.active', true)
+                .order('name')
+                .limit(20);
+
+            return { data, error };
+        });
+    }
+
+    // Get fee statistics across all jurisdictions
+    async getFeeStatistics(): Promise<{ success: boolean; data?: any; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            // Get jurisdiction count
+            const { count: jurisdictionCount } = await supabase
+                .from('jurisdictions')
+                .select('*', { count: 'exact', head: true });
+
+            // Get total fee count
+            const { count: feeCount } = await supabase
+                .from('fees')
+                .select('*', { count: 'exact', head: true })
+                .eq('active', true);
+
+            // Get agency count
+            const { count: agencyCount } = await supabase
+                .from('agencies')
+                .select('*', { count: 'exact', head: true });
+
+            // Get fee categories
+            const { data: categories } = await supabase
+                .from('fees')
+                .select('category')
+                .eq('active', true);
+
+            const uniqueCategories = [...new Set(categories?.map(f => f.category) || [])];
+
+            // Get states covered
+            const { data: states } = await supabase
+                .from('jurisdictions')
+                .select('state_fips')
+                .not('state_fips', 'is', null);
+
+            const uniqueStates = [...new Set(states?.map(s => s.state_fips) || [])];
+
+            return {
+                data: {
+                    totalJurisdictions: jurisdictionCount || 0,
+                    totalFees: feeCount || 0,
+                    totalAgencies: agencyCount || 0,
+                    feeCategories: uniqueCategories,
+                    statesCovered: uniqueStates.length,
+                    lastUpdated: new Date().toISOString()
+                },
+                error: null
+            };
+        });
+    }
+
+    // Get fees by category across all jurisdictions
+    async getFeesByCategory(category: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            const { data, error } = await supabase
+                .from('fees')
+                .select(`
+                    id, name, category, rate, unit_label, description, applies_to, use_subtype,
+                    jurisdictions(id, name, type, kind, state_fips, population),
+                    agencies(id, name)
+                `)
+                .eq('active', true)
+                .eq('category', category)
+                .order('rate', { ascending: false });
+
+            return { data, error };
+        });
+    }
+
+    // Compare fees between two jurisdictions
+    async compareJurisdictions(jurisdiction1: string, jurisdiction2: string): Promise<{ success: boolean; data?: any; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            // Get fees for both jurisdictions
+            const { data: fees1 } = await supabase
+                .from('fees')
+                .select(`
+                    id, name, category, rate, unit_label, description, applies_to, use_subtype,
+                    agencies(id, name)
+                `)
+                .eq('jurisdiction_id', jurisdiction1)
+                .eq('active', true);
+
+            const { data: fees2 } = await supabase
+                .from('fees')
+                .select(`
+                    id, name, category, rate, unit_label, description, applies_to, use_subtype,
+                    agencies(id, name)
+                `)
+                .eq('jurisdiction_id', jurisdiction2)
+                .eq('active', true);
+
+            // Get jurisdiction info
+            const { data: jur1 } = await supabase
+                .from('jurisdictions')
+                .select('id, name, type, kind, state_fips, population')
+                .eq('id', jurisdiction1)
+                .single();
+
+            const { data: jur2 } = await supabase
+                .from('jurisdictions')
+                .select('id, name, type, kind, state_fips, population')
+                .eq('id', jurisdiction2)
+                .single();
+
+            return {
+                data: {
+                    jurisdiction1: { ...jur1, fees: fees1 || [] },
+                    jurisdiction2: { ...jur2, fees: fees2 || [] },
+                    comparison: {
+                        totalFees1: fees1?.length || 0,
+                        totalFees2: fees2?.length || 0,
+                        averageRate1: fees1?.reduce((sum, f) => sum + (f.rate || 0), 0) / (fees1?.length || 1),
+                        averageRate2: fees2?.reduce((sum, f) => sum + (f.rate || 0), 0) / (fees2?.length || 1)
+                    }
+                },
+                error: null
+            };
+        });
+    }
+
+    // Get fee trends and patterns
+    async getFeeTrends(): Promise<{ success: boolean; data?: any; error?: string }> {
+        return await executeSupabaseQuery(async () => {
+            const supabase = this.getSupabaseClient();
+
+            // Get fee distribution by category
+            const { data: categoryDistribution } = await supabase
+                .from('fees')
+                .select('category')
+                .eq('active', true);
+
+            const categoryCounts = categoryDistribution?.reduce((acc: any, fee) => {
+                acc[fee.category] = (acc[fee.category] || 0) + 1;
+                return acc;
+            }, {}) || {};
+
+            // Get fee distribution by jurisdiction
+            const { data: jurisdictionDistribution } = await supabase
+                .from('fees')
+                .select('jurisdiction_id, jurisdictions(name)')
+                .eq('active', true);
+
+            const jurisdictionCounts = jurisdictionDistribution?.reduce((acc: any, fee) => {
+                const jurName = fee.jurisdictions?.name || 'Unknown';
+                acc[jurName] = (acc[jurName] || 0) + 1;
+                return acc;
+            }, {}) || {};
+
+            // Get rate statistics
+            const { data: rateStats } = await supabase
+                .from('fees')
+                .select('rate')
+                .eq('active', true)
+                .not('rate', 'is', null);
+
+            const rates = rateStats?.map(f => f.rate).filter(r => r > 0) || [];
+            const rateStats_calculated = {
+                min: Math.min(...rates),
+                max: Math.max(...rates),
+                average: rates.reduce((sum, r) => sum + r, 0) / rates.length,
+                median: rates.sort((a, b) => a - b)[Math.floor(rates.length / 2)]
+            };
+
+            return {
+                data: {
+                    categoryDistribution: categoryCounts,
+                    jurisdictionDistribution: jurisdictionCounts,
+                    rateStatistics: rateStats_calculated,
+                    totalFees: rates.length
+                },
+                error: null
+            };
+        });
+    }
 }
 
 // Export a singleton instance

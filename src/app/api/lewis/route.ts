@@ -111,6 +111,36 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'getAllJurisdictionsWithFees': {
+        result = await lewisDataService.getAllJurisdictionsWithFees();
+        break;
+      }
+
+      case 'searchJurisdictions': {
+        result = await lewisDataService.searchJurisdictions(params.searchTerm);
+        break;
+      }
+
+      case 'getFeeStatistics': {
+        result = await lewisDataService.getFeeStatistics();
+        break;
+      }
+
+      case 'getFeesByCategory': {
+        result = await lewisDataService.getFeesByCategory(params.category);
+        break;
+      }
+
+      case 'compareJurisdictions': {
+        result = await lewisDataService.compareJurisdictions(params.jurisdiction1, params.jurisdiction2);
+        break;
+      }
+
+      case 'getFeeTrends': {
+        result = await lewisDataService.getFeeTrends();
+        break;
+      }
+
       default: {
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
