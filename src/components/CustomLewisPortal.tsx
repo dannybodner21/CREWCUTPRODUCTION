@@ -7,6 +7,8 @@ import { Building, MapPin } from 'lucide-react';
 import { Flexbox } from 'react-layout-kit';
 import { useChatStore } from '@/store/chat';
 import { PaywallGuard } from './PaywallGuard';
+import { FeeCalculator, createFeeCalculator } from '@/lib/fee-calculator';
+import type { ProjectInputs, FeeBreakdown } from '@/lib/fee-calculator';
 
 const { Title, Text } = Typography;
 const { Search: SearchInput } = Input;
@@ -21,41 +23,9 @@ interface Jurisdiction {
     population: number | null;
 }
 
-interface Fee {
-    id: string;
-    name: string;
-    category: string;
-    rate: string | null;
-    unit_label: string;
-    description: string | null;
-    applies_to: string | null;
-    use_subtype: string | null;
-    formula: string | null;
-    // New fee_versions fields
-    calc_method: string;
-    base_rate: number;
-    min_fee: number | null;
-    max_fee: number | null;
-    unit_id: string;
-    formula_json: any;
-    status: string;
-    effective_start: string;
-    effective_end: string | null;
-}
-
-interface ProjectParameters {
-    units: number;
-    squareFootage: number;
-    projectValue: number;
-    acreage?: number;
-    meterSize?: string;
-    trips?: number;
-}
-
 const CustomLewisPortal = () => {
     const theme = useTheme();
     const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
-    const [jurisdictionFees, setJurisdictionFees] = useState<Fee[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedJurisdiction, setSelectedJurisdiction] = useState<Jurisdiction | null>(null);
     const [searchJurisdiction, setSearchJurisdiction] = useState('');
@@ -64,19 +34,38 @@ const CustomLewisPortal = () => {
     // Comparison feature state
     const [compareTwoLocations, setCompareTwoLocations] = useState(false);
     const [selectedJurisdiction2, setSelectedJurisdiction2] = useState<Jurisdiction | null>(null);
-    const [jurisdictionFees2, setJurisdictionFees2] = useState<Fee[]>([]);
     const [searchJurisdiction2, setSearchJurisdiction2] = useState('');
     const [filteredJurisdictions2, setFilteredJurisdictions2] = useState<Jurisdiction[]>([]);
 
+    // Project parameters
     const [projectValue, setProjectValue] = useState('100000');
     const [squareFootage, setSquareFootage] = useState('1000');
     const [projectUnits, setProjectUnits] = useState('100');
     const [projectAcreage, setProjectAcreage] = useState('5');
     const [meterSize, setMeterSize] = useState('6"');
     const [projectType, setProjectType] = useState('Multi-Family Residential');
+    const [useSubtype, setUseSubtype] = useState('Multifamily');
+    const [serviceArea, setServiceArea] = useState('Citywide');
+
+    // Fee calculator state
+    const [calculator, setCalculator] = useState<FeeCalculator | null>(null);
+    const [calculatedFees, setCalculatedFees] = useState<FeeBreakdown | null>(null);
+    const [calculatedFees2, setCalculatedFees2] = useState<FeeBreakdown | null>(null);
+    const [isCalculating, setIsCalculating] = useState(false);
 
     // Portal integration - get chat store for portal state
     const chatStore = useChatStore();
+
+    // Initialize fee calculator
+    useEffect(() => {
+        try {
+            const calc = createFeeCalculator();
+            setCalculator(calc);
+        } catch (error) {
+            console.error('Failed to initialize fee calculator:', error);
+            message.error('Failed to initialize fee calculator. Please check your environment variables.');
+        }
+    }, []);
 
     // Listen for portal state changes from Lewis tool
     useEffect(() => {
@@ -471,21 +460,10 @@ const CustomLewisPortal = () => {
         });
     };
 
-    // Calculate total fees for current project using calc_simple_fees
-    const [calculatedFees, setCalculatedFees] = useState<{
-        jurisdiction: string;
-        items: Array<{ fee: string; method: string; base_rate: number; qty: number; amount: number }>;
-        per_sqft_total: string;
-        per_unit_total: string;
-        flat_total: string;
-        grand_total: string;
-    } | null>(null);
 
-    const [isCalculating, setIsCalculating] = useState(false);
-
-    // Calculate fees using SQL function
+    // Calculate fees using the new FeeCalculator
     const calculateTotalFees = async (): Promise<void> => {
-        if (!selectedJurisdiction) {
+        if (!selectedJurisdiction || !calculator) {
             setCalculatedFees(null);
             return;
         }
@@ -493,40 +471,57 @@ const CustomLewisPortal = () => {
         setIsCalculating(true);
 
         try {
-            const response = await fetch('/api/lewis', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'calculateProjectFeesWithSQL',
-                    params: {
-                        city: selectedJurisdiction.name,
-                        use: projectType.toLowerCase().includes('residential') ? 'residential' : 'commercial',
-                        useSubtype: projectType.toLowerCase().includes('multi') ? 'multifamily' :
-                            projectType.toLowerCase().includes('single') ? 'single_family' : null,
-                        dwellings: parseInt(projectUnits) || 0,
-                        resSqft: parseInt(squareFootage) || 0,
-                        trips: (parseInt(projectUnits) || 0) * 2, // Simple fallback: 2 trips per unit
-                        valuation: parseInt(projectValue) || 0
-                    }
-                })
-            });
+            // Map project type to the expected format
+            const mapProjectType = (type: string): 'Residential' | 'Commercial' | 'Industrial' | 'Mixed-use' | 'Public' => {
+                if (type.toLowerCase().includes('residential')) return 'Residential';
+                if (type.toLowerCase().includes('commercial')) return 'Commercial';
+                if (type.toLowerCase().includes('industrial')) return 'Industrial';
+                if (type.toLowerCase().includes('mixed')) return 'Mixed-use';
+                if (type.toLowerCase().includes('public')) return 'Public';
+                return 'Residential'; // Default fallback
+            };
 
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.data) {
-                    // Use the data exactly as returned by calc_simple_fees
-                    setCalculatedFees(result.data);
-                } else {
-                    console.error('Error calculating fees:', result.error);
-                    setCalculatedFees(null);
-                }
-            } else {
-                console.error('Failed to calculate fees');
-                setCalculatedFees(null);
-            }
+            // Map use subtype
+            const mapUseSubtype = (type: string): string => {
+                if (type.toLowerCase().includes('multi')) return 'Multifamily';
+                if (type.toLowerCase().includes('single')) return 'Single Family';
+                if (type.toLowerCase().includes('office')) return 'Office';
+                if (type.toLowerCase().includes('retail')) return 'Retail';
+                return 'Multifamily'; // Default fallback
+            };
+
+            // Get state code from jurisdiction name or use a mapping
+            const getStateCode = (jurisdictionName: string): string => {
+                if (jurisdictionName.includes('Phoenix')) return 'AZ';
+                if (jurisdictionName.includes('Los Angeles')) return 'CA';
+                if (jurisdictionName.includes('Chicago')) return 'IL';
+                if (jurisdictionName.includes('Houston')) return 'TX';
+                if (jurisdictionName.includes('Philadelphia')) return 'PA';
+                return 'CA'; // Default fallback
+            };
+
+            const projectInputs: ProjectInputs = {
+                jurisdictionName: selectedJurisdiction.name,
+                stateCode: getStateCode(selectedJurisdiction.name),
+                serviceArea: serviceArea,
+                projectType: mapProjectType(projectType),
+                useSubtype: mapUseSubtype(projectType),
+                numUnits: parseInt(projectUnits) || undefined,
+                squareFeet: parseInt(squareFootage) || undefined,
+                projectValue: parseInt(projectValue) || undefined,
+                acreage: parseFloat(projectAcreage) || undefined,
+                meterSize: meterSize
+            };
+
+            console.log('🔧 Calculating fees with FeeCalculator:', projectInputs);
+            const breakdown = await calculator.calculateFees(projectInputs);
+            setCalculatedFees(breakdown);
+            console.log('✅ FeeCalculator result:', breakdown);
+
         } catch (error) {
             console.error('Error calculating fees:', error);
             setCalculatedFees(null);
+            message.error('Failed to calculate fees. Please check your project parameters.');
         } finally {
             setIsCalculating(false);
         }
@@ -534,36 +529,77 @@ const CustomLewisPortal = () => {
 
     // Recalculate fees when project parameters change
     useEffect(() => {
-        if (selectedJurisdiction) {
+        if (selectedJurisdiction && calculator) {
             calculateTotalFees();
         }
-    }, [selectedJurisdiction, projectType, projectUnits, squareFootage, projectValue, projectAcreage, meterSize]);
+    }, [selectedJurisdiction, projectType, projectUnits, squareFootage, projectValue, projectAcreage, meterSize, serviceArea, calculator]);
+
+    // Calculate fees for second jurisdiction when it changes
+    useEffect(() => {
+        if (selectedJurisdiction2 && calculator) {
+            calculateTotalFees2();
+        }
+    }, [selectedJurisdiction2, projectType, projectUnits, squareFootage, projectValue, projectAcreage, meterSize, serviceArea, calculator]);
 
     // Calculate total fees for second jurisdiction
-    const calculateTotalFees2 = (): { total: number; breakdown: Array<{ fee: Fee; amount: number }> } => {
-        if (!selectedJurisdiction2 || jurisdictionFees2.length === 0) {
-            return { total: 0, breakdown: [] };
+    const calculateTotalFees2 = async (): Promise<void> => {
+        if (!selectedJurisdiction2 || !calculator) {
+            setCalculatedFees2(null);
+            return;
         }
 
-        const projectParams: ProjectParameters = {
-            units: parseInt(projectUnits) || 0,
-            squareFootage: parseInt(squareFootage) || 0,
-            projectValue: parseInt(projectValue) || 0,
-            acreage: parseFloat(projectAcreage) || 0,
-            meterSize: meterSize
-        };
+        try {
+            // Map project type to the expected format
+            const mapProjectType = (type: string): 'Residential' | 'Commercial' | 'Industrial' | 'Mixed-use' | 'Public' => {
+                if (type.toLowerCase().includes('residential')) return 'Residential';
+                if (type.toLowerCase().includes('commercial')) return 'Commercial';
+                if (type.toLowerCase().includes('industrial')) return 'Industrial';
+                if (type.toLowerCase().includes('mixed')) return 'Mixed-use';
+                if (type.toLowerCase().includes('public')) return 'Public';
+                return 'Residential'; // Default fallback
+            };
 
-        // Filter fees based on project type
-        const relevantFees = getRelevantFees(jurisdictionFees2, projectType);
+            // Map use subtype
+            const mapUseSubtype = (type: string): string => {
+                if (type.toLowerCase().includes('multi')) return 'Multifamily';
+                if (type.toLowerCase().includes('single')) return 'Single Family';
+                if (type.toLowerCase().includes('office')) return 'Office';
+                if (type.toLowerCase().includes('retail')) return 'Retail';
+                return 'Multifamily'; // Default fallback
+            };
 
-        const breakdown = relevantFees.map(fee => ({
-            fee,
-            amount: calculateFeeAmount(fee, projectParams)
-        }));
+            // Get state code from jurisdiction name or use a mapping
+            const getStateCode = (jurisdictionName: string): string => {
+                if (jurisdictionName.includes('Phoenix')) return 'AZ';
+                if (jurisdictionName.includes('Los Angeles')) return 'CA';
+                if (jurisdictionName.includes('Chicago')) return 'IL';
+                if (jurisdictionName.includes('Houston')) return 'TX';
+                if (jurisdictionName.includes('Philadelphia')) return 'PA';
+                return 'CA'; // Default fallback
+            };
 
-        const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+            const projectInputs: ProjectInputs = {
+                jurisdictionName: selectedJurisdiction2.name,
+                stateCode: getStateCode(selectedJurisdiction2.name),
+                serviceArea: serviceArea,
+                projectType: mapProjectType(projectType),
+                useSubtype: mapUseSubtype(projectType),
+                numUnits: parseInt(projectUnits) || undefined,
+                squareFeet: parseInt(squareFootage) || undefined,
+                projectValue: parseInt(projectValue) || undefined,
+                acreage: parseFloat(projectAcreage) || undefined,
+                meterSize: meterSize
+            };
 
-        return { total, breakdown };
+            console.log('🔧 Calculating fees for second jurisdiction with FeeCalculator:', projectInputs);
+            const breakdown = await calculator.calculateFees(projectInputs);
+            setCalculatedFees2(breakdown);
+            console.log('✅ FeeCalculator result for second jurisdiction:', breakdown);
+
+        } catch (error) {
+            console.error('Error calculating fees for second jurisdiction:', error);
+            setCalculatedFees2(null);
+        }
     };
 
     if (loading) {
@@ -948,13 +984,11 @@ const CustomLewisPortal = () => {
                                 );
                             }
 
-                            const { items, per_sqft_total, per_unit_total, flat_total, grand_total } = calculatedFees;
-                            const applicableFees = items.filter(item => item.amount > 0);
+                            const applicableFees = calculatedFees.fees.filter(fee => fee.calculatedAmount > 0);
 
                             // If comparing two locations, show side-by-side comparison
-                            if (compareTwoLocations && selectedJurisdiction2) {
-                                const { total: total2, breakdown: breakdown2 } = calculateTotalFees2();
-                                const applicableFees2 = breakdown2.filter(item => item.amount > 0);
+                            if (compareTwoLocations && selectedJurisdiction2 && calculatedFees2) {
+                                const applicableFees2 = calculatedFees2.fees.filter(fee => fee.calculatedAmount > 0);
 
                                 return (
                                     <>
@@ -974,7 +1008,7 @@ const CustomLewisPortal = () => {
                                                     <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
                                                         <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                            {grand_total}
+                                                            ${calculatedFees.totalFees.toLocaleString()}
                                                         </Text>
                                                     </div>
                                                 </Col>
@@ -1031,57 +1065,57 @@ const CustomLewisPortal = () => {
                                                         </Text>
                                                         <div style={{ maxHeight: '400px', overflowY: 'auto', border: theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9', borderRadius: '8px', padding: '12px' }}>
                                                             {applicableFees
-                                                                .sort((a, b) => b.amount - a.amount)
-                                                                .map((item, index) => (
+                                                                .sort((a, b) => b.calculatedAmount - a.calculatedAmount)
+                                                                .map((fee, index) => (
                                                                     <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
                                                                         <div style={{ flex: 1 }}>
-                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee}</Text>
+                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{fee.feeName}</Text>
                                                                             <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
-                                                                                {item.method} • ${item.base_rate} × {item.qty}
+                                                                                {fee.calculation}
                                                                             </Text>
                                                                         </div>
                                                                         <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
-                                                                            ${item.amount.toLocaleString()}
+                                                                            ${fee.calculatedAmount.toLocaleString()}
                                                                         </Text>
                                                                     </div>
                                                                 ))}
                                                         </div>
-                                            <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
-                                                {applicableFees.length} applicable fees
-                                            </Text>
-                                        </div>
-                                    )}
+                                                        <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666', marginTop: '8px', textAlign: 'center' }}>
+                                                            {applicableFees.length} applicable fees
+                                                        </Text>
+                                                    </div>
+                                                )}
 
-                                    {/* Subtotals */}
-                                    <div style={{ marginTop: '20px', padding: '16px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#f8f9fa', borderRadius: '8px' }}>
-                                        <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>Fee Summary:</Text>
-                                        <Row gutter={16}>
-                                            <Col span={8}>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Sq Ft</Text>
-                                                    <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                        {per_sqft_total}
-                                                    </Text>
+                                                {/* Subtotals */}
+                                                <div style={{ marginTop: '20px', padding: '16px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#f8f9fa', borderRadius: '8px' }}>
+                                                    <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>Fee Summary:</Text>
+                                                    <Row gutter={16}>
+                                                        <Col span={8}>
+                                                            <div style={{ textAlign: 'center' }}>
+                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Sq Ft</Text>
+                                                                <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                                    ${calculatedFees.byCategory['per_sqft']?.toFixed(2) || '0.00'}
+                                                                </Text>
+                                                            </div>
+                                                        </Col>
+                                                        <Col span={8}>
+                                                            <div style={{ textAlign: 'center' }}>
+                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Unit</Text>
+                                                                <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                                    ${calculatedFees.byCategory['per_unit']?.toFixed(2) || '0.00'}
+                                                                </Text>
+                                                            </div>
+                                                        </Col>
+                                                        <Col span={8}>
+                                                            <div style={{ textAlign: 'center' }}>
+                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Flat Fees</Text>
+                                                                <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                                    ${calculatedFees.byCategory['flat']?.toFixed(2) || '0.00'}
+                                                                </Text>
+                                                            </div>
+                                                        </Col>
+                                                    </Row>
                                                 </div>
-                                            </Col>
-                                            <Col span={8}>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Unit</Text>
-                                                    <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                        {per_unit_total}
-                                                    </Text>
-                                                </div>
-                                            </Col>
-                                            <Col span={8}>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Flat Fees</Text>
-                                                    <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                        {flat_total}
-                                                    </Text>
-                                                </div>
-                                            </Col>
-                                        </Row>
-                                    </div>
                                             </Col>
 
                                             {/* Second Location Fee Breakdown */}
@@ -1093,17 +1127,17 @@ const CustomLewisPortal = () => {
                                                         </Text>
                                                         <div style={{ maxHeight: '400px', overflowY: 'auto', border: theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9', borderRadius: '8px', padding: '12px' }}>
                                                             {applicableFees2
-                                                                .sort((a, b) => b.amount - a.amount)
-                                                                .map((item, index) => (
+                                                                .sort((a, b) => b.calculatedAmount - a.calculatedAmount)
+                                                                .map((fee, index) => (
                                                                     <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees2.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
                                                                         <div style={{ flex: 1 }}>
-                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee.name}</Text>
+                                                                            <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{fee.feeName}</Text>
                                                                             <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
-                                                                                {item.fee.category} • {item.fee.unit_label}
+                                                                                {fee.calculation}
                                                                             </Text>
                                                                         </div>
                                                                         <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
-                                                                            ${item.amount.toLocaleString()}
+                                                                            ${fee.calculatedAmount.toLocaleString()}
                                                                         </Text>
                                                                     </div>
                                                                 ))}
@@ -1133,7 +1167,7 @@ const CustomLewisPortal = () => {
                                             <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
                                                 <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                    {grand_total}
+                                                    ${calculatedFees.totalFees.toLocaleString()}
                                                 </Text>
                                             </div>
                                         </Col>
@@ -1153,17 +1187,17 @@ const CustomLewisPortal = () => {
                                             <Text strong style={{ display: 'block', marginBottom: '12px' }}>Fee Breakdown:</Text>
                                             <div style={{ maxHeight: '400px', overflowY: 'auto', border: theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9', borderRadius: '8px', padding: '12px' }}>
                                                 {applicableFees
-                                                    .sort((a, b) => b.amount - a.amount)
-                                                    .map((item, index) => (
+                                                    .sort((a, b) => b.calculatedAmount - a.calculatedAmount)
+                                                    .map((fee, index) => (
                                                         <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: index < applicableFees.length - 1 ? (theme.appearance === 'dark' ? '1px solid #444444' : '1px solid #d9d9d9') : 'none' }}>
                                                             <div style={{ flex: 1 }}>
-                                                                <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{item.fee}</Text>
+                                                                <Text style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', paddingRight: '25px' }}>{fee.feeName}</Text>
                                                                 <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
-                                                                    {item.method} • ${item.base_rate} × {item.qty}
+                                                                    {fee.calculation}
                                                                 </Text>
                                                             </div>
                                                             <Text strong style={{ fontSize: '14px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000', marginLeft: '12px' }}>
-                                                                ${item.amount.toLocaleString()}
+                                                                ${fee.calculatedAmount.toLocaleString()}
                                                             </Text>
                                                         </div>
                                                     ))}

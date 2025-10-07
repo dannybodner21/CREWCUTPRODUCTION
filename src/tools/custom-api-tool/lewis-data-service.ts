@@ -552,7 +552,7 @@ export class LewisDataService {
         });
     }
 
-    // Calculate project fees using direct RPC call to calc_project_fees
+    // Calculate project fees using the new FeeCalculator
     async calculateProjectFeesWithSQL(params: {
         city: string;
         use: string;
@@ -563,27 +563,76 @@ export class LewisDataService {
         valuation?: number;
     }): Promise<{ success: boolean; data?: any; error?: string }> {
         return await executeSupabaseQuery(async () => {
-            const supabase = this.getSupabaseClient();
+            try {
+                // Import the new fee calculator
+                const { createFeeCalculator } = await import('@/lib/fee-calculator');
+                const calculator = createFeeCalculator();
 
-            console.log('🔧 Calculating project fees with calc_simple_fees:', params);
+                // Map the old parameters to the new ProjectInputs format
+                const projectInputs = {
+                    jurisdictionName: params.city,
+                    stateCode: this.getStateCodeFromCity(params.city),
+                    serviceArea: 'Citywide',
+                    projectType: this.mapUseToProjectType(params.use || 'Residential'),
+                    useSubtype: params.useSubtype,
+                    numUnits: params.dwellings,
+                    squareFeet: params.resSqft,
+                    projectValue: params.valuation
+                };
 
-            // Call the calc_simple_fees function directly
-            const { data: calcData, error: calcError } = await supabase.rpc('calc_simple_fees', {
-                p_jur_name: params.city,
-                p_sqft: params.resSqft,
-                p_units: params.dwellings
-            });
+                console.log('🔧 Calculating project fees with new FeeCalculator:', projectInputs);
 
-            if (calcError) {
-                console.error('❌ Error calling calc_simple_fees:', calcError);
-                return { success: false, error: calcError.message };
+                // Use the new fee calculator
+                const breakdown = await calculator.calculateFees(projectInputs);
+
+                console.log('✅ FeeCalculator result:', breakdown);
+
+                // Return in the expected format for backward compatibility
+                return {
+                    data: {
+                        jurisdiction: params.city,
+                        items: breakdown.fees.map(fee => ({
+                            fee: fee.feeName,
+                            method: fee.calcType,
+                            base_rate: fee.calculatedAmount / (params.dwellings || 1), // Approximate base rate
+                            qty: params.dwellings || 1,
+                            amount: fee.calculatedAmount
+                        })),
+                        per_sqft_total: breakdown.byCategory['per_sqft']?.toFixed(2) || '0.00',
+                        per_unit_total: breakdown.byCategory['per_unit']?.toFixed(2) || '0.00',
+                        flat_total: breakdown.byCategory['flat']?.toFixed(2) || '0.00',
+                        grand_total: breakdown.totalFees.toFixed(2)
+                    },
+                    error: null
+                };
+            } catch (error) {
+                console.error('❌ Error with new FeeCalculator:', error);
+                return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
             }
-
-            console.log('✅ calc_simple_fees result:', calcData);
-
-            // Return the data exactly as the function provides it
-            return { data: calcData, error: null };
         });
+    }
+
+    private getStateCodeFromCity(city: string): string {
+        // Simple mapping - you might want to make this more comprehensive
+        const cityStateMap: Record<string, string> = {
+            'Phoenix city': 'AZ',
+            'Los Angeles city': 'CA',
+            'Chicago city': 'IL',
+            'Houston city': 'TX',
+            'Philadelphia city': 'PA'
+        };
+        return cityStateMap[city] || 'CA'; // Default to CA
+    }
+
+    private mapUseToProjectType(use: string): 'Residential' | 'Commercial' | 'Industrial' | 'Mixed-use' | 'Public' {
+        const useMap: Record<string, 'Residential' | 'Commercial' | 'Industrial' | 'Mixed-use' | 'Public'> = {
+            'residential': 'Residential',
+            'commercial': 'Commercial',
+            'industrial': 'Industrial',
+            'mixed-use': 'Mixed-use',
+            'public': 'Public'
+        };
+        return useMap[use.toLowerCase()] || 'Residential';
     }
 
     // Fallback client-side calculation when SQL function is not available
@@ -677,7 +726,7 @@ export class LewisDataService {
 
                 // Use base_rate from fee_versions, fallback to rate from fees table, then 0
                 const rate = fee.fee_versions?.[0]?.base_rate || fee.rate || 0;
-                
+
                 console.log('🔧 Client-side: Processing fee', fee.name, 'rate:', rate, 'category:', fee.category, 'base_rate:', fee.fee_versions?.[0]?.base_rate);
 
                 switch (fee.category) {
