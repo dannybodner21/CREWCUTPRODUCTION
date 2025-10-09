@@ -17,16 +17,15 @@ const getSupabaseConfig = (): SupabaseConfig => {
     const anonKey = process.env.LEWIS_SUPABASE_ANON_KEY;
     const serviceRoleKey = process.env.LEWIS_SUPABASE_SERVICE_ROLE_KEY;
 
-    // Environment variables loaded successfully
+    console.log('🔧 Lewis Supabase Config Check:', {
+        url: url ? 'SET' : 'MISSING',
+        anonKey: anonKey ? 'SET' : 'MISSING',
+        serviceRoleKey: serviceRoleKey ? 'SET' : 'MISSING'
+    });
 
     if (!url || !anonKey) {
-        console.warn('Lewis Supabase configuration not found. Make sure LEWIS_SUPABASE_URL and LEWIS_SUPABASE_ANON_KEY are set in your .env.local file.');
-        // Return dummy config to prevent build errors
-        return {
-            url: 'https://placeholder.supabase.co',
-            anonKey: 'placeholder-key',
-            serviceRoleKey,
-        };
+        console.error('❌ Lewis Supabase configuration not found. Make sure LEWIS_SUPABASE_URL and LEWIS_SUPABASE_ANON_KEY are set in your .env.local file.');
+        throw new Error('Lewis Supabase configuration missing');
     }
 
     return {
@@ -71,9 +70,15 @@ export const executeSupabaseQuery = async <T>(
     queryFn: () => Promise<{ data: T | null; error: any }>,
 ): Promise<{ success: boolean; data?: T; error?: string }> => {
     try {
-        const { data, error } = await queryFn();
+        // Add a timeout to prevent hanging
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000);
+        });
+
+        const { data, error } = await Promise.race([queryFn(), timeoutPromise]);
 
         if (error) {
+            console.error('❌ Supabase query error:', error);
             return {
                 success: false,
                 error: error.message || 'Supabase query failed',
@@ -84,6 +89,7 @@ export const executeSupabaseQuery = async <T>(
             data: data || undefined,
         };
     } catch (error) {
+        console.error('❌ Supabase query exception:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error occurred',
