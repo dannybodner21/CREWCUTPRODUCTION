@@ -354,6 +354,67 @@ export class FeeCalculator {
         const feesWithSelectedCalc = allFees.map((fee: any) => {
             const appliesTo = fee.applies_to || [];
             const useSubtypes = fee.use_subtypes || [];
+            const feeName = fee.name || '';
+
+            // CRITICAL: Filter by name patterns for residential projects
+            if (inputs.projectType === 'Residential' && inputs.useSubtype === 'Single Family') {
+                // Exclude fees that are clearly not for single-family residential
+                const residentialExclusions = [
+                    'High Rise', 'High-Rise',
+                    'Place of Assembly',
+                    'Amusement Building',
+                    'Explosive', 'Blasting',
+                    'Mobile Home Park',
+                    'Multi-Family', 'Multifamily',
+                    'Commercial Kitchen',
+                    'Industrial',
+                    'Wireless Facility',
+                    'Distributed Antenna System',
+                    'Solar Panel Permit', // These need specific project type
+                    'Temporary Membrane', 'Tent', 'Canopy',
+                    'Pretreatment Program', // Commercial/industrial sewer
+                    'Unauthorized Manhole', // Not applicable to new construction
+                    'Hourly Plan Review', // Not a standard fee
+                    'Expedited', // Optional service
+                    'Condominium', // Different from single family
+                    'Identical Plan', // Not standard
+                    'Renewing expired',
+                    'Re-inspection', // Optional/penalty fee
+                    'Reinspection'
+                ];
+
+                const shouldExclude = residentialExclusions.some(ex => feeName.includes(ex));
+                if (shouldExclude) {
+                    return null;
+                }
+
+                // For residential, only include fees with these relevant keywords OR utility fees
+                const residentialKeywords = [
+                    'Residential', 'Single Family', 'Dwelling Unit', 'Dwelling',
+                    'Building Permit', 'Building Plan',
+                    'Water Connection', 'Sewer Connection',
+                    'Storm Water', 'Storm Drain',
+                    'Impact Fee',
+                    'Capacity Charge',
+                    'Plumbing Permit', 'Electrical Permit', 'Mechanical Permit',
+                    'Inspection Fee', 'Plan Review Fee',
+                    'ERU' // Equivalent Residential Unit
+                ];
+
+                const isUtilityFee = fee.category === 'Water/Sewer Connection' ||
+                                   fee.category === 'Water Services' ||
+                                   fee.category === 'Sewer Services' ||
+                                   fee.category === 'Impact Fees';
+
+                const hasRelevantKeyword = residentialKeywords.some(keyword =>
+                    feeName.toLowerCase().includes(keyword.toLowerCase())
+                );
+
+                // Only include if it has relevant keywords OR is a utility fee
+                if (!hasRelevantKeyword && !isUtilityFee) {
+                    return null;
+                }
+            }
 
             // Check if fee applies to project type
             const typeMatches = appliesTo.length === 0 ||
@@ -565,6 +626,8 @@ export class FeeCalculator {
 
         switch (fee.calcType) {
             case 'flat':
+            case 'flat_fee':
+                // Flat fees are NOT multiplied by units - they're one-time charges
                 amount = fee.rate || 0;
                 if (isRecurring) {
                     calculation = `$${amount.toFixed(2)} per month`;
