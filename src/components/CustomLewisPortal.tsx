@@ -9,7 +9,7 @@ import { useChatStore } from '@/store/chat';
 import { PaywallGuard } from './PaywallGuard';
 import { FeeCalculator } from '@/lib/fee-calculator';
 import type { ProjectInputs, FeeBreakdown } from '@/lib/fee-calculator';
-import { mapProjectType } from '@/lib/project-type-mapping';
+import { mapProjectType } from '@/lib/project-type-mapping.ts';
 import dynamic from 'next/dynamic';
 
 // Dynamically import PDF button to avoid SSR issues
