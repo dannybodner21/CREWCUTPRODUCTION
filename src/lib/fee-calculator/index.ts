@@ -364,8 +364,9 @@ export class FeeCalculator {
                     'Place of Assembly',
                     'Amusement Building',
                     'Explosive', 'Blasting',
-                    'Mobile Home Park',
-                    'Multi-Family', 'Multifamily',
+                    'Mobile Home Park', 'Trailer Park',
+                    'Multi-Family', 'Multifamily', 'Multi-family',
+                    'Townhouse', 'Apartment', 'Duplex', 'Triplex', 'Fourplex',
                     'Commercial Kitchen',
                     'Industrial',
                     'Wireless Facility',
@@ -380,7 +381,10 @@ export class FeeCalculator {
                     'Identical Plan', // Not standard
                     'Renewing expired',
                     'Re-inspection', // Optional/penalty fee
-                    'Reinspection'
+                    'Reinspection',
+                    'Recreation park', // Not residential
+                    'Special industrial', 'commercial uses',
+                    'Temporary sewer'
                 ];
 
                 const shouldExclude = residentialExclusions.some(ex => feeName.includes(ex));
@@ -615,11 +619,18 @@ export class FeeCalculator {
         const categoryLower = fee.category?.toLowerCase() || '';
         const feeNameLower = fee.feeName?.toLowerCase() || '';
 
-        if (unitLabelLower.includes('month') ||
-            unitLabelLower.includes('per unit') ||
+        // CRITICAL: Connection fees are ONE-TIME, not recurring
+        const isConnectionFee = feeNameLower.includes('connection fee') ||
+                               feeNameLower.includes('connection charge') ||
+                               categoryLower.includes('connection');
+
+        if (!isConnectionFee && (
+            unitLabelLower.includes('month') ||
+            unitLabelLower.includes('per month') ||
             categoryLower === 'monthly services' ||
             feeNameLower.includes('monthly') ||
-            feeNameLower.includes('volume charge')) {
+            feeNameLower.includes('volume charge')
+        )) {
             isRecurring = true;
             recurringPeriod = 'month';
         }
@@ -637,17 +648,52 @@ export class FeeCalculator {
                 break;
 
             case 'per_unit':
-                if (!inputs.numUnits) return null;
+                // CRITICAL: Check what the "unit" actually means in the unit_label
+                const unitLabel = fee.unitLabel || '';
+                const unitLabelLowerCase = unitLabel.toLowerCase();
 
-                // Note: Meter size filtering is now handled by selectBestCalculation
-                // using applies_to_meter_sizes, so we don't need to check unitLabel here
-
-                amount = (fee.rate || 0) * inputs.numUnits;
-                calculation = `$${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}`;
+                // Check if this is truly per dwelling unit
+                if (unitLabelLowerCase.includes('dwelling') ||
+                    unitLabelLowerCase.includes('per unit') ||
+                    unitLabelLowerCase.includes('per eru') ||
+                    unitLabelLowerCase.includes('equivalent residential unit')) {
+                    // Multiply by number of dwelling units
+                    if (!inputs.numUnits) return null;
+                    amount = (fee.rate || 0) * inputs.numUnits;
+                    calculation = `$${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}`;
+                }
+                // Check if it's per connection (typically 1 per project)
+                else if (unitLabelLowerCase.includes('connection') ||
+                         unitLabelLowerCase.includes('per service')) {
+                    // One connection per project, regardless of units
+                    amount = fee.rate || 0;
+                    calculation = `$${amount.toFixed(2)} (per connection)`;
+                }
+                // Check if it's per fixture, appliance, or "each" (don't multiply)
+                else if (unitLabelLowerCase.includes('fixture') ||
+                         unitLabelLowerCase.includes('appliance') ||
+                         unitLabelLowerCase.includes('each') ||
+                         unitLabelLowerCase.includes('per bag') ||
+                         unitLabelLowerCase.includes('per bale') ||
+                         unitLabelLowerCase.includes('per yard') ||
+                         unitLabelLowerCase.includes('per job') ||
+                         unitLabelLowerCase.includes('per hour') ||
+                         unitLabelLowerCase.includes('per device') ||
+                         unitLabelLowerCase.includes('per system') ||
+                         unitLabelLowerCase.includes('per meter')) {
+                    // Don't multiply - this is per individual item
+                    amount = fee.rate || 0;
+                    calculation = `$${amount.toFixed(2)} ${unitLabel}`;
+                }
+                // Default: don't multiply (safer assumption)
+                else {
+                    amount = fee.rate || 0;
+                    calculation = `$${amount.toFixed(2)} ${unitLabel || 'per unit'}`;
+                }
 
                 // Add meter size to calculation if applicable
-                if (fee.unitLabel && fee.unitLabel.includes('"')) {
-                    calculation = `${fee.unitLabel}: ` + calculation;
+                if (unitLabel && unitLabel.includes('"')) {
+                    calculation = `${unitLabel}: ` + calculation;
                 }
                 break;
 
