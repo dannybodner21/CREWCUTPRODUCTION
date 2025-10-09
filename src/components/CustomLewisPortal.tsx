@@ -9,7 +9,7 @@ import { useChatStore } from '@/store/chat';
 import { PaywallGuard } from './PaywallGuard';
 import { FeeCalculator } from '@/lib/fee-calculator';
 import type { ProjectInputs, FeeBreakdown } from '@/lib/fee-calculator';
-import { mapProjectType } from '@/lib/project-type-mapping.ts';
+import { mapProjectType } from '@/lib/project-type-mapping';
 import dynamic from 'next/dynamic';
 
 // Dynamically import PDF button to avoid SSR issues
@@ -1249,13 +1249,23 @@ const CustomLewisPortal = () => {
                                 return (
                                     <div style={{ textAlign: 'center', padding: '40px' }}>
                                         <Text style={{ fontSize: '16px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
-                                            Click "Calculate Fees" to see results
+                                            Select a jurisdiction and enter project details to calculate fees
                                         </Text>
                                     </div>
                                 );
                             }
 
                             const applicableFees = calculatedFees?.fees?.filter(fee => fee.calculatedAmount > 0) || [];
+
+                            if (applicableFees.length === 0) {
+                                return (
+                                    <div style={{ textAlign: 'center', padding: '40px' }}>
+                                        <Text style={{ fontSize: '16px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>
+                                            No fees found for this jurisdiction. Please check if the fee data has been loaded correctly.
+                                        </Text>
+                                    </div>
+                                );
+                            }
 
                             // If comparing two locations, show side-by-side comparison
                             if (compareTwoLocations && selectedJurisdiction2 && calculatedFees2) {

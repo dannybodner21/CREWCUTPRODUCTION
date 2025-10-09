@@ -283,33 +283,46 @@ export class FeeCalculator {
         }
 
         // Step 4: Get full fee data with fee_calculations for these IDs
-        const { data: allFees, error } = await this.supabase
-            .from('fees')
-            .select(`
-                id,
-                name,
-                category,
-                applies_to,
-                use_subtypes,
-                agencies(name),
-                service_areas(name),
-                fee_calculations(
-                    id,
-                    calc_type,
-                    rate,
-                    unit_label,
-                    min_fee,
-                    max_fee,
-                    tiers,
-                    formula_type,
-                    formula_config,
-                    formula_display,
-                    applies_to_meter_sizes
-                )
-            `)
-            .in('id', feeIds.map(f => f.id));
+        // Batch the query to avoid URL length limits with large fee lists
+        const BATCH_SIZE = 100;
+        const allFees: any[] = [];
 
-        if (error) throw new Error(`Database error: ${error.message}`);
+        for (let i = 0; i < feeIds.length; i += BATCH_SIZE) {
+            const batch = feeIds.slice(i, i + BATCH_SIZE);
+            console.log(`📦 Fetching batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(feeIds.length / BATCH_SIZE)} (${batch.length} fees)`);
+
+            const { data: batchFees, error } = await this.supabase
+                .from('fees')
+                .select(`
+                    id,
+                    name,
+                    category,
+                    applies_to,
+                    use_subtypes,
+                    agencies(name),
+                    service_areas(name),
+                    fee_calculations(
+                        id,
+                        calc_type,
+                        rate,
+                        unit_label,
+                        min_fee,
+                        max_fee,
+                        tiers,
+                        formula_type,
+                        formula_config,
+                        formula_display,
+                        applies_to_meter_sizes
+                    )
+                `)
+                .in('id', batch.map(f => f.id));
+
+            if (error) throw new Error(`Database error: ${error.message}`);
+            if (batchFees) {
+                allFees.push(...batchFees);
+            }
+        }
+
         if (!allFees || allFees.length === 0) {
             throw new Error(`No fee data found`);
         }
