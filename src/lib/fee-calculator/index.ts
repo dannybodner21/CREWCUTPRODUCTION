@@ -355,6 +355,7 @@ export class FeeCalculator {
             const appliesTo = fee.applies_to || [];
             const useSubtypes = fee.use_subtypes || [];
             const feeName = fee.name || '';
+            const categoryLower = (fee.category || '').toLowerCase();
 
             // CRITICAL: Filter by name patterns for residential projects
             if (inputs.projectType === 'Residential' && inputs.useSubtype === 'Single Family') {
@@ -392,45 +393,40 @@ export class FeeCalculator {
                     return null;
                 }
 
-                // For residential, only include fees with these relevant keywords OR utility fees
+                // For residential, only include fees with these relevant keywords OR utility/impact fees
                 const residentialKeywords = [
                     'Residential', 'Single Family', 'Dwelling Unit', 'Dwelling',
                     'Building Permit', 'Building Plan',
                     'Water Connection', 'Sewer Connection',
                     'Storm Water', 'Storm Drain',
-                    'Impact Fee',
+                    'Impact', // Include all impact fees
                     'Capacity Charge',
                     'Plumbing Permit', 'Electrical Permit', 'Mechanical Permit',
                     'Inspection Fee', 'Plan Review Fee',
                     'ERU' // Equivalent Residential Unit
                 ];
 
-                const isUtilityFee = fee.category === 'Water/Sewer Connection' ||
-                                   fee.category === 'Water Services' ||
-                                   fee.category === 'Sewer Services' ||
-                                   fee.category === 'Impact Fees';
+                const isUtilityOrImpactFee = fee.category === 'Water/Sewer Connection' ||
+                                            fee.category === 'Water Services' ||
+                                            fee.category === 'Sewer Services' ||
+                                            fee.category === 'Impact Fees' ||
+                                            categoryLower.includes('impact');
 
                 const hasRelevantKeyword = residentialKeywords.some(keyword =>
                     feeName.toLowerCase().includes(keyword.toLowerCase())
                 );
 
-                // Only include if it has relevant keywords OR is a utility fee
-                if (!hasRelevantKeyword && !isUtilityFee) {
+                // Only include if it has relevant keywords OR is a utility/impact fee
+                if (!hasRelevantKeyword && !isUtilityOrImpactFee) {
                     return null;
                 }
             }
 
-            // Check if fee applies to project type
-            const typeMatches = appliesTo.length === 0 ||
-                               appliesTo.includes('All Users') ||
-                               appliesTo.includes('All Usage') ||
-                               appliesTo.includes(inputs.projectType);
+            // Check if fee applies to project type (with flexible matching)
+            const typeMatches = this.feeAppliesToProject(appliesTo, inputs.projectType);
 
-            // Check if fee applies to use subtype
-            const subtypeMatches = !inputs.useSubtype ||
-                                  useSubtypes.length === 0 ||
-                                  useSubtypes.includes('All Users') ||
-                                  useSubtypes.includes(inputs.useSubtype);
+            // Check if fee applies to use subtype (with flexible matching)
+            const subtypeMatches = this.feeAppliesToSubtype(useSubtypes, inputs.useSubtype);
 
             if (!typeMatches || !subtypeMatches) {
                 const isInsideCity = fee.service_areas?.name === 'Inside City';
@@ -550,6 +546,112 @@ export class FeeCalculator {
             }
 
             return mapped;
+        });
+    }
+
+    /**
+     * Flexible matching for fee applies_to field
+     * Handles cases like "Single Family" in DB matching "Residential" projectType
+     */
+    private feeAppliesToProject(appliesTo: string[], projectType: string): boolean {
+        // If fee has no applies_to filter, it applies to everything
+        if (!appliesTo || appliesTo.length === 0) {
+            return true;
+        }
+
+        // Check for broad "all" categories
+        if (appliesTo.includes('All Users') || appliesTo.includes('All Usage') || appliesTo.includes('All')) {
+            return true;
+        }
+
+        // Check if ANY of the applies_to values match the project
+        return appliesTo.some(applicableTo => {
+            // Exact match
+            if (applicableTo === projectType) {
+                return true;
+            }
+
+            // Normalize strings: lowercase and remove special characters
+            const normalizedAppliesTo = applicableTo.toLowerCase().replace(/[^a-z]/g, '');
+            const normalizedProjectType = projectType.toLowerCase().replace(/[^a-z]/g, '');
+
+            // Partial match (e.g., "Single Family" matches "Residential")
+            if (normalizedProjectType.includes(normalizedAppliesTo)) {
+                return true;
+            }
+            if (normalizedAppliesTo.includes(normalizedProjectType)) {
+                return true;
+            }
+
+            // Broad category match
+            if (projectType.includes('Residential') && applicableTo.includes('Residential')) {
+                return true;
+            }
+            if (projectType.includes('Single') && applicableTo.includes('Single')) {
+                return true;
+            }
+            if (projectType.includes('Multi') && applicableTo.includes('Multi')) {
+                return true;
+            }
+            if (projectType.includes('Commercial') && applicableTo.includes('Commercial')) {
+                return true;
+            }
+            if (projectType.includes('Industrial') && applicableTo.includes('Industrial')) {
+                return true;
+            }
+
+            // CRITICAL: "Single Family" in DB should match "Residential" project type
+            // because Single Family IS a type of Residential
+            if (applicableTo.includes('Single Family') && projectType.includes('Residential')) {
+                return true;
+            }
+            if (applicableTo.includes('Multi-Family') && projectType.includes('Residential')) {
+                return true;
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * Flexible matching for fee use_subtypes field
+     */
+    private feeAppliesToSubtype(useSubtypes: string[], useSubtype?: string): boolean {
+        // If no subtype specified in project, match everything
+        if (!useSubtype) {
+            return true;
+        }
+
+        // If fee has no use_subtypes filter, it applies to everything
+        if (!useSubtypes || useSubtypes.length === 0) {
+            return true;
+        }
+
+        // Check for broad "all" categories
+        if (useSubtypes.includes('All Users') || useSubtypes.includes('All')) {
+            return true;
+        }
+
+        // Check if ANY of the use_subtypes match
+        return useSubtypes.some(feeSubtype => {
+            // Exact match
+            if (feeSubtype === useSubtype) {
+                return true;
+            }
+
+            // Normalize strings
+            const normalizedFeeSubtype = feeSubtype.toLowerCase().replace(/[^a-z]/g, '');
+            const normalizedUseSubtype = useSubtype.toLowerCase().replace(/[^a-z]/g, '');
+
+            // Partial match
+            if (normalizedUseSubtype.includes(normalizedFeeSubtype)) {
+                return true;
+            }
+            if (normalizedFeeSubtype.includes(normalizedUseSubtype)) {
+                return true;
+            }
+
+            return false;
         });
     }
 
