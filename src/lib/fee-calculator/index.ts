@@ -262,10 +262,25 @@ export class FeeCalculator {
         const selectedServiceAreaIds = inputs.selectedServiceAreaIds || [];
         console.log('🔍 Selected service area IDs:', selectedServiceAreaIds);
 
+        // Check if this jurisdiction actually has service areas in the service_areas table
+        const { data: serviceAreasCheck } = await this.supabase
+            .from('service_areas')
+            .select('id')
+            .eq('jurisdiction_id', jurisdiction.id)
+            .limit(1);
+
+        const hasServiceAreasTable = serviceAreasCheck && serviceAreasCheck.length > 0;
+        console.log('🔍 Service areas table check:', hasServiceAreasTable ? 'HAS service areas' : 'NO service areas table');
+
         if (selectedServiceAreaIds.length === 0) {
-            // No service areas selected - show only citywide fees (service_area_id IS NULL)
-            feeIdsQuery = feeIdsQuery.is('service_area_id', null);
-            console.log('📍 Query: Citywide only (service_area_id IS NULL)');
+            if (hasServiceAreasTable) {
+                // Jurisdiction has service areas defined - show only citywide fees
+                feeIdsQuery = feeIdsQuery.is('service_area_id', null);
+                console.log('📍 Query: Citywide only (service_area_id IS NULL)');
+            } else {
+                // No service areas table exists - include ALL fees (data integrity issue)
+                console.log('📍 Query: ALL fees (no service_areas table found - including orphaned service_area_ids)');
+            }
         } else {
             // Show citywide + selected service area fees
             // Build OR condition: service_area_id.is.null,service_area_id.in.(id1,id2,id3)
@@ -414,7 +429,7 @@ export class FeeCalculator {
                 // For residential, only include fees with these relevant keywords OR utility/impact fees
                 const residentialKeywords = [
                     'Residential', 'Single Family', 'Dwelling Unit', 'Dwelling',
-                    'Building Permit', 'Building Plan',
+                    'Building Permit', 'Building Plan', 'Building Fee',
                     'Water Connection', 'Sewer Connection',
                     'Sewer Charge', 'Monthly Service Fee', // Monthly operating fees
                     'Storm Water', 'Storm Drain',
@@ -423,7 +438,13 @@ export class FeeCalculator {
                     'Plumbing Permit', 'Electrical Permit', 'Mechanical Permit',
                     'Inspection Fee', 'Plan Review Fee',
                     'ERU', // Equivalent Residential Unit
-                    'All Other Users' // Catch-all category for residential
+                    'All Other Users', // Catch-all category for residential
+                    // Los Angeles specific fees
+                    'Affordable Housing Linkage', 'Housing Linkage',
+                    'Grading Permit', 'Demolition',
+                    'Certificate of Occupancy',
+                    'Testing Fee', 'Inspection',
+                    'Street Damage', 'SDRF'
                 ];
 
                 const isUtilityOrImpactFee = fee.category === 'Water/Sewer Connection' ||
