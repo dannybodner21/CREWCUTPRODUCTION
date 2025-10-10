@@ -385,7 +385,18 @@ export class FeeCalculator {
                     'Reinspection',
                     'Recreation park', // Not residential
                     'Special industrial', 'commercial uses',
-                    'Temporary sewer'
+                    'Temporary sewer',
+                    // New construction exclusions
+                    'Boarding', 'Boarded',
+                    'Vacant', 'Vacancy',
+                    'Abatement',
+                    'Violation',
+                    'Code Enforcement',
+                    // Temporary construction permits (not ongoing fees)
+                    'Public Way Obstruction',
+                    'Bike Lane closure',
+                    'Sidewalk closure',
+                    'Travel Lane closure'
                 ];
 
                 const shouldExclude = residentialExclusions.some(ex => feeName.includes(ex));
@@ -398,12 +409,14 @@ export class FeeCalculator {
                     'Residential', 'Single Family', 'Dwelling Unit', 'Dwelling',
                     'Building Permit', 'Building Plan',
                     'Water Connection', 'Sewer Connection',
+                    'Sewer Charge', 'Monthly Service Fee', // Monthly operating fees
                     'Storm Water', 'Storm Drain',
                     'Impact', // Include all impact fees
                     'Capacity Charge',
                     'Plumbing Permit', 'Electrical Permit', 'Mechanical Permit',
                     'Inspection Fee', 'Plan Review Fee',
-                    'ERU' // Equivalent Residential Unit
+                    'ERU', // Equivalent Residential Unit
+                    'All Other Users' // Catch-all category for residential
                 ];
 
                 const isUtilityOrImpactFee = fee.category === 'Water/Sewer Connection' ||
@@ -763,6 +776,14 @@ export class FeeCalculator {
                     if (!inputs.numUnits) return null;
                     amount = (fee.rate || 0) * inputs.numUnits;
                     calculation = `$${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}`;
+
+                    // Check if this is a monthly charge
+                    if (unitLabelLowerCase.includes('per month') ||
+                        feeNameLower.includes('monthly') ||
+                        (feeNameLower.includes('sewer') && feeNameLower.includes('charge'))) {
+                        isRecurring = true;
+                        recurringPeriod = 'month';
+                    }
                 }
                 // Check if it's per connection (typically 1 per project)
                 else if (unitLabelLowerCase.includes('connection') ||
@@ -814,10 +835,41 @@ export class FeeCalculator {
 
             case 'per_meter_size':
                 if (!inputs.meterSize) return null;
-                if (fee.unitLabel?.includes(inputs.meterSize)) {
+
+                // Normalize meter size for flexible matching (e.g., "3/4\"" -> "3/4")
+                const normalizedMeterSize = inputs.meterSize.replace(/["'\s]/g, '');
+                const unitLabelForMeter = (fee.unitLabel || '').toLowerCase();
+
+                // Check if this fee applies to the selected meter size
+                // Handle ranges like "5/8 inch - 3/4 inch" matching "3/4"
+                const meterSizeVariants = [
+                    normalizedMeterSize,                                    // "3/4"
+                    normalizedMeterSize.replace('/', ''),                   // "34"
+                    normalizedMeterSize + ' inch',                          // "3/4 inch"
+                    normalizedMeterSize + 'inch',                           // "3/4inch"
+                    normalizedMeterSize + '"',                              // "3/4""
+                ];
+
+                // Check for any variant in the unit label
+                const meterMatches = meterSizeVariants.some(variant =>
+                    unitLabelForMeter.includes(variant.toLowerCase())
+                );
+
+                if (meterMatches) {
+                    // For City vs County rates, prefer City (most common)
+                    // Skip if this is explicitly a County rate and we want City
+                    if (fee.feeName?.includes('(County)')) {
+                        // Skip county rates in favor of city rates
+                        return null;
+                    }
+
                     amount = fee.rate || 0;
                     calculation = `${inputs.meterSize} meter: $${amount.toFixed(2)}`;
-                    if (fee.unitLabel?.toLowerCase().includes('per month')) {
+
+                    // Monthly service fees are recurring
+                    if (fee.unitLabel?.toLowerCase().includes('per month') ||
+                        feeNameLower.includes('monthly') ||
+                        feeNameLower.includes('service fee')) {
                         isRecurring = true;
                         recurringPeriod = 'month';
                         calculation += ' per month';
