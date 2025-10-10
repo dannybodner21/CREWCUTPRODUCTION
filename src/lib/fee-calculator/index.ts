@@ -357,8 +357,9 @@ export class FeeCalculator {
             const feeName = fee.name || '';
             const categoryLower = (fee.category || '').toLowerCase();
 
-            // CRITICAL: Filter by name patterns for residential projects
-            if (inputs.projectType === 'Residential' && inputs.useSubtype === 'Single Family') {
+            // CRITICAL: Filter by name patterns for residential and commercial projects
+            if ((inputs.projectType === 'Residential' && inputs.useSubtype === 'Single Family') ||
+                inputs.projectType === 'Commercial') {
                 // Exclude fees that are clearly not for single-family residential
                 const residentialExclusions = [
                     'High Rise', 'High-Rise',
@@ -396,7 +397,13 @@ export class FeeCalculator {
                     'Public Way Obstruction',
                     'Bike Lane closure',
                     'Sidewalk closure',
-                    'Travel Lane closure'
+                    'Travel Lane closure',
+                    // In-Lieu fees (not for new construction)
+                    'In-Lieu Fee',
+                    'In-Lieu',
+                    // Park fees that are incorrectly calculated
+                    'Park Fee -',
+                    'Park Mitigation Fee'
                 ];
 
                 const shouldExclude = residentialExclusions.some(ex => feeName.includes(ex));
