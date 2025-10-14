@@ -87,7 +87,6 @@ const InboxWelcome = memo(() => {
           })}
         </Markdown>
 
-
         {/* Show Lewis opening questions on the main page */}
         <LewisOpeningQuestions />
         {showWelcomeSuggest && (

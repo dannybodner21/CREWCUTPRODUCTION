@@ -105,23 +105,21 @@ function VariantsPageContent() {
 
     const handleAccessLewis = async () => {
         console.log('🔧 ACCESS LEWIS CLICKED');
+        console.log('🔧 Current userInfo state:', userInfo);
+        console.log('🔧 Is Loading:', isLoading);
+        console.log('🔧 userInfo.lewisAccess:', userInfo?.lewisAccess);
+        console.log('🔧 userInfo.lewisSubscriptionTier:', userInfo?.lewisSubscriptionTier);
+        console.log('🔧 userInfo.lewisPaymentStatus:', userInfo?.lewisPaymentStatus);
+
+        // Don't process if still loading subscription data
+        if (isLoading) {
+            console.log('🔧 Still loading subscription data, please wait...');
+            return;
+        }
+
         try {
-            // Force refresh user info first
-            console.log('🔧 REFRESHING USER INFO...');
-            const refreshResponse = await fetch('/api/subscription');
-            const refreshData = await refreshResponse.json();
-            console.log('🔧 REFRESHED USER INFO:', refreshData);
-            setUserInfo(refreshData);
-
-            // Wait a moment for state to update
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // Now check if user is logged in and has LEWIS access
-            const response = await fetch('/api/subscription');
-            const data = await response.json();
-            console.log('🔧 SUBSCRIPTION DATA:', data);
-
-            if (!data.userId) {
+            // Check if user is logged in using already-loaded state
+            if (!userInfo || !userInfo.userId) {
                 // Not logged in - redirect to Google SSO
                 console.log('🔧 LEWIS ACCESS: User not logged in, redirecting to SSO');
                 const callbackUrl = encodeURIComponent('/en-US__0__light?upgrade=true');
@@ -129,36 +127,26 @@ function VariantsPageContent() {
                 return;
             }
 
-            if (!data.lewisAccess) {
+            // Check if user has LEWIS access using already-loaded state
+            console.log('🔧 LEWIS ACCESS CHECK:', {
+                lewisAccess: userInfo.lewisAccess,
+                type: typeof userInfo.lewisAccess,
+                truthyCheck: !!userInfo.lewisAccess,
+                exactlyFalse: userInfo.lewisAccess === false,
+                exactlyTrue: userInfo.lewisAccess === true
+            });
+
+            if (!userInfo.lewisAccess) {
                 // Logged in but no LEWIS access - show upgrade modal
                 console.log('🔧 LEWIS ACCESS: User logged in but no LEWIS access, showing upgrade modal');
-                console.log('🔧 LEWIS ACCESS: Data received:', data);
+                console.log('🔧 LEWIS ACCESS: Full userInfo:', JSON.stringify(userInfo, null, 2));
                 setShowUpgradeModal(true);
                 return;
             }
 
-            // User has LEWIS access - create session and navigate
-            console.log('🔧 LEWIS ACCESS: User has access, creating session');
-            const { createSession } = useSessionStore.getState();
-            const lewisAgent = {
-                agentId: 'lewis',
-                identifier: 'lewis',
-                meta: {
-                    title: 'LEWIS',
-                    description: 'Construction fee and development location expert',
-                    avatar: '🏗️'
-                }
-            };
-
-            const sessionId = await createSession(lewisAgent);
-            console.log('🔧 CREATED LEWIS SESSION:', sessionId);
-
-            // Navigate to the specific session
-            if (sessionId) {
-                router.push(`/en-US__0__light/chat?session=${sessionId}`);
-            } else {
-                router.push('/en-US__0__light/chat');
-            }
+            // User has LEWIS access - navigate to chat inbox
+            console.log('🔧 LEWIS ACCESS: User has access, navigating to chat inbox');
+            router.push('/en-US__0__light/chat');
         } catch (error) {
             console.error('Failed to check LEWIS access:', error);
             // On error, show upgrade modal
@@ -342,29 +330,6 @@ function VariantsPageContent() {
                                         {userInfo.name || userInfo.email || 'User'}
                                     </div>
                                 </div>
-                                <button
-                                    onClick={async () => {
-                                        // Debug: Check subscription status
-                                        console.log('🔧 DEBUG: Checking subscription status...');
-                                        const response = await fetch('/api/subscription');
-                                        const data = await response.json();
-                                        console.log('🔧 DEBUG: Current subscription data:', data);
-                                        alert(`LEWIS Access: ${data.lewisAccess}\nTier: ${data.lewisSubscriptionTier}\nStatus: ${data.lewisPaymentStatus}`);
-                                    }}
-                                    style={{
-                                        backgroundColor: '#dcfce7',
-                                        color: '#166534',
-                                        border: '1px solid #86efac',
-                                        borderRadius: '6px',
-                                        padding: '6px 12px',
-                                        fontSize: '12px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        marginRight: '8px'
-                                    }}
-                                >
-                                    Debug
-                                </button>
                                 <button
                                     onClick={() => {
                                         // Sign out using NextAuth

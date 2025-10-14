@@ -45,7 +45,7 @@ const DefaultMode = memo(() => {
       meta: {
         title: 'LEWIS',
         description: 'Construction fee and development location expert',
-        avatar: '🏗️'
+        avatar: '/images/logo/crewcut_logo.png'
       }
     };
     createSession(lewisAgent);

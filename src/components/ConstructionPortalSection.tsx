@@ -2,12 +2,26 @@
 
 import { Button } from 'antd';
 import { useChatStore } from '@/store/chat';
+import { useSessionStore } from '@/store/session';
+import { sessionSelectors } from '@/store/session/selectors';
 import { useTheme } from 'antd-style';
 
 const ConstructionPortalSection = () => {
     const togglePortal = useChatStore((s) => s.togglePortal);
     const showPortal = useChatStore((s) => s.showPortal);
     const theme = useTheme();
+    const currentSession = useSessionStore(sessionSelectors.currentSession);
+    const activeId = useSessionStore((s) => s.activeId);
+
+    // Show for LEWIS sessions OR inbox
+    const isLewisSession = currentSession?.config?.plugins?.includes('lewis') ||
+        currentSession?.meta?.title?.toLowerCase().includes('lewis');
+
+    const isInbox = activeId === 'inbox';
+
+    if (!isLewisSession && !isInbox) {
+        return null;
+    }
 
     return (
         <div

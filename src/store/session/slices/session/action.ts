@@ -130,7 +130,7 @@ export const createSessionSlice: StateCreator<
         const response = await fetch('/api/subscription');
         const data = await response.json();
 
-        if (!data.hasLewisAccess) {
+        if (!data.lewisAccess) {
           message.error('LEWIS access required. Please upgrade your subscription.');
           return '';
         }

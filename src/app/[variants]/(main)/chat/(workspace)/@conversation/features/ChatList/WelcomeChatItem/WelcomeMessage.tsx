@@ -17,7 +17,6 @@ import { sessionMetaSelectors, sessionSelectors } from '@/store/session/selector
 
 import OpeningQuestions from './OpeningQuestions';
 import LewisOpeningQuestions from '@/components/LewisOpeningQuestions';
-import LewisPortalButton from '@/components/LewisPortalButton';
 
 const WelcomeMessage = () => {
   const mobile = useServerConfigStore((s) => s.isMobile);
@@ -66,13 +65,8 @@ const WelcomeMessage = () => {
   const message = useMemo(() => {
     if (openingMessage) return openingMessage;
 
-    // For Lewis sessions, show a custom opening message
-    if (isLewisSession) {
-      return "What type of construction project are you developing?";
-    }
-
     return !!meta.description ? agentSystemRoleMsg : agentMsg;
-  }, [openingMessage, agentSystemRoleMsg, agentMsg, meta.description, isLewisSession]);
+  }, [openingMessage, agentSystemRoleMsg, agentMsg, meta.description]);
 
   const chatItem = (
     <ChatItem
@@ -99,15 +93,13 @@ const WelcomeMessage = () => {
       <Flexbox>
         {chatItem}
 
+        {/* Show LEWIS project type buttons only for LEWIS sessions */}
+        {isLewisSession && <LewisOpeningQuestions />}
 
-        {/* Always show Lewis components for debugging */}
-        <LewisOpeningQuestions />
-        <LewisPortalButton />
-
+        {/* Show default opening questions for non-LEWIS sessions */}
         {!isLewisSession && openingQuestions.length > 0 && (
           <OpeningQuestions mobile={mobile} questions={openingQuestions} />
         )}
-
       </Flexbox>
     </>
   );
