@@ -1022,13 +1022,44 @@ const CustomLewisPortal = () => {
                     {selectedJurisdiction && availableServiceAreas.length > 1 && (
                         <Row gutter={16} style={{ marginTop: '20px', marginBottom: '20px' }}>
                             <Col span={24}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Service Areas:</Text>
+                                {/* Special helper text for Los Angeles */}
+                                {selectedJurisdiction.jurisdiction_name === 'Los Angeles' && (
+                                    <div style={{
+                                        marginBottom: '12px',
+                                        padding: '12px',
+                                        backgroundColor: theme.appearance === 'dark' ? '#1a3a52' : '#e6f4ff',
+                                        border: theme.appearance === 'dark' ? '1px solid #2d5a7b' : '1px solid #91caff',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <Text strong style={{ display: 'block', marginBottom: '4px', color: theme.appearance === 'dark' ? '#91caff' : '#0958d9' }}>
+                                            ⚠️ Los Angeles requires market area selection
+                                        </Text>
+                                        <Text style={{ fontSize: '13px', color: theme.appearance === 'dark' ? '#b8d4e8' : '#1677ff' }}>
+                                            Fees vary significantly by market area. Please select your project's market area below to see accurate fee calculations.
+                                        </Text>
+                                    </div>
+                                )}
+
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>
+                                    Service Areas:{selectedJurisdiction.jurisdiction_name === 'Los Angeles' && <span style={{ color: '#ff4d4f', marginLeft: '4px' }}>*</span>}
+                                </Text>
                                 <Select
                                     mode="multiple"
                                     value={selectedServiceAreaIds}
                                     onChange={setSelectedServiceAreaIds}
-                                    placeholder="Select service areas (leave empty for citywide fees only)"
-                                    style={{ width: '100%', borderRadius: '8px' }}
+                                    placeholder={
+                                        selectedJurisdiction.jurisdiction_name === 'Los Angeles'
+                                            ? "Select market area (required for accurate calculations)"
+                                            : "Select service areas (leave empty for citywide fees only)"
+                                    }
+                                    style={{
+                                        width: '100%',
+                                        borderRadius: '8px',
+                                        ...(selectedJurisdiction.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds.length === 0 && {
+                                            borderColor: theme.appearance === 'dark' ? '#d48806' : '#faad14',
+                                            boxShadow: theme.appearance === 'dark' ? '0 0 0 2px rgba(250, 173, 20, 0.2)' : '0 0 0 2px rgba(250, 173, 20, 0.1)'
+                                        })
+                                    }}
                                     maxTagCount="responsive"
                                 >
                                     {availableServiceAreas
@@ -1040,8 +1071,18 @@ const CustomLewisPortal = () => {
                                             </Option>
                                         ))}
                                 </Select>
-                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#888' : '#666', marginTop: '4px', display: 'block' }}>
-                                    {selectedServiceAreaIds.length === 0
+                                <Text style={{
+                                    fontSize: '12px',
+                                    color: selectedJurisdiction.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds.length === 0
+                                        ? (theme.appearance === 'dark' ? '#faad14' : '#d46b08')
+                                        : (theme.appearance === 'dark' ? '#888' : '#666'),
+                                    marginTop: '4px',
+                                    display: 'block',
+                                    fontWeight: selectedJurisdiction.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds.length === 0 ? 500 : 400
+                                }}>
+                                    {selectedJurisdiction.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds.length === 0
+                                        ? '⚠️ Select a market area above to see location-specific fees. Affordable Housing Linkage Fees range from $10.32/sq ft (Low Market) to $23.20/sq ft (High Market).'
+                                        : selectedServiceAreaIds.length === 0
                                         ? 'No service areas selected - showing jurisdiction-wide fees only'
                                         : `Selected ${selectedServiceAreaIds.length} service area${selectedServiceAreaIds.length > 1 ? 's' : ''} - showing citywide + area-specific fees`}
                                 </Text>
@@ -1258,6 +1299,33 @@ const CustomLewisPortal = () => {
                             const applicableFees = calculatedFees?.fees?.filter(fee => fee.calculatedAmount > 0) || [];
 
                             if (applicableFees.length === 0) {
+                                // Special message for Los Angeles when no service areas are selected
+                                if (selectedJurisdiction.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds.length === 0) {
+                                    return (
+                                        <div style={{ textAlign: 'center', padding: '40px' }}>
+                                            <div style={{
+                                                maxWidth: '600px',
+                                                margin: '0 auto',
+                                                padding: '24px',
+                                                backgroundColor: theme.appearance === 'dark' ? '#1a3a52' : '#e6f4ff',
+                                                border: theme.appearance === 'dark' ? '2px solid #2d5a7b' : '2px solid #91caff',
+                                                borderRadius: '12px'
+                                            }}>
+                                                <Text strong style={{ display: 'block', fontSize: '18px', marginBottom: '12px', color: theme.appearance === 'dark' ? '#91caff' : '#0958d9' }}>
+                                                    📍 Market Area Selection Required
+                                                </Text>
+                                                <Text style={{ display: 'block', fontSize: '15px', marginBottom: '8px', color: theme.appearance === 'dark' ? '#b8d4e8' : '#1677ff' }}>
+                                                    Los Angeles fees vary significantly by market area. Please select a market area above to see accurate fee calculations.
+                                                </Text>
+                                                <Text style={{ display: 'block', fontSize: '14px', color: theme.appearance === 'dark' ? '#94b3c9' : '#4096ff', marginTop: '12px' }}>
+                                                    Example: Affordable Housing Linkage Fees range from $10.32/sq ft (Low Market Area) to $23.20/sq ft (High Market Area).
+                                                </Text>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                // Default message for other jurisdictions
                                 return (
                                     <div style={{ textAlign: 'center', padding: '40px' }}>
                                         <Text style={{ fontSize: '16px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>

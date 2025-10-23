@@ -305,18 +305,6 @@ const LewisPortalButton = memo(() => {
 
     return (
         <>
-            {/* Debug test element */}
-            <div style={{
-                padding: '10px',
-                backgroundColor: 'red',
-                color: 'white',
-                textAlign: 'center',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '20px'
-            }}>
-                DEBUG: LewisPortalButton is rendering!
-            </div>
             <Flexbox
                 align="center"
                 justify="center"

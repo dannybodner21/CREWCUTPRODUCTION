@@ -2,6 +2,7 @@ import { CollapseProps, Button } from 'antd';
 import isEqual from 'fast-deep-equal';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/navigation';
 import { Building, Lock, X, MessageCircle } from 'lucide-react';
 
 import { useFetchSessions } from '@/hooks/useFetchSessions';
@@ -36,20 +37,8 @@ const DefaultMode = memo(() => {
   // Get subscription status
   const { hasLewisAccess, isLoading: subscriptionLoading } = useSubscription();
 
-  // Function to create LEWIS session
-  const createLewisSession = () => {
-    const { createSession } = useSessionStore.getState();
-    const lewisAgent = {
-      agentId: 'lewis',
-      identifier: 'lewis',
-      meta: {
-        title: 'LEWIS',
-        description: 'Construction fee and development location expert',
-        avatar: '/images/logo/crewcut_logo.png'
-      }
-    };
-    createSession(lewisAgent);
-  };
+  // Import router for navigation
+  const router = useRouter();
 
   // Function to create Default Chat session
   const createDefaultSession = () => {
@@ -162,7 +151,8 @@ const DefaultMode = memo(() => {
           icon={hasLewisAccess ? <Building size={16} /> : <Lock size={16} />}
           onClick={() => {
             if (hasLewisAccess) {
-              createLewisSession();
+              // Navigate to chat inbox (same as homepage "Access LEWIS" button)
+              router.push('/chat');
             }
             // If no access, the button is disabled and shows lock icon
           }}

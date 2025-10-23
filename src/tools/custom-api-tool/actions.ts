@@ -5,6 +5,28 @@ import { hybridLewisService } from './hybrid-lewis-service';
 import { lewisPortalIntegration } from './lewis-portal-integration';
 import { lewisDataService } from './lewis-data-service';
 
+/**
+ * Normalize jurisdiction names to handle variations from OpenAI
+ * Examples:
+ *   "Austin, TX" -> "Austin"
+ *   "Los Angeles, CA" -> "Los Angeles"
+ *   "Denver,CO" -> "Denver"
+ *   "Portland  " -> "Portland"
+ */
+function normalizeJurisdictionName(cityName: string): string {
+    if (!cityName) return '';
+
+    // Remove state codes (two-letter abbreviations after comma)
+    // Common states: TX, CA, CO, AZ, UT, OR, WA, NV, ID, MT, WY, NM, OK, KS, NE, SD, ND, etc.
+    const normalized = cityName
+        .replace(/,\s*[A-Z]{2}\s*$/i, '') // Remove ", TX" or ",CA" etc.
+        .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+        .trim();
+
+    console.log(`🔧 City normalization: "${cityName}" -> "${normalized}"`);
+    return normalized;
+}
+
 // Types for your tool parameters
 interface CallExternalAPIParams {
     url: string;
@@ -108,10 +130,17 @@ export interface CustomApiToolAction {
     callExternalAPI: (params: CallExternalAPIParams) => Promise<any>;
     queryDatabase: (params: QueryDatabaseParams) => Promise<any>;
     performDatabaseOperation: (params: DatabaseOperationParams) => Promise<any>;
-    // Construction Fee Portal actions
+    // Construction Fee Portal actions (legacy)
     getCities: (params: GetCitiesParams) => Promise<any>;
     getFees: (params: GetFeesParams) => Promise<any>;
-    calculateFees: (params: CalculateFeesParams) => Promise<any>;
+    // New strategic LEWIS tools
+    calculateFees: (params: any) => Promise<any>;
+    compareCities: (params: any) => Promise<any>;
+    explainFees: (params: any) => Promise<any>;
+    optimizeProject: (params: any) => Promise<any>;
+    analyzeLocation: (params: any) => Promise<any>;
+    optimizeFees: (params: any) => Promise<any>;
+    getAvailableJurisdictions: (params: any) => Promise<any>;
     getStatesCount: () => Promise<any>;
     getUniqueStates: () => Promise<any>;
     // Portal integration actions
@@ -479,72 +508,760 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
         }
     },
 
-    calculateFees: async (params: CalculateFeesParams) => {
+    calculateFees: async (params: any) => {
         try {
-            // Get applicable fees for the city
-            const feesResult = await createCustomApiToolActions().getFees({ cityId: params.cityId });
+            console.log('🔧 LEWIS TOOL: calculateFees called with:', params);
 
-            if (!feesResult.success) {
-                throw new Error('Failed to get fees for calculation');
-            }
+            // CRITICAL: Normalize jurisdiction name to handle "Austin, TX" -> "Austin"
+            const originalJurisdiction = params.jurisdiction;
+            const normalizedJurisdiction = normalizeJurisdictionName(params.jurisdiction);
+            console.log('🔧 LEWIS TOOL: Original jurisdiction:', originalJurisdiction);
+            console.log('🔧 LEWIS TOOL: Normalized jurisdiction:', normalizedJurisdiction);
 
-            const fees = feesResult.data;
-            const results = fees.map((fee: Record<string, any>) => {
-                let calculatedAmount = 0;
-
-                if (fee.calculationMethod.includes('per $1000')) {
-                    calculatedAmount = (params.projectValue / 1000) * fee.amount;
-                } else if (fee.calculationMethod.includes('per square foot')) {
-                    calculatedAmount = params.squareFootage * fee.amount;
-                } else if (fee.calculationMethod.includes('flat rate')) {
-                    calculatedAmount = fee.amount;
-                }
-
-                return {
-                    ...fee,
-                    calculatedAmount: Math.round(calculatedAmount * 100) / 100,
-                    projectDetails: {
-                        type: params.projectType,
-                        value: params.projectValue,
-                        squareFootage: params.squareFootage
+            // Use API endpoint to ensure server-side execution with FeeCalculator
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'calculateFees',
+                    params: {
+                        jurisdictionName: normalizedJurisdiction,
+                        projectType: params.projectType,
+                        numUnits: params.units,
+                        squareFeet: params.sqft,
+                        serviceArea: params.serviceArea || null,
+                        meterSize: params.meterSize || null,
+                        projectValue: params.projectValue || null
                     }
-                };
+                })
             });
 
-            const totalFees = results.reduce((sum: number, fee: Record<string, any>) => sum + fee.calculatedAmount, 0);
-
-            // Create conversational response
-            let responseMessage = `I've calculated the construction fees for your ${params.projectType} project. Here's the breakdown:\n\n`;
-            responseMessage += `**Project Details:**\n`;
-            responseMessage += `• Type: ${params.projectType}\n`;
-            responseMessage += `• Value: $${params.projectValue.toLocaleString()}\n`;
-            responseMessage += `• Size: ${params.squareFootage.toLocaleString()} sq ft\n\n`;
-
-            responseMessage += `**Fee Summary:**\n`;
-            responseMessage += `• **Total Fees**: $${Math.round(totalFees * 100) / 100}\n`;
-            responseMessage += `• **Number of Fees**: ${results.length} different fee categories\n`;
-            responseMessage += `• **Cost per Sq Ft**: $${Math.round((totalFees / params.squareFootage) * 100) / 100}\n`;
-            responseMessage += `• **Percentage of Project Value**: ${Math.round((totalFees / params.projectValue) * 10000) / 100}%\n\n`;
-
-            // Show top 5 highest fees
-            const topFees = results
-                .filter((fee: Record<string, any>) => fee.calculatedAmount > 0)
-                .sort((a: Record<string, any>, b: Record<string, any>) => b.calculatedAmount - a.calculatedAmount)
-                .slice(0, 5);
-
-            if (topFees.length > 0) {
-                responseMessage += `**Top Fee Categories:**\n`;
-                topFees.forEach((fee: Record<string, any>, index: number) => {
-                    const percentage = Math.round((fee.calculatedAmount / totalFees) * 100);
-                    responseMessage += `${index + 1}. **${fee.category}**: $${fee.calculatedAmount.toLocaleString()} (${percentage}% of total)\n`;
-                });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
-            responseMessage += `\nThis gives you a comprehensive overview of the construction fees for your project. The portal on the right shows the complete detailed breakdown. Would you like me to explain any specific fees or help you with anything else?`;
+            const result = await response.json();
+            console.log('🔧 LEWIS TOOL: calculateFees result:', result);
+
+            if (result.success && result.data) {
+                const data = result.data;
+                const perUnit = data.oneTimeFees / params.units;
+
+                // Helper function to format currency with explicit dollar sign
+                // Wrap in backticks to render as inline code and prevent markdown parsing issues
+                const formatCurrency = (amount: number): string => {
+                    const formatted = Math.round(amount).toLocaleString('en-US');
+                    return '`$' + formatted + '`';
+                };
+
+                const oneTimeFormatted = formatCurrency(data.oneTimeFees);
+                const perUnitFormatted = formatCurrency(perUnit);
+                const monthlyFormatted = formatCurrency(data.monthlyFees);
+
+                let responseMessage = `**${params.jurisdiction}**\n`;
+                responseMessage += `- Total One-Time: ${oneTimeFormatted} (${perUnitFormatted}/unit)\n`;
+                responseMessage += `- Monthly: ${monthlyFormatted}/month\n`;
+
+                // Show top 3 fees
+                const topFees = data.fees
+                    .filter((f: any) => f.calculatedAmount > 0)
+                    .sort((a: any, b: any) => b.calculatedAmount - a.calculatedAmount)
+                    .slice(0, 3);
+
+                if (topFees.length > 0) {
+                    const topFeeFormatted = formatCurrency(topFees[0].calculatedAmount);
+                    responseMessage += `- Top Fee: ${topFees[0].feeName} ${topFeeFormatted}\n`;
+                }
+
+                responseMessage += `\n✓ Calculator updated with these inputs. You can adjust parameters on the right to see how fees change.\n\n`;
+                responseMessage += `Want me to compare this to other cities or explain the fee breakdown?`;
+
+                return responseMessage;
+            } else {
+                throw new Error(result.error || 'Failed to calculate fees');
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: calculateFees error:', error);
+            return `I don't have fee data for ${params.jurisdiction} yet or encountered an error calculating fees: ${error instanceof Error ? error.message : 'Unknown error'}. Want me to show you available cities?`;
+        }
+    },
+
+    compareCities: async (params: any) => {
+        try {
+            console.log('🔧 LEWIS TOOL: compareCities called with:', params);
+            console.log('🔧 LEWIS TOOL: params type:', typeof params);
+            console.log('🔧 LEWIS TOOL: params keys:', params ? Object.keys(params) : 'null');
+            console.log('🔧 LEWIS TOOL: Full params object:', JSON.stringify(params, null, 2));
+
+            // CRITICAL: Handle case where params might be null/undefined
+            if (!params) {
+                console.error('❌ LEWIS TOOL: params is null or undefined');
+                return `Error: No parameters provided. Please specify cities to compare. Example: "Compare Austin vs Los Angeles vs Denver for 50 units"`;
+            }
+
+            // CRITICAL: Check for alternative parameter names (cities, jurisdictions, etc.)
+            let cities = params.cities || params.jurisdictions || params.cityNames || params.locations;
+
+            if (!cities) {
+                console.error('❌ LEWIS TOOL: No cities array found in params');
+                console.error('Available params keys:', Object.keys(params));
+                return `Error: No cities provided. I received these parameters: ${Object.keys(params).join(', ')}. Please specify which cities to compare.`;
+            }
+
+            // Convert single string to array if needed
+            if (typeof cities === 'string') {
+                console.log('🔧 LEWIS TOOL: Converting single city string to array');
+                cities = [cities];
+            }
+
+            if (!Array.isArray(cities)) {
+                console.error('❌ LEWIS TOOL: cities is not an array, type:', typeof cities);
+                return `Error: Cities parameter is not an array. Received: ${JSON.stringify(cities)}`;
+            }
+
+            if (cities.length === 0) {
+                console.error('❌ LEWIS TOOL: cities array is empty');
+                return `Error: No cities provided in the array. Please specify at least one city to compare.`;
+            }
+
+            console.log(`✅ LEWIS TOOL: Validated ${cities.length} cities:`, cities);
+
+            // CRITICAL: Normalize city names to handle variations like "Austin, TX" -> "Austin"
+            const normalizedCities = cities.map(normalizeJurisdictionName);
+            console.log('🔧 LEWIS TOOL: Original cities:', cities);
+            console.log('🔧 LEWIS TOOL: Normalized cities:', normalizedCities);
+
+            // Use normalized cities for database queries
+            params.cities = normalizedCities;
+
+            // Log parameters being sent
+            console.log('🔍 compareCities called with full params:', {
+                projectType: params.projectType,
+                units: params.units,
+                sqft: params.sqft,
+                cities: normalizedCities,
+                serviceArea: params.serviceArea || 'Inside',
+                meterSize: params.meterSize || '3/4"',
+                projectValue: params.projectValue || null
+            });
+
+            // Calculate fees for each city in parallel
+            const results = await Promise.all(
+                normalizedCities.map(async (city: string, index: number) => {
+                    const originalCity = cities[index];
+
+                    const requestPayload = {
+                        action: 'calculateFees',
+                        params: {
+                            jurisdictionName: city,
+                            projectType: params.projectType,
+                            numUnits: params.units,
+                            squareFeet: params.sqft,
+                            projectValue: params.projectValue || null,
+                            serviceArea: params.serviceArea || 'Inside', // Default to "Inside" service area (matches "Inside Denver", "Inside City")
+                            meterSize: params.meterSize || '3/4"' // Default to 3/4" meter
+                        }
+                    };
+
+                    console.log(`🔍 Calculating ${city}:`, requestPayload.params);
+
+                    const response = await fetch('/api/lewis', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestPayload)
+                    });
+
+                    if (!response.ok) {
+                        console.error(`❌ HTTP error for ${city}:`, response.status);
+                        return { city, error: `HTTP ${response.status}` };
+                    }
+
+                    const result = await response.json();
+                    console.log(`🔍 ${city} result:`, {
+                        success: result.success,
+                        oneTimeFees: result.data?.oneTimeFees,
+                        monthlyFees: result.data?.monthlyFees,
+                        feeCount: result.data?.fees?.length,
+                        error: result.error
+                    });
+                    if (result.success && result.data) {
+                        return {
+                            city,
+                            oneTimeFees: result.data.oneTimeFees,
+                            monthlyFees: result.data.monthlyFees,
+                            perUnit: result.data.oneTimeFees / params.units,
+                            topFees: result.data.fees
+                                .filter((f: any) => {
+                                    // Exclude monthly/recurring fees
+                                    if (f.isRecurring) return false;
+                                    // Exclude volume rates (per gallon, per CCF) - these are rates, not actual fees
+                                    const feeNameLower = (f.feeName || '').toLowerCase();
+                                    if (feeNameLower.includes('volume rate') ||
+                                        feeNameLower.includes('per gallon') ||
+                                        feeNameLower.includes('per ccf') ||
+                                        feeNameLower.includes('per 1,000 gallons')) {
+                                        return false;
+                                    }
+                                    // Only include fees with meaningful amounts (> $10)
+                                    return f.calculatedAmount > 10;
+                                })
+                                .sort((a: any, b: any) => b.calculatedAmount - a.calculatedAmount)
+                                .slice(0, 3)
+                        };
+                    } else {
+                        return { city, error: result.error || 'Failed to calculate' };
+                    }
+                })
+            );
+
+            // Filter out errors and sort by total cost
+            const validResults = results.filter(r => !r.error);
+            if (validResults.length === 0) {
+                return `I couldn't calculate fees for any of the requested cities. Please check the city names and try again.`;
+            }
+
+            validResults.sort((a, b) => a.oneTimeFees - b.oneTimeFees);
+
+            // Calculate savings vs highest
+            const highest = validResults[validResults.length - 1].oneTimeFees;
+
+            // Helper function to format currency with explicit dollar sign
+            // CRITICAL: Use string concatenation, not template literals, to avoid parsing issues
+            const formatCurrency = (amount: number): string => {
+                const formatted = Math.round(amount).toLocaleString('en-US');
+                // Wrap in backticks to render as inline code and prevent markdown parsing breaking the format
+                return '`$' + formatted + '`';
+            };
+
+            let responseMessage = `I'll compare ${params.projectType} fees for ${params.units} units across these cities:\n\n`;
+
+            validResults.forEach((r, index) => {
+                const savings = highest - r.oneTimeFees;
+                const percentCheaper = ((savings / highest) * 100).toFixed(1);
+
+                // Show cheapest marker in city name
+                const cityLabel = index === 0 && validResults.length > 1 ? `**${r.city}** (Cheapest ✓)` : `**${r.city}**`;
+
+                // Pre-format all currency amounts with explicit dollar signs
+                const oneTimeFormatted = formatCurrency(r.oneTimeFees);
+                const perUnitFormatted = formatCurrency(r.perUnit);
+                const monthlyFormatted = formatCurrency(r.monthlyFees);
+
+                console.log(`🔍 Formatting for ${r.city}:`, {
+                    oneTimeRaw: r.oneTimeFees,
+                    oneTimeFormatted,
+                    perUnitRaw: r.perUnit,
+                    perUnitFormatted,
+                    monthlyRaw: r.monthlyFees,
+                    monthlyFormatted
+                });
+
+                responseMessage += `${cityLabel}\n`;
+                responseMessage += `• One-Time Fees: ${oneTimeFormatted} (${perUnitFormatted}/unit)\n`;
+                responseMessage += `• Monthly Fees: ${monthlyFormatted}/month\n`;
+
+                // Show top 3 fees
+                if (r.topFees && r.topFees.length > 0) {
+                    responseMessage += `• Top 3 Fees:\n`;
+                    r.topFees.slice(0, 3).forEach((fee: any) => {
+                        if (fee && fee.feeName && fee.calculatedAmount) {
+                            const feeAmountFormatted = formatCurrency(fee.calculatedAmount);
+                            responseMessage += `  • ${fee.feeName}: ${feeAmountFormatted}\n`;
+                        }
+                    });
+                }
+
+                // Show savings comparison for non-cheapest cities
+                if (index > 0 && savings > 0) {
+                    const savingsFormatted = formatCurrency(savings);
+                    responseMessage += `• Costs ${savingsFormatted} more than cheapest (${percentCheaper}% higher)\n`;
+                }
+                responseMessage += `\n`;
+            });
+
+            // Bottom line recommendation
+            if (validResults.length > 1) {
+                const cheapest = validResults[0];
+                const savings = highest - cheapest.oneTimeFees;
+                const percentSavings = ((savings / highest) * 100).toFixed(1);
+                const savingsFormatted = formatCurrency(savings);
+                responseMessage += `**Bottom Line:** ${cheapest.city} saves you ${savingsFormatted} vs ${validResults[validResults.length - 1].city} (${percentSavings}% lower).\n\n`;
+            }
+
+            responseMessage += `\nWant me to break down any city's fees or analyze a different project size?`;
+
+            // CRITICAL: Return as plain text to prevent markdown parsing issues
+            // OpenAI was breaking currency formatting when parsing markdown
+            console.log('🔍 Final responseMessage length:', responseMessage.length);
+            console.log('🔍 First 200 chars:', responseMessage.substring(0, 200));
 
             return responseMessage;
         } catch (error) {
-            return `I'm sorry, I encountered an error while trying to calculate the fees: ${error instanceof Error ? error.message : 'Failed to calculate fees'}. Please try again or let me know if you need help with something else.`;
+            console.error('💥 LEWIS TOOL: compareCities error:', error);
+            return `I encountered an error comparing cities: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
+        }
+    },
+
+    explainFees: async (params: any) => {
+        try {
+            console.log('🔧 LEWIS TOOL: explainFees called with:', params);
+
+            // CRITICAL: Normalize jurisdiction name to handle "Austin, TX" -> "Austin"
+            const normalizedJurisdiction = normalizeJurisdictionName(params.jurisdiction);
+            console.log('🔧 LEWIS TOOL: Normalized jurisdiction for explainFees:', normalizedJurisdiction);
+
+            // First calculate fees
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'calculateFees',
+                    params: {
+                        jurisdictionName: normalizedJurisdiction,
+                        projectType: params.projectType,
+                        numUnits: params.units,
+                        squareFeet: params.sqft,
+                        serviceArea: params.serviceArea || null
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                const data = result.data;
+                const sortedFees = data.fees
+                    .filter((f: any) => f.calculatedAmount > 0)
+                    .sort((a: any, b: any) => b.calculatedAmount - a.calculatedAmount);
+
+                // Helper function to format currency with explicit dollar sign
+                // Wrap in backticks to render as inline code and prevent markdown parsing issues
+                const formatCurrency = (amount: number): string => {
+                    const formatted = Math.round(amount).toLocaleString('en-US');
+                    return '`$' + formatted + '`';
+                };
+
+                const total = data.oneTimeFees;
+                const totalFormatted = formatCurrency(total);
+                const top3 = sortedFees.slice(0, 3);
+                const top3Total = top3.reduce((sum: number, f: any) => sum + f.calculatedAmount, 0);
+                const top3Percent = ((top3Total / total) * 100).toFixed(1);
+
+                let responseMessage = `Here's why ${params.jurisdiction} fees are ${totalFormatted} for your ${params.units}-unit project:\n\n`;
+                responseMessage += `**Top 3 Fee Drivers (${top3Percent}% of total):**\n\n`;
+
+                top3.forEach((fee: any, index: number) => {
+                    const percent = ((fee.calculatedAmount / total) * 100).toFixed(1);
+                    const feeAmountFormatted = formatCurrency(fee.calculatedAmount);
+                    responseMessage += `${index + 1}. **${fee.feeName}**: ${feeAmountFormatted} (${percent}%)\n`;
+
+                    // Add optimization tips
+                    if (fee.feeName.includes('Affordable Housing') && fee.feeName.includes('Market Area')) {
+                        responseMessage += `   💡 Tip: Consider different market area zones - may have 10-30% lower rates\n`;
+                    } else if (fee.feeName.includes('Park Fee') && fee.calculatedAmount > 5000) {
+                        responseMessage += `   💡 Tip: Check if fee waivers available for affordable housing (50-100% savings)\n`;
+                    } else if (fee.feeName.toLowerCase().includes('water') && fee.feeName.toLowerCase().includes('meter')) {
+                        responseMessage += `   💡 Tip: Right-size water meters - oversizing increases costs 20-40%\n`;
+                    }
+                    responseMessage += `\n`;
+                });
+
+                responseMessage += `**All Fees (${sortedFees.length} total):**\n`;
+                sortedFees.forEach((fee: any) => {
+                    const feeAmountFormatted = formatCurrency(fee.calculatedAmount);
+                    responseMessage += `- ${fee.feeName}: ${feeAmountFormatted}\n`;
+                });
+
+                responseMessage += `\nWant me to compare ${params.jurisdiction} to other cities or suggest ways to reduce these costs?`;
+
+                return responseMessage;
+            } else {
+                throw new Error(result.error || 'Failed to explain fees');
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: explainFees error:', error);
+            return `I encountered an error explaining fees: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
+        }
+    },
+
+    optimizeProject: async (params: any) => {
+        try {
+            console.log('🔧 LEWIS TOOL: optimizeProject called with:', params);
+            console.log('🔧 LEWIS TOOL: Fetching from /api/lewis with action=optimizeProject');
+
+            // Call API endpoint
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'optimizeProject',
+                    params: {
+                        jurisdiction: params.jurisdiction,
+                        lotSize: params.lotSize,
+                        projectType: params.projectType,
+                        budget: params.budget
+                    }
+                })
+            });
+
+            console.log('🔧 LEWIS TOOL: Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ LEWIS TOOL: API error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('🔧 LEWIS TOOL: optimizeProject API result:', JSON.stringify(result, null, 2));
+
+            if (!result.success || !result.data) {
+                throw new Error(result.error || 'Failed to optimize project');
+            }
+
+            const { jurisdiction, lotSize, projectType, buildableAcres, scenarios } = result.data;
+            const budget = params.budget;
+
+            // Helper function to format currency
+            const formatCurrency = (amount: number): string => {
+                const formatted = Math.round(amount).toLocaleString('en-US');
+                return '`$' + formatted + '`';
+            };
+
+            // Build response message
+            let responseMessage = `I'll analyze your ${lotSize} acre site in ${jurisdiction} for optimal ${projectType} development.\n\n`;
+            responseMessage += `Based on your lot size (${buildableAcres.toFixed(1)} acres buildable) and local fees, here are 3 development scenarios:\n\n`;
+
+            // Create table header
+            responseMessage += `| Scenario | Units | Total SF | Dev Fees | Est. Construction | Total Cost | Cost/Unit |\n`;
+            responseMessage += `|----------|-------|----------|----------|-------------------|------------|-----------||\n`;
+
+            // Add scenarios to table
+            scenarios.forEach((s: any) => {
+                const devFees = formatCurrency(s.developmentFees);
+                const estConst = formatCurrency(s.constructionCost);
+                const totalCost = formatCurrency(s.totalDevCost);
+                const costPerUnit = formatCurrency(s.costPerUnit);
+
+                responseMessage += `| ${s.name} | ${s.units} | ${s.squareFeet.toLocaleString()} | ${devFees} | ${estConst} | ${totalCost} | ${costPerUnit} |\n`;
+            });
+
+            // Add recommendation (Moderate scenario - index 1)
+            const recommended = scenarios[1] || scenarios[0];
+            const recommendedCostPerUnit = formatCurrency(recommended.costPerUnit);
+
+            responseMessage += `\n**Recommendation:** The ${recommended.name} approach with ${recommended.units} units offers the best balance of development costs and density. This results in approximately ${recommendedCostPerUnit}/unit in total development costs.\n\n`;
+
+            // Key considerations
+            const devFeePercent = ((recommended.developmentFees / recommended.totalDevCost) * 100).toFixed(1);
+            const monthlyFormatted = formatCurrency(recommended.monthlyFees);
+            const devFeesFormatted = formatCurrency(recommended.developmentFees);
+
+            responseMessage += `**Key Considerations:**\n`;
+            responseMessage += `- Development fees: ${devFeesFormatted} (${devFeePercent}% of total cost)\n`;
+            responseMessage += `- Monthly operating: ${monthlyFormatted}/month\n`;
+            responseMessage += `- Estimated timeline: 18-24 months from permit to occupancy\n\n`;
+
+            if (budget) {
+                const budgetFormatted = formatCurrency(budget);
+                const withinBudget = scenarios.filter((s: any) => s.totalDevCost <= budget);
+                if (withinBudget.length > 0) {
+                    responseMessage += `**Budget Analysis:** With your ${budgetFormatted} budget, ${withinBudget.length} scenario(s) are feasible.\n\n`;
+                } else {
+                    responseMessage += `**Budget Analysis:** Your ${budgetFormatted} budget may be tight for this site. Consider reducing unit count or smaller units.\n\n`;
+                }
+            }
+
+            responseMessage += `Would you like me to generate a detailed pro forma or compare this to other ${jurisdiction} locations?`;
+
+            return responseMessage;
+
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: optimizeProject error:', error);
+            return `I encountered an error optimizing your project: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
+        }
+    },
+
+    analyzeLocation: async (params: any) => {
+        try {
+            console.log('📍 LEWIS TOOL: analyzeLocation called with:', params);
+
+            // Call API endpoint
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'analyzeLocation',
+                    params: {
+                        address: params.address,
+                        jurisdiction: params.jurisdiction,
+                        radius: params.radius || 1
+                    }
+                })
+            });
+
+            console.log('📍 LEWIS TOOL: Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ LEWIS TOOL: API error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            // Read response as text first so we can see what we got
+            const responseText = await response.text();
+            console.log('📍 LEWIS TOOL: Raw response (first 500 chars):', responseText.substring(0, 500));
+
+            let result;
+            try {
+                result = JSON.parse(responseText);
+                console.log('📍 LEWIS TOOL: analyzeLocation API result:', JSON.stringify(result, null, 2));
+            } catch (jsonError) {
+                console.error('❌ LEWIS TOOL: Failed to parse JSON response');
+                console.error('❌ LEWIS TOOL: Response starts with:', responseText.substring(0, 200));
+                throw new Error(`API returned invalid JSON (likely a server error). Response: ${responseText.substring(0, 500)}`);
+            }
+
+            if (!result.success || !result.data) {
+                throw new Error(result.error || 'Failed to analyze location');
+            }
+
+            const data = result.data;
+
+            // Build response message
+            let responseMessage = `I'll analyze the location at **${data.address}**.\n\n`;
+            responseMessage += `**Nearby Amenities (within ${data.searchRadius}):**\n\n`;
+
+            // Format amenities by category
+            if (data.amenities && Object.keys(data.amenities).length > 0) {
+                for (const [category, places] of Object.entries(data.amenities)) {
+                    responseMessage += `**${category}:**\n`;
+                    (places as any[]).forEach(place => {
+                        responseMessage += `- ${place.name} - ${place.distanceFormatted} away\n`;
+                    });
+                    responseMessage += `\n`;
+                }
+            } else {
+                responseMessage += `No major amenities found within ${data.searchRadius}.\n\n`;
+            }
+
+            // Walkability score
+            responseMessage += `**Walkability Score:** ${data.walkabilityScore}/100\n\n`;
+
+            // Location insights
+            if (data.insights && data.insights.length > 0) {
+                responseMessage += `**Location Insights:**\n`;
+                data.insights.forEach((insight: string) => {
+                    responseMessage += `- ${insight}\n`;
+                });
+                responseMessage += `\n`;
+            }
+
+            // Overall assessment
+            const assessmentEmoji = data.assessment === 'excellent' ? '🌟' :
+                                   data.assessment === 'good' ? '✅' : '⚠️';
+            responseMessage += `**Overall:** ${assessmentEmoji} This location is **${data.assessment}** for residential development.\n\n`;
+
+            responseMessage += `Would you like me to optimize a project for this site or calculate development fees?`;
+
+            return responseMessage;
+
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: analyzeLocation error:', error);
+            return `I encountered an error analyzing the location: ${error instanceof Error ? error.message : 'Unknown error'}. Please provide a valid address (e.g., "123 Main St, Phoenix, AZ").`;
+        }
+    },
+
+    optimizeFees: async (params: any) => {
+        try {
+            console.log('💰 LEWIS TOOL: optimizeFees called with:', params);
+
+            // Call API endpoint
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'optimizeFees',
+                    params: {
+                        jurisdiction: params.jurisdiction,
+                        projectType: params.projectType,
+                        units: params.units,
+                        squareFeet: params.squareFeet,
+                        currentServiceArea: params.currentServiceArea
+                    }
+                })
+            });
+
+            console.log('💰 LEWIS TOOL: Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ LEWIS TOOL: API error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const responseText = await response.text();
+            console.log('💰 LEWIS TOOL: Raw response (first 500 chars):', responseText.substring(0, 500));
+
+            let result;
+            try {
+                result = JSON.parse(responseText);
+                console.log('💰 LEWIS TOOL: optimizeFees API result:', JSON.stringify(result, null, 2));
+            } catch (jsonError) {
+                console.error('❌ LEWIS TOOL: Failed to parse JSON response');
+                throw new Error(`API returned invalid JSON. Response: ${responseText.substring(0, 500)}`);
+            }
+
+            if (!result.success || !result.data) {
+                throw new Error(result.error || 'Failed to optimize fees');
+            }
+
+            const data = result.data;
+
+            // Helper function to format currency
+            const formatCurrency = (amount: number): string => {
+                const formatted = Math.round(amount).toLocaleString('en-US');
+                return '`$' + formatted + '`';
+            };
+
+            // Build response message
+            let responseMessage = `I'll analyze fee optimization strategies for your ${data.projectSpecs.units}-unit ${data.projectSpecs.type} project in ${data.jurisdiction}.\n\n`;
+
+            const baselineFormatted = formatCurrency(data.baselineFees);
+            responseMessage += `**Current Development Fees:** ${baselineFormatted}\n`;
+            if (data.projectSpecs.avgSqFtPerUnit) {
+                responseMessage += `**Project Size:** ${data.projectSpecs.squareFeet.toLocaleString('en-US')} sq ft total (${data.projectSpecs.avgSqFtPerUnit} sq ft/unit)\n`;
+            }
+            responseMessage += `\n`;
+
+            // Show strategies
+            if (data.strategies && data.strategies.length > 0) {
+                responseMessage += `**Fee Reduction Strategies:**\n\n`;
+
+                data.strategies.forEach((strategy: any, index: number) => {
+                    responseMessage += `**${index + 1}. ${strategy.strategy}**\n`;
+
+                    if (typeof strategy.savings === 'number') {
+                        const savingsFormatted = formatCurrency(strategy.savings);
+                        const newTotalFormatted = formatCurrency(strategy.newTotal);
+                        const percentSavings = ((strategy.savings / data.baselineFees) * 100).toFixed(1);
+
+                        responseMessage += `   • Potential Savings: ${savingsFormatted} (${percentSavings}% reduction)\n`;
+                        responseMessage += `   • New Total: ${newTotalFormatted}\n`;
+                    } else {
+                        responseMessage += `   • Benefit: ${strategy.savingsFormatted}\n`;
+                    }
+
+                    responseMessage += `   • Feasibility: ${strategy.feasibility}\n`;
+                    responseMessage += `   • Trade-off: ${strategy.tradeoff}\n\n`;
+                });
+
+                // Total potential savings
+                if (data.totalPotentialSavings > 0) {
+                    const totalSavingsFormatted = formatCurrency(data.totalPotentialSavings);
+                    const totalPercent = ((data.totalPotentialSavings / data.baselineFees) * 100).toFixed(1);
+                    responseMessage += `**Total Potential Savings:** ${totalSavingsFormatted} (${totalPercent}% reduction)\n\n`;
+                }
+            } else {
+                responseMessage += `**No specific optimization strategies found** for this project configuration.\n\n`;
+            }
+
+            // Additional recommendations
+            if (data.recommendations && data.recommendations.length > 0) {
+                responseMessage += `**Additional Recommendations:**\n`;
+                data.recommendations.forEach((rec: string) => {
+                    responseMessage += `- ${rec}\n`;
+                });
+                responseMessage += `\n`;
+            }
+
+            responseMessage += `Would you like me to recalculate fees with any of these optimizations applied?`;
+
+            return responseMessage;
+
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: optimizeFees error:', error);
+            return `I encountered an error optimizing fees: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again with valid project parameters.`;
+        }
+    },
+
+    getAvailableJurisdictions: async (params: any) => {
+        try {
+            console.log('🔧 LEWIS TOOL: getAvailableJurisdictions called with:', params);
+
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'getJurisdictions',
+                    params: params || {}
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                const jurisdictions = result.data;
+
+                // If state filter was applied, provide contextual response
+                if (params && params.state) {
+                    if (jurisdictions.length === 0) {
+                        return `No ${params.state} cities in database. Available: Phoenix (AZ), Salt Lake City (UT), Los Angeles (CA).`;
+                    }
+
+                    const cityNames = jurisdictions.map((j: any) => j.jurisdiction_name);
+
+                    // Return just the city names - LEWIS will use these to proactively compare
+                    return `Available in ${params.state}: ${cityNames.join(', ')}`;
+                }
+
+                // No filter - show all jurisdictions grouped by state
+                const byState: { [key: string]: any[] } = {};
+                jurisdictions.forEach((j: any) => {
+                    if (!byState[j.state_name]) {
+                        byState[j.state_name] = [];
+                    }
+                    byState[j.state_name].push(j);
+                });
+
+                let responseMessage = `I have fee data for ${jurisdictions.length} jurisdictions across ${Object.keys(byState).length} states:\n\n`;
+
+                // Show up to 10 states with their cities
+                const states = Object.keys(byState).sort().slice(0, 10);
+                states.forEach(state => {
+                    const cities = byState[state].map((j: any) => j.jurisdiction_name).join(', ');
+                    responseMessage += `**${state}**: ${cities}\n\n`;
+                });
+
+                if (Object.keys(byState).length > 10) {
+                    responseMessage += `...and ${Object.keys(byState).length - 10} more states\n\n`;
+                }
+
+                responseMessage += `Want me to calculate fees for any of these jurisdictions or compare specific cities?`;
+
+                return responseMessage;
+            } else {
+                throw new Error(result.error || 'Failed to get jurisdictions');
+            }
+        } catch (error) {
+            console.error('💥 LEWIS TOOL: getAvailableJurisdictions error:', error);
+            return `I encountered an error getting jurisdiction list: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
         }
     },
 

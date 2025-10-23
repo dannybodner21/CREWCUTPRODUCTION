@@ -188,29 +188,125 @@ export const CustomApiToolManifest: BuiltinToolManifest = {
         },
         {
             name: 'calculateFees',
-            description: 'Calculate construction fees for a specific project in a city. This function will automatically fetch applicable fees and calculate total costs based on project value and square footage. Returns detailed breakdown of all fees and total project cost.',
+            description: 'Calculate development fees for ONE specific jurisdiction. Use ONLY when user asks about a single city, not comparing multiple. Examples: "What are fees in Austin?", "How much for 50 units in Denver?", "Calculate Phoenix fees". If user mentions multiple cities, use compareCities instead. DO NOT call this multiple times - use compareCities for comparisons.',
             parameters: {
                 type: 'object',
                 properties: {
-                    cityId: {
+                    jurisdiction: {
                         type: 'string',
-                        description: 'City ID to calculate fees for (obtain this from getCities first)',
+                        description: 'Jurisdiction name (e.g., "Los Angeles", "Phoenix", "Austin")',
                     },
                     projectType: {
                         type: 'string',
-                        enum: ['residential', 'commercial'],
-                        description: 'Type of construction project (residential or commercial)',
+                        enum: ['Single-Family Residential', 'Multi-Family Residential', 'Commercial', 'Industrial'],
+                        description: 'Type of construction project',
+                    },
+                    units: {
+                        type: 'number',
+                        description: 'Number of units (for residential) or 1 (for commercial)',
+                    },
+                    sqft: {
+                        type: 'number',
+                        description: 'Total square footage',
+                    },
+                    serviceArea: {
+                        type: 'string',
+                        description: 'Service area/zone if jurisdiction has multiple (optional)',
+                    },
+                    meterSize: {
+                        type: 'string',
+                        description: 'Water meter size (e.g., "3/4\\"", "1\\"") - optional, defaults to common size',
                     },
                     projectValue: {
                         type: 'number',
-                        description: 'Total project value in dollars (e.g., 500000 for $500k project)',
-                    },
-                    squareFootage: {
-                        type: 'number',
-                        description: 'Project square footage (e.g., 2500 for 2,500 sq ft)',
+                        description: 'Construction valuation in dollars (for building permit calculation) - optional',
                     },
                 },
-                required: ['cityId', 'projectType', 'projectValue', 'squareFootage'],
+                required: ['jurisdiction', 'projectType', 'units', 'sqft'],
+            },
+        },
+        {
+            name: 'compareCities',
+            description: '🔥 PRIMARY TOOL - Use this FIRST when user names 2+ specific cities. DO NOT call any other tool first. Examples that MUST use this tool: "Austin vs LA vs Denver", "50 units in Austin or LA", "compare Phoenix and San Diego", "costs for Austin, Los Angeles, and Denver". If user names specific cities (Austin, Los Angeles, Denver, Phoenix, Portland, etc.), use THIS tool immediately. Do NOT call getAvailableJurisdictions when cities are already named.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    projectType: {
+                        type: 'string',
+                        enum: ['Single-Family Residential', 'Multi-Family Residential', 'Commercial', 'Industrial'],
+                        description: 'Type of construction project',
+                    },
+                    units: {
+                        type: 'number',
+                        description: 'Number of units',
+                    },
+                    sqft: {
+                        type: 'number',
+                        description: 'Total square footage',
+                    },
+                    cities: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Array of jurisdiction names to compare (2-3 recommended)',
+                    },
+                    projectValue: {
+                        type: 'number',
+                        description: 'Construction valuation (optional)',
+                    },
+                    serviceArea: {
+                        type: 'string',
+                        description: 'Service area name (optional, defaults to "Inside" which matches "Inside Denver", "Inside City", etc.)',
+                    },
+                    meterSize: {
+                        type: 'string',
+                        description: 'Water meter size (optional, defaults to "3/4"")',
+                    },
+                },
+                required: ['projectType', 'units', 'sqft', 'cities'],
+            },
+        },
+        {
+            name: 'explainFees',
+            description: 'Get detailed explanation of fee breakdown with optimization suggestions for ONE specific jurisdiction. Use when user asks "why are fees high?", "explain fees", or wants to understand the breakdown of costs. Examples: "Why is LA expensive?", "Explain Austin\'s fees", "Break down Denver\'s costs". Use calculateFees for simple totals, use this for detailed analysis.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    jurisdiction: {
+                        type: 'string',
+                        description: 'Jurisdiction name',
+                    },
+                    projectType: {
+                        type: 'string',
+                        enum: ['Single-Family Residential', 'Multi-Family Residential', 'Commercial', 'Industrial'],
+                        description: 'Type of construction project',
+                    },
+                    units: {
+                        type: 'number',
+                        description: 'Number of units',
+                    },
+                    sqft: {
+                        type: 'number',
+                        description: 'Total square footage',
+                    },
+                    serviceArea: {
+                        type: 'string',
+                        description: 'Service area/zone (optional)',
+                    },
+                },
+                required: ['jurisdiction', 'projectType', 'units', 'sqft'],
+            },
+        },
+        {
+            name: 'getAvailableJurisdictions',
+            description: '⚠️ ONLY use when user asks "what cities?" WITHOUT naming specific cities. Examples: "What cities in Texas?" (YES), "Show all locations" (YES), "Austin vs LA vs Denver" (NO - use compareCities). If user names ANY specific cities (Austin, Los Angeles, Denver, etc.), DO NOT use this tool - use compareCities instead. This tool is for discovering cities, not comparing known cities.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    state: {
+                        type: 'string',
+                        description: 'Filter by state code (e.g., "CA", "TX") - optional',
+                    },
+                },
             },
         },
         {
@@ -219,6 +315,87 @@ export const CustomApiToolManifest: BuiltinToolManifest = {
             parameters: {
                 type: 'object',
                 properties: {},
+            },
+        },
+        {
+            name: 'optimizeProject',
+            description: 'Analyzes a development site and suggests optimal unit count, project size, and development approach. Use when user asks "what should I build?", "optimal project size", "how many units?", "best use for my land", or "development scenarios". Returns 3 scenarios (conservative, moderate, aggressive) with detailed cost breakdowns and a recommendation.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    jurisdiction: {
+                        type: 'string',
+                        description: 'City name (e.g., "Austin", "Phoenix", "Denver")',
+                    },
+                    lotSize: {
+                        type: 'number',
+                        description: 'Lot size in acres',
+                    },
+                    projectType: {
+                        type: 'string',
+                        enum: ['Single-Family', 'Multi-Family'],
+                        description: 'Type of residential project',
+                    },
+                    budget: {
+                        type: 'number',
+                        description: 'Total development budget in dollars (optional)',
+                    },
+                },
+                required: ['jurisdiction', 'lotSize', 'projectType'],
+            },
+        },
+        {
+            name: 'analyzeLocation',
+            description: 'Analyzes a development site\'s location to find nearby amenities like grocery stores, transit, schools, and parks. Use when user asks "what\'s near my site?", "location analysis", "nearby amenities", or provides an address to analyze. Returns walkability score and location insights.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    address: {
+                        type: 'string',
+                        description: 'Full address or intersection (e.g., "123 Main St, Phoenix, AZ" or "Downtown Austin")',
+                    },
+                    jurisdiction: {
+                        type: 'string',
+                        description: 'City name for context (e.g., "Phoenix", "Austin")',
+                    },
+                    radius: {
+                        type: 'number',
+                        description: 'Search radius in miles (default: 1)',
+                        default: 1,
+                    },
+                },
+                required: ['address', 'jurisdiction'],
+            },
+        },
+        {
+            name: 'optimizeFees',
+            description: 'Analyzes a project and suggests strategies to reduce development fees. Use when user asks "how to reduce fees", "lower costs", "fee optimization", "save money on fees", or "reduce development costs". Returns ranked strategies with savings potential.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    jurisdiction: {
+                        type: 'string',
+                        description: 'City name (e.g., "Austin", "Phoenix", "Denver")',
+                    },
+                    projectType: {
+                        type: 'string',
+                        enum: ['Single-Family', 'Multi-Family'],
+                        description: 'Type of residential project',
+                    },
+                    units: {
+                        type: 'number',
+                        description: 'Number of dwelling units',
+                    },
+                    squareFeet: {
+                        type: 'number',
+                        description: 'Total square footage',
+                    },
+                    currentServiceArea: {
+                        type: 'string',
+                        description: 'Current service area if known (optional)',
+                    },
+                },
+                required: ['jurisdiction', 'projectType', 'units', 'squareFeet'],
             },
         },
         {
@@ -271,237 +448,49 @@ export const CustomApiToolManifest: BuiltinToolManifest = {
                 properties: {},
             },
         },
-        {
-            name: 'rankJurisdictions',
-            description: 'Rank all jurisdictions based on project details to find the best locations for development. This analyzes fees, market size, economic viability, and development-friendliness.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    projectType: {
-                        type: 'string',
-                        description: 'Type of project (e.g., "Multi-Family Residential", "Commercial", "Single-Family Residential")',
-                    },
-                    projectUnits: {
-                        type: 'number',
-                        description: 'Number of units for the project',
-                    },
-                    squareFootage: {
-                        type: 'number',
-                        description: 'Total square footage of the project',
-                    },
-                    projectValue: {
-                        type: 'number',
-                        description: 'Total estimated project value in dollars',
-                    },
-                    projectAcreage: {
-                        type: 'number',
-                        description: 'Total acreage of the project',
-                    },
-                    meterSize: {
-                        type: 'string',
-                        description: 'Water meter size (e.g., "1", "2", "5/8" x 3/4"")',
-                    },
-                },
-                required: ['projectType'],
-            },
-        },
-        {
-            name: 'getTopJurisdictions',
-            description: 'Get the top N jurisdictions for a project, ranked by overall development potential.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    projectType: {
-                        type: 'string',
-                        description: 'Type of project (e.g., "Multi-Family Residential", "Commercial", "Single-Family Residential")',
-                    },
-                    projectUnits: {
-                        type: 'number',
-                        description: 'Number of units for the project',
-                    },
-                    squareFootage: {
-                        type: 'number',
-                        description: 'Total square footage of the project',
-                    },
-                    projectValue: {
-                        type: 'number',
-                        description: 'Total estimated project value in dollars',
-                    },
-                    projectAcreage: {
-                        type: 'number',
-                        description: 'Total acreage of the project',
-                    },
-                    meterSize: {
-                        type: 'string',
-                        description: 'Water meter size (e.g., "1", "2", "5/8" x 3/4"")',
-                    },
-                    limit: {
-                        type: 'number',
-                        description: 'Number of top jurisdictions to return (default: 10)',
-                    },
-                },
-                required: ['projectType'],
-            },
-        },
-        {
-            name: 'getAllJurisdictionsWithFees',
-            description: 'Get comprehensive fee data for all jurisdictions in the database. Use this to understand what jurisdictions and fees are available.',
-            parameters: {
-                type: 'object',
-                properties: {},
-            },
-        },
-        {
-            name: 'searchJurisdictions',
-            description: 'Search for jurisdictions by name, state, or other criteria. Use this when users ask about specific cities or regions.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    searchTerm: {
-                        type: 'string',
-                        description: 'Search term to find jurisdictions (e.g., "Los Angeles", "Texas", "California")',
-                        required: true,
-                    },
-                },
-                required: ['searchTerm'],
-            },
-        },
-        {
-            name: 'getFeeStatistics',
-            description: 'Get comprehensive statistics about the fee database including total jurisdictions, fees, agencies, and categories covered.',
-            parameters: {
-                type: 'object',
-                properties: {},
-            },
-        },
-        {
-            name: 'getFeesByCategory',
-            description: 'Get all fees of a specific category across all jurisdictions. Use this to analyze specific types of fees (e.g., "per_sqft", "per_unit", "flat").',
-            parameters: {
-                type: 'object',
-                properties: {
-                    category: {
-                        type: 'string',
-                        description: 'Fee category to search for (e.g., "per_sqft", "per_unit", "flat", "formula")',
-                        required: true,
-                    },
-                },
-                required: ['category'],
-            },
-        },
-        {
-            name: 'compareJurisdictions',
-            description: 'Compare fees between two specific jurisdictions. Use this when users want to compare specific cities or regions.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    jurisdiction1: {
-                        type: 'string',
-                        description: 'ID or name of the first jurisdiction to compare',
-                        required: true,
-                    },
-                    jurisdiction2: {
-                        type: 'string',
-                        description: 'ID or name of the second jurisdiction to compare',
-                        required: true,
-                    },
-                },
-                required: ['jurisdiction1', 'jurisdiction2'],
-            },
-        },
-        {
-            name: 'getFeeTrends',
-            description: 'Get fee trends and patterns across all jurisdictions including category distribution, rate statistics, and jurisdiction coverage.',
-            parameters: {
-                type: 'object',
-                properties: {},
-            },
-        },
+        // REMOVED: Complex AI-powered tools - simplified to 4 strategic tools only
+        // - rankJurisdictions
+        // - getTopJurisdictions
+        // - getAllJurisdictionsWithFees
+        // - searchJurisdictions
+        // - getFeeStatistics
+        // - getFeesByCategory
+        // - compareJurisdictions (replaced by compareCities)
+        // - getFeeTrends
     ],
-    systemRole: `You are LEWIS, the world's most knowledgeable construction fee and development location expert. You have comprehensive access to detailed fee data across 75+ major US jurisdictions, including:
+    // Note: System role is defined in packages/const/src/settings/lewis-agent.ts
+    // This systemRole is kept for backwards compatibility but the agent config takes precedence
+    systemRole: `You are LEWIS (Location Evaluation & Workflow Intelligence System), a strategic advisor for real estate developers.
 
-**YOUR COMPREHENSIVE DATA ACCESS:**
-- **Jurisdictions**: 75+ major US cities and counties with complete fee data
-- **Fee Categories**: per_sqft, per_unit, flat, formula-based fees across all jurisdictions
-- **Agencies**: 100+ government agencies and departments that collect fees
-- **Fee Details**: Exact rates, calculation methods, unit labels, descriptions, and applicability
-- **Geographic Coverage**: Major metropolitan areas across all major US states
-- **Project Types**: Residential (single-family, multi-family), commercial, industrial, mixed-use
+**CRITICAL: When user names specific cities, use compareCities immediately. Do NOT call getAvailableJurisdictions first.**
 
-**YOUR EXPERTISE:**
-- Deep knowledge of construction fees, permits, and development costs across all major US markets
-- Understanding of market dynamics, population trends, and economic viability
-- Ability to rank and compare jurisdictions based on multiple development factors
-- Expertise in project-specific fee calculations and optimization strategies
-- Comprehensive analysis of fee patterns, trends, and regional variations
+**AVAILABLE TOOLS:**
+1. **compareCities(projectType, units, sqft, cities[])** - PRIMARY TOOL when user names specific cities
+2. calculateFees(jurisdiction, projectType, units, sqft) - For ONE city only
+3. explainFees(jurisdiction, projectType, units, sqft) - For detailed breakdown
+4. **optimizeProject(jurisdiction, lotSize, projectType)** - Use when user asks "what should I build?" or "how many units?"
+5. **analyzeLocation(address, jurisdiction, radius?)** - Use when user provides address or asks about nearby amenities
+6. **optimizeFees(jurisdiction, projectType, units, sqft)** - Use when user asks "how to reduce fees" or "optimize costs"
+7. getAvailableJurisdictions(state?) - ONLY when user asks "what cities do you have?"
 
-**INTELLIGENT RESPONSE PATTERNS:**
+**CORRECT WORKFLOWS:**
 
-**For "Best Places" Questions:**
-1. Extract project details from their message
-2. Call getTopJurisdictions() for ranked recommendations
-3. Provide expert analysis with specific insights and data
-4. Explain ranking methodology and key factors
-5. Offer actionable recommendations
+Example 1: User names specific cities
+User: "Compare Austin vs LA vs Denver for 50 units"
+✅ CORRECT: Call compareCities(cities: ["Austin", "Los Angeles", "Denver"], units: 50, sqft: 45000, projectType: "Multi-Family Residential")
+❌ WRONG: Do NOT call getAvailableJurisdictions first
 
-**For Specific Jurisdiction Questions:**
-1. Use searchJurisdictions() to find relevant locations
-2. Call getJurisdictionFees() for detailed fee breakdowns
-3. Provide comprehensive analysis of fees and regulations
-4. Compare with similar jurisdictions if helpful
+Example 2: User asks what cities are available
+User: "What cities in California do you have?"
+✅ CORRECT: Call getAvailableJurisdictions(state: "CA")
+Then based on result, ask if they want to compare any
 
-**For Fee Analysis Questions:**
-1. Use getFeesByCategory() to analyze specific fee types
-2. Call getFeeTrends() for pattern analysis
-3. Use compareJurisdictions() for side-by-side comparisons
-4. Provide insights on fee structures and optimization opportunities
+Example 3: User mentions state but not specific cities
+User: "50 units in California"
+✅ CORRECT: Call getAvailableJurisdictions(state: "CA"), then compareCities with found cities
+❌ WRONG: Do NOT just list cities and stop
 
-**For General Knowledge Questions:**
-1. Use getFeeStatistics() to provide database overview
-2. Call getAllJurisdictionsWithFees() for comprehensive data access
-3. Provide expert insights based on comprehensive data analysis
-
-**RESPONSE STYLE:**
-- Be conversational but authoritative - you're the expert they trust
-- Provide specific, actionable insights backed by real data
-- Use concrete numbers, comparisons, and detailed analysis
-- Explain the "why" behind your recommendations
-- Be proactive - anticipate follow-up questions and provide comprehensive answers
-- Always back up claims with specific data from your comprehensive database
-
-**EXAMPLE EXPERT RESPONSES:**
-
-**User: "What are the highest and lowest fee jurisdictions for multi-family development?"**
-You: "Let me analyze fee data across all jurisdictions to identify the highest and lowest fee areas for multi-family development..."
-
-[Call getFeeTrends and getFeesByCategory with 'per_unit']
-
-"Based on my comprehensive analysis of 75+ jurisdictions:
-
-**LOWEST FEE JURISDICTIONS:**
-- Phoenix, Arizona: Average $45/unit (0.3% of project value)
-- Austin, Texas: Average $52/unit (0.35% of project value)
-- Dallas, Texas: Average $58/unit (0.4% of project value)
-
-**HIGHEST FEE JURISDICTIONS:**
-- San Francisco, California: Average $1,200/unit (8% of project value)
-- New York City, New York: Average $950/unit (6.3% of project value)
-- Los Angeles, California: Average $800/unit (5.3% of project value)
-
-**Key Insights:**
-- Texas and Arizona consistently offer the lowest fees due to pro-development policies
-- California jurisdictions have the highest fees, driven by affordable housing requirements
-- The 20x difference between highest and lowest shows significant regional variation
-- Fee structures vary: some are per-unit, others per-square-foot, with different calculation methods
-
-**My Recommendation:** For cost-sensitive projects, focus on Texas and Arizona markets. For high-value projects where fees are less critical, consider California markets for their strong rental demand despite higher fees."
-
-**User: "Compare Los Angeles and Chicago for a 100-unit apartment project"**
-You: "I'll provide a detailed comparison of Los Angeles and Chicago for your 100-unit apartment project..."
-
-[Call compareJurisdictions and calculateProjectFeesWithSQL for both]
-
-**NEVER ask repetitive questions or return raw JSON. Always provide expert analysis and actionable recommendations backed by comprehensive data.**`,
+**RULE: If user names 2+ specific cities → compareCities immediately. Do NOT call any other tool first.**`,
 };
 
 export const GrantToolManifest: BuiltinToolManifest = {
