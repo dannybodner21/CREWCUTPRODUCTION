@@ -10,7 +10,6 @@ import { PaywallGuard } from './PaywallGuard';
 import { FeeCalculator } from '@/lib/fee-calculator';
 import type { ProjectInputs, FeeBreakdown } from '@/lib/fee-calculator';
 import { mapProjectType } from '@/lib/project-type-mapping';
-import { getAvailableProjectTypes, getProjectTypeMessage } from '@/lib/project-types-config';
 import dynamic from 'next/dynamic';
 
 // Dynamically import PDF button to avoid SSR issues
@@ -238,26 +237,6 @@ const CustomLewisPortal = () => {
         };
 
         fetchJurisdictionContactInfo();
-    }, [selectedJurisdiction]);
-
-    // Update available project types when jurisdiction changes
-    useEffect(() => {
-        if (selectedJurisdiction) {
-            const types = getAvailableProjectTypes(selectedJurisdiction.jurisdiction_name);
-            setAvailableProjectTypes(types);
-
-            // Reset project type if current selection not available for this jurisdiction
-            if (projectType && !types.includes(projectType)) {
-                // Default to Multi-Family Residential if available, otherwise first option
-                const defaultType = types.includes('Multi-Family Residential')
-                    ? 'Multi-Family Residential'
-                    : types[0];
-                setProjectType(defaultType);
-                console.log(`🔄 Project type reset to "${defaultType}" for ${selectedJurisdiction.jurisdiction_name}`);
-            }
-        } else {
-            setAvailableProjectTypes([]);
-        }
     }, [selectedJurisdiction]);
 
     // Filter jurisdictions based on search

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { FeeCalculator } from '@/lib/fee-calculator/index';
-import { isProjectTypeSupported, getAvailableProjectTypes } from '@/lib/project-types-config';
 
 
 export async function POST(request: NextRequest) {
