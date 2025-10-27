@@ -1198,11 +1198,6 @@ const CustomLewisPortal = () => {
                                     <Option value="Single-Family Residential">Single-Family Residential</Option>
                                     <Option value="Multi-Family Residential">Multi-Family Residential</Option>
                                 </Select>
-                                {selectedJurisdiction && false && (
-                                    <Text type="secondary" style={{ fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                                        {getProjectTypeMessage(selectedJurisdiction.jurisdiction_name)}
-                                    </Text>
-                                )}
                             </Col>
                             <Col span={8}>
                                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Units</Text>
