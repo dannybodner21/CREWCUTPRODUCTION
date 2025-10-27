@@ -1192,16 +1192,13 @@ const CustomLewisPortal = () => {
                                     value={projectType}
                                     onChange={setProjectType}
                                     style={{ width: '100%', borderRadius: '8px' }}
-                                    disabled={!selectedJurisdiction || availableProjectTypes.length === 0}
+                                    disabled={!selectedJurisdiction}
                                     placeholder={selectedJurisdiction ? "Select Project Type" : "Select jurisdiction first"}
                                 >
-                                    {availableProjectTypes.map(type => (
-                                        <Option key={type} value={type}>
-                                            {type}
-                                        </Option>
-                                    ))}
+                                    <Option value="Single-Family Residential">Single-Family Residential</Option>
+                                    <Option value="Multi-Family Residential">Multi-Family Residential</Option>
                                 </Select>
-                                {selectedJurisdiction && getProjectTypeMessage(selectedJurisdiction.jurisdiction_name) && (
+                                {selectedJurisdiction && false && (
                                     <Text type="secondary" style={{ fontSize: '12px', marginTop: '4px', display: 'block' }}>
                                         {getProjectTypeMessage(selectedJurisdiction.jurisdiction_name)}
                                     </Text>
