@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { FeeCalculator } from '@/lib/fee-calculator/index';
+import { isProjectTypeSupported, getAvailableProjectTypes } from '@/lib/project-types-config';
 
 
 export async function POST(request: NextRequest) {
@@ -160,6 +161,10 @@ export async function POST(request: NextRequest) {
 
       case 'calculateProjectFees': {
         console.log('🔧 Calculating project fees:', params);
+        console.log('   📍 Jurisdiction:', params.jurisdictionName);
+        console.log('   📍 Service Area IDs:', params.selectedServiceAreaIds);
+        console.log('   📍 Project Type:', params.projectType);
+        console.log('   📍 Units:', params.numUnits, 'Sq Ft:', params.squareFeet);
 
         // Use the FeeCalculator class for accurate calculations
         const calculator = new FeeCalculator(
@@ -186,11 +191,12 @@ export async function POST(request: NextRequest) {
 
           console.log('🚀 Calling calculator.calculateFees...');
           const breakdown = await calculator.calculateFees(projectInputs);
-          console.log('✅ Calculator returned:', {
-            totalFees: breakdown.fees?.length,
-            oneTimeFees: breakdown.oneTimeFees,
-            monthlyFees: breakdown.monthlyFees
-          });
+          console.log('✅ Calculator returned:');
+          console.log('   💰 One-time fees: $' + breakdown.oneTimeFees.toLocaleString());
+          console.log('   💰 Monthly fees: $' + breakdown.monthlyFees.toLocaleString());
+          console.log('   📋 Total fee items: ' + breakdown.fees?.length);
+          console.log('   📋 One-time fee items: ' + breakdown.fees?.filter(f => !f.isRecurring).length);
+          console.log('   📋 Recurring fee items: ' + breakdown.fees?.filter(f => f.isRecurring).length);
 
           // Format response
           const response = {
@@ -217,8 +223,16 @@ export async function POST(request: NextRequest) {
               developmentCost: breakdown.oneTimeFees / projectInputs.numUnits,
               monthlyCost: breakdown.monthlyFees / projectInputs.numUnits,
               firstYearCost: breakdown.firstYearTotal / projectInputs.numUnits
-            } : null
+            } : null,
+            // Add metadata for UI display
+            totalFeesFetched: breakdown.totalFeesFetched, // Total fees from DB for selected service area
+            applicableFeesCount: breakdown.applicableFeesCount // Fees that apply to this project
           };
+
+          console.log('📊 Fee counts:', {
+            totalFeesFetched: response.totalFeesFetched,
+            applicableFeesCount: response.applicableFeesCount
+          });
 
           console.log('✅ Calculated fees - One-time:', response.oneTimeFees, 'Monthly:', response.monthlyFees);
           result = { success: true, data: response };
@@ -457,6 +471,18 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // Validate project type is supported for this jurisdiction
+        const requestedProjectType = params.projectType;
+        if (!isProjectTypeSupported(normalizedJurisdiction, requestedProjectType)) {
+          const availableTypes = getAvailableProjectTypes(normalizedJurisdiction);
+          console.error(`❌ Project type "${requestedProjectType}" not supported for ${normalizedJurisdiction}`);
+          result = {
+            success: false,
+            error: `${requestedProjectType} is not currently supported for ${normalizedJurisdiction}. Available types: ${availableTypes.join(', ')}`
+          };
+          break;
+        }
+
         const calculator = new FeeCalculator(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -464,7 +490,7 @@ export async function POST(request: NextRequest) {
 
         try {
           const lotSize = params.lotSize;
-          const projectType = params.projectType;
+          const projectType = requestedProjectType;
           const buildableAcres = lotSize * 0.6; // 60% buildable
 
           const scenarios = [];
@@ -790,15 +816,30 @@ export async function POST(request: NextRequest) {
             break;
           }
 
+          // Validate project type is supported for this jurisdiction
+          const requestedProjectType = params.projectType === 'Multi-Family'
+            ? 'Multi-Family Residential'
+            : params.projectType === 'Single-Family'
+            ? 'Single-Family Residential'
+            : params.projectType;
+
+          if (!isProjectTypeSupported(normalizedJurisdiction, requestedProjectType)) {
+            const availableTypes = getAvailableProjectTypes(normalizedJurisdiction);
+            console.error(`❌ Project type "${requestedProjectType}" not supported for ${normalizedJurisdiction}`);
+            result = {
+              success: false,
+              error: `${requestedProjectType} is not currently supported for ${normalizedJurisdiction}. Available types: ${availableTypes.join(', ')}`
+            };
+            break;
+          }
+
           const calculator = new FeeCalculator(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
           );
 
           // Calculate baseline fees
-          const projectTypeFormatted = params.projectType === 'Multi-Family'
-            ? 'Multi-Family Residential'
-            : 'Single-Family Residential';
+          const projectTypeFormatted = requestedProjectType;
 
           const baseline = await calculator.calculateFees({
             jurisdictionName: normalizedJurisdiction,

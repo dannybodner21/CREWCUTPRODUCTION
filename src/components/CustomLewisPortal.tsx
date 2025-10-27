@@ -10,6 +10,7 @@ import { PaywallGuard } from './PaywallGuard';
 import { FeeCalculator } from '@/lib/fee-calculator';
 import type { ProjectInputs, FeeBreakdown } from '@/lib/fee-calculator';
 import { mapProjectType } from '@/lib/project-type-mapping';
+import { getAvailableProjectTypes, getProjectTypeMessage } from '@/lib/project-types-config';
 import dynamic from 'next/dynamic';
 
 // Dynamically import PDF button to avoid SSR issues
@@ -53,6 +54,7 @@ const CustomLewisPortal = () => {
     const [meterSize, setMeterSize] = useState('3/4"');
     const [projectType, setProjectType] = useState('Multi-Family Residential');
     const [useSubtype, setUseSubtype] = useState('Multifamily');
+    const [availableProjectTypes, setAvailableProjectTypes] = useState<string[]>([]);
     const [selectedServiceAreaIds, setSelectedServiceAreaIds] = useState<string[]>([]);
     const [selectedServiceAreaIds2, setSelectedServiceAreaIds2] = useState<string[]>([]);
     const [availableServiceAreas, setAvailableServiceAreas] = useState<any[]>([]);
@@ -238,6 +240,26 @@ const CustomLewisPortal = () => {
         fetchJurisdictionContactInfo();
     }, [selectedJurisdiction]);
 
+    // Update available project types when jurisdiction changes
+    useEffect(() => {
+        if (selectedJurisdiction) {
+            const types = getAvailableProjectTypes(selectedJurisdiction.jurisdiction_name);
+            setAvailableProjectTypes(types);
+
+            // Reset project type if current selection not available for this jurisdiction
+            if (projectType && !types.includes(projectType)) {
+                // Default to Multi-Family Residential if available, otherwise first option
+                const defaultType = types.includes('Multi-Family Residential')
+                    ? 'Multi-Family Residential'
+                    : types[0];
+                setProjectType(defaultType);
+                console.log(`🔄 Project type reset to "${defaultType}" for ${selectedJurisdiction.jurisdiction_name}`);
+            }
+        } else {
+            setAvailableProjectTypes([]);
+        }
+    }, [selectedJurisdiction]);
+
     // Filter jurisdictions based on search
     useEffect(() => {
         if (searchJurisdiction.trim() === '') {
@@ -405,120 +427,6 @@ const CustomLewisPortal = () => {
         }
     }, [selectedJurisdiction2]);
 
-    // Get applicable fees count when jurisdiction and project type are selected
-    useEffect(() => {
-        console.log('🔧 getApplicableFees useEffect triggered with:', {
-            selectedJurisdiction: !!selectedJurisdiction,
-            projectType,
-            selectedJurisdictionName: selectedJurisdiction?.jurisdiction_name
-        });
-        if (selectedJurisdiction && projectType) {
-            const fetchApplicableFeesCount = async () => {
-                console.log('🔧 fetchApplicableFeesCount function called');
-                try {
-                    const mapped = mapProjectType(projectType);
-                    const params = {
-                        jurisdictionName: selectedJurisdiction.jurisdiction_name,
-                        stateCode: selectedJurisdiction.state_code,
-                        serviceArea: 'Citywide',
-                        projectType: mapped?.projectType || projectType,
-                        useSubtype: mapped?.useSubtype,
-                        numUnits: parseInt(projectUnits) || 0,
-                        squareFeet: parseInt(squareFootage) || 0,
-                        projectValue: parseInt(projectValue) || 0,
-                        meterSize: meterSize
-                    };
-                    console.log('🔧 Making API call to calculateProjectFees with params:', params);
-                    const response = await fetch('/api/lewis', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'calculateProjectFees',
-                            params: params
-                        })
-                    });
-
-                    console.log('🔧 API response received:', response.ok);
-                    if (response.ok) {
-                        const result = await response.json();
-                        console.log('🔧 calculateProjectFees result:', result);
-                        if (result.success && result.data) {
-                            // Update jurisdictionFees with both totalFees and applicableFees
-                            setJurisdictionFees(prev => {
-                                const currentTotalFees = prev[0]?.totalFees || 0;
-                                const applicableFees = result.data.fees?.length || 0;
-                                console.log('🔧 Updating jurisdictionFees:', { currentTotalFees, applicableFees });
-                                return [{
-                                    totalFees: currentTotalFees,
-                                    applicableFees: applicableFees
-                                }];
-                            });
-
-                            // Also update calculatedFees with the actual calculation results
-                            setCalculatedFees(result.data);
-                        } else {
-                            console.log('🔧 calculateProjectFees failed:', result);
-                        }
-                    } else {
-                        console.log('🔧 calculateProjectFees API call failed:', response.status);
-                    }
-                } catch (error) {
-                    console.error('Error fetching applicable fees count:', error);
-                }
-            };
-
-            fetchApplicableFeesCount();
-        }
-    }, [selectedJurisdiction, projectType, projectUnits, squareFootage, projectValue, meterSize]);
-
-    // Get applicable fees count for second jurisdiction
-    useEffect(() => {
-        if (selectedJurisdiction2 && projectType) {
-            const fetchApplicableFeesCount2 = async () => {
-                try {
-                    const mapped = mapProjectType(projectType);
-                    const params = {
-                        jurisdictionName: selectedJurisdiction2.jurisdiction_name,
-                        stateCode: selectedJurisdiction2.state_code,
-                        serviceArea: 'Citywide',
-                        projectType: mapped?.projectType || projectType,
-                        useSubtype: mapped?.useSubtype,
-                        numUnits: parseInt(projectUnits) || 0,
-                        squareFeet: parseInt(squareFootage) || 0,
-                        projectValue: parseInt(projectValue) || 0,
-                        meterSize: meterSize
-                    };
-                    const response = await fetch('/api/lewis', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'calculateProjectFees',
-                            params: params
-                        })
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result.success && result.data) {
-                            // Update jurisdictionFees2 with both totalFees and applicableFees
-                            setJurisdictionFees2(prev => {
-                                const currentTotalFees = prev[0]?.totalFees || 0;
-                                const applicableFees = result.data.fees?.length || 0;
-                                return [{
-                                    totalFees: currentTotalFees,
-                                    applicableFees: applicableFees
-                                }];
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error fetching applicable fees count 2:', error);
-                }
-            };
-
-            fetchApplicableFeesCount2();
-        }
-    }, [selectedJurisdiction2, projectType, projectUnits, squareFootage, projectValue, meterSize]);
 
     // Fee calculation function using proper fee_versions logic
     const calculateFeeAmount = (fee: Fee, projectParams: ProjectParameters): number => {
@@ -734,6 +642,8 @@ const CustomLewisPortal = () => {
                 meterSize: meterSize
             };
 
+            console.log('🔥 SENDING TO API:', JSON.stringify(params, null, 2));
+
             const response = await fetch('/api/lewis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -747,7 +657,22 @@ const CustomLewisPortal = () => {
                 const result = await response.json();
                 console.log('✅ calculateProjectFees result:', result);
                 if (result.success && result.data) {
+                    console.log('🔥 SETTING calculatedFees with:', {
+                        feesArrayLength: result.data.fees?.length,
+                        feesArray: result.data.fees,
+                        oneTimeFees: result.data.oneTimeFees,
+                        monthlyFees: result.data.monthlyFees
+                    });
                     setCalculatedFees(result.data);
+                    // Update jurisdiction fees with accurate counts from selected service area
+                    setJurisdictionFees([{
+                        totalFees: result.data.totalFeesFetched || 0,
+                        applicableFees: result.data.applicableFeesCount || 0
+                    }]);
+                    console.log('📊 Updated jurisdiction fees:', {
+                        totalFees: result.data.totalFeesFetched,
+                        applicableFees: result.data.applicableFeesCount
+                    });
                 } else {
                     setCalculatedFees(null);
                 }
@@ -774,65 +699,72 @@ const CustomLewisPortal = () => {
 
     // Calculate fees for second jurisdiction when it changes
     useEffect(() => {
-        if (selectedJurisdiction2 && calculator) {
+        console.log('🔧 calculateTotalFees2 useEffect triggered with:', { selectedJurisdiction2: !!selectedJurisdiction2, projectType, serviceAreas: selectedServiceAreaIds2.length });
+        if (selectedJurisdiction2) {
             calculateTotalFees2();
         }
-    }, [selectedJurisdiction2, projectType, projectUnits, squareFootage, projectValue, projectAcreage, meterSize, selectedServiceAreaIds2, calculator]);
+    }, [selectedJurisdiction2, projectType, projectUnits, squareFootage, projectValue, projectAcreage, meterSize, selectedServiceAreaIds2]);
 
-    // Calculate total fees for second jurisdiction
+    // Calculate total fees for second jurisdiction using the same API as first jurisdiction
     const calculateTotalFees2 = async (): Promise<void> => {
-        if (!selectedJurisdiction2 || !calculator) {
+        console.log('🔧 calculateTotalFees2 called with:', { selectedJurisdiction2 });
+        if (!selectedJurisdiction2) {
+            console.log('❌ Missing required data for calculation');
             setCalculatedFees2(null);
             return;
         }
 
         try {
-            // Map project type to the expected format
-            const mapProjectType = (type: string): 'Residential' | 'Commercial' | 'Industrial' | 'Mixed-use' | 'Public' => {
-                if (type.toLowerCase().includes('residential')) return 'Residential';
-                if (type.toLowerCase().includes('commercial')) return 'Commercial';
-                if (type.toLowerCase().includes('industrial')) return 'Industrial';
-                if (type.toLowerCase().includes('mixed')) return 'Mixed-use';
-                if (type.toLowerCase().includes('public')) return 'Public';
-                return 'Residential'; // Default fallback
-            };
-
-            // Map use subtype
-            const mapUseSubtype = (type: string): string => {
-                if (type.toLowerCase().includes('multi')) return 'Multifamily';
-                if (type.toLowerCase().includes('single')) return 'Single Family';
-                if (type.toLowerCase().includes('office')) return 'Office';
-                if (type.toLowerCase().includes('retail')) return 'Retail';
-                return 'Multifamily'; // Default fallback
-            };
-
-            // Get state code from jurisdiction name or use a mapping
-            const getStateCode = (jurisdictionName: string): string => {
-                if (jurisdictionName.includes('Phoenix')) return 'AZ';
-                if (jurisdictionName.includes('Los Angeles')) return 'CA';
-                if (jurisdictionName.includes('Chicago')) return 'IL';
-                if (jurisdictionName.includes('Houston')) return 'TX';
-                if (jurisdictionName.includes('Philadelphia')) return 'PA';
-                return 'CA'; // Default fallback
-            };
-
-            const projectInputs: ProjectInputs = {
+            const mapped = mapProjectType(projectType);
+            const params = {
                 jurisdictionName: selectedJurisdiction2.jurisdiction_name,
                 stateCode: selectedJurisdiction2.state_code,
-                serviceArea: serviceArea,
-                projectType: mapProjectType(projectType),
-                useSubtype: mapUseSubtype(projectType),
-                numUnits: parseInt(projectUnits) || undefined,
-                squareFeet: parseInt(squareFootage) || undefined,
-                projectValue: parseInt(projectValue) || undefined,
-                acreage: parseFloat(projectAcreage) || undefined,
+                selectedServiceAreaIds: selectedServiceAreaIds2,
+                projectType: mapped?.projectType || projectType,
+                useSubtype: mapped?.useSubtype,
+                numUnits: parseInt(projectUnits) || 0,
+                squareFeet: parseInt(squareFootage) || 0,
+                projectValue: parseInt(projectValue) || 0,
                 meterSize: meterSize
             };
 
-            console.log('🔧 Calculating fees for second jurisdiction with FeeCalculator:', projectInputs);
-            const breakdown = await calculator.calculateFees(projectInputs);
-            setCalculatedFees2(breakdown);
-            console.log('✅ FeeCalculator result for second jurisdiction:', breakdown);
+            console.log('🔥 SENDING TO API (jurisdiction 2):', JSON.stringify(params, null, 2));
+
+            const response = await fetch('/api/lewis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'calculateProjectFees',
+                    params: params
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ calculateProjectFees result for second jurisdiction:', result);
+                if (result.success && result.data) {
+                    console.log('🔥 SETTING calculatedFees2 with:', {
+                        feesArrayLength: result.data.fees?.length,
+                        feesArray: result.data.fees,
+                        oneTimeFees: result.data.oneTimeFees,
+                        monthlyFees: result.data.monthlyFees
+                    });
+                    setCalculatedFees2(result.data);
+                    // Update jurisdiction fees with accurate counts from selected service area
+                    setJurisdictionFees2([{
+                        totalFees: result.data.totalFeesFetched || 0,
+                        applicableFees: result.data.applicableFeesCount || 0
+                    }]);
+                    console.log('📊 Updated jurisdiction fees 2:', {
+                        totalFees: result.data.totalFeesFetched,
+                        applicableFees: result.data.applicableFeesCount
+                    });
+                } else {
+                    setCalculatedFees2(null);
+                }
+            } else {
+                setCalculatedFees2(null);
+            }
 
         } catch (error) {
             console.error('Error calculating fees for second jurisdiction:', error);
@@ -1183,6 +1115,78 @@ const CustomLewisPortal = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Service Area Multi-Select for Second Jurisdiction */}
+                            {selectedJurisdiction2 && availableServiceAreas2.length > 1 && (
+                                <Row gutter={16} style={{ marginTop: '20px', marginBottom: '20px' }}>
+                                    <Col span={24}>
+                                        {/* Special helper text for Los Angeles */}
+                                        {selectedJurisdiction2.jurisdiction_name === 'Los Angeles' && (
+                                            <div style={{
+                                                marginBottom: '12px',
+                                                padding: '12px',
+                                                backgroundColor: theme.appearance === 'dark' ? '#1a3a52' : '#e6f4ff',
+                                                border: theme.appearance === 'dark' ? '1px solid #2d5a7b' : '1px solid #91caff',
+                                                borderRadius: '8px'
+                                            }}>
+                                                <Text strong style={{ display: 'block', marginBottom: '4px', color: theme.appearance === 'dark' ? '#91caff' : '#0958d9' }}>
+                                                    ⚠️ Los Angeles requires market area selection
+                                                </Text>
+                                                <Text style={{ fontSize: '13px', color: theme.appearance === 'dark' ? '#b8d4e8' : '#1677ff' }}>
+                                                    Fees vary significantly by market area. Please select your project's market area below to see accurate fee calculations.
+                                                </Text>
+                                            </div>
+                                        )}
+
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>
+                                            Service Areas:{selectedJurisdiction2.jurisdiction_name === 'Los Angeles' && <span style={{ color: '#ff4d4f', marginLeft: '4px' }}>*</span>}
+                                        </Text>
+                                        <Select
+                                            mode="multiple"
+                                            value={selectedServiceAreaIds2}
+                                            onChange={setSelectedServiceAreaIds2}
+                                            placeholder={
+                                                selectedJurisdiction2.jurisdiction_name === 'Los Angeles'
+                                                    ? "Select market area (required for accurate calculations)"
+                                                    : "Select service areas (leave empty for citywide fees only)"
+                                            }
+                                            style={{
+                                                width: '100%',
+                                                borderRadius: '8px',
+                                                ...(selectedJurisdiction2.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds2.length === 0 && {
+                                                    borderColor: theme.appearance === 'dark' ? '#d48806' : '#faad14',
+                                                    boxShadow: theme.appearance === 'dark' ? '0 0 0 2px rgba(250, 173, 20, 0.2)' : '0 0 0 2px rgba(250, 173, 20, 0.1)'
+                                                })
+                                            }}
+                                            maxTagCount="responsive"
+                                        >
+                                            {availableServiceAreas2
+                                                .filter(area => area.id !== null) // Exclude the "Citywide" option
+                                                .map((area) => (
+                                                    <Option key={area.id} value={area.id}>
+                                                        {area.name}
+                                                        {area.description && ` - ${area.description}`}
+                                                    </Option>
+                                                ))}
+                                        </Select>
+                                        <Text style={{
+                                            fontSize: '12px',
+                                            color: selectedJurisdiction2.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds2.length === 0
+                                                ? (theme.appearance === 'dark' ? '#faad14' : '#d46b08')
+                                                : (theme.appearance === 'dark' ? '#888' : '#666'),
+                                            marginTop: '4px',
+                                            display: 'block',
+                                            fontWeight: selectedJurisdiction2.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds2.length === 0 ? 500 : 400
+                                        }}>
+                                            {selectedJurisdiction2.jurisdiction_name === 'Los Angeles' && selectedServiceAreaIds2.length === 0
+                                                ? '⚠️ Select a market area above to see location-specific fees. Affordable Housing Linkage Fees range from $10.32/sq ft (Low Market) to $23.20/sq ft (High Market).'
+                                                : selectedServiceAreaIds2.length === 0
+                                                ? 'No service areas selected - showing jurisdiction-wide fees only'
+                                                : `Selected ${selectedServiceAreaIds2.length} service area${selectedServiceAreaIds2.length > 1 ? 's' : ''} - showing citywide + area-specific fees`}
+                                        </Text>
+                                    </Col>
+                                </Row>
+                            )}
                         </>
                     )}
                 </Card>
@@ -1210,15 +1214,20 @@ const CustomLewisPortal = () => {
                                     value={projectType}
                                     onChange={setProjectType}
                                     style={{ width: '100%', borderRadius: '8px' }}
+                                    disabled={!selectedJurisdiction || availableProjectTypes.length === 0}
+                                    placeholder={selectedJurisdiction ? "Select Project Type" : "Select jurisdiction first"}
                                 >
-                                    <Option value="Single-Family Residential">Single-Family Residential</Option>
-                                    <Option value="Multi-Family Residential">Multi-Family Residential</Option>
-                                    <Option value="Commercial">Commercial</Option>
-                                    <Option value="Office">Office</Option>
-                                    <Option value="Retail">Retail</Option>
-                                    <Option value="Restaurant/Food Service">Restaurant/Food Service</Option>
-                                    <Option value="Industrial">Industrial</Option>
+                                    {availableProjectTypes.map(type => (
+                                        <Option key={type} value={type}>
+                                            {type}
+                                        </Option>
+                                    ))}
                                 </Select>
+                                {selectedJurisdiction && getProjectTypeMessage(selectedJurisdiction.jurisdiction_name) && (
+                                    <Text type="secondary" style={{ fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                                        {getProjectTypeMessage(selectedJurisdiction.jurisdiction_name)}
+                                    </Text>
+                                )}
                             </Col>
                             <Col span={8}>
                                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Project Units</Text>
@@ -1434,37 +1443,6 @@ const CustomLewisPortal = () => {
                                                         </Text>
                                                     </div>
                                                 )}
-
-                                                {/* Subtotals */}
-                                                <div style={{ marginTop: '20px', padding: '16px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#f8f9fa', borderRadius: '8px' }}>
-                                                    <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>Fee Summary:</Text>
-                                                    <Row gutter={16}>
-                                                        <Col span={8}>
-                                                            <div style={{ textAlign: 'center' }}>
-                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Sq Ft</Text>
-                                                                <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                                    ${calculatedFees?.byCategory?.['per_sqft']?.toFixed(2) || '0.00'}
-                                                                </Text>
-                                                            </div>
-                                                        </Col>
-                                                        <Col span={8}>
-                                                            <div style={{ textAlign: 'center' }}>
-                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Per Unit</Text>
-                                                                <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                                    ${calculatedFees?.byCategory?.['per_unit']?.toFixed(2) || '0.00'}
-                                                                </Text>
-                                                            </div>
-                                                        </Col>
-                                                        <Col span={8}>
-                                                            <div style={{ textAlign: 'center' }}>
-                                                                <Text style={{ fontSize: '12px', color: theme.appearance === 'dark' ? '#cccccc' : '#666' }}>Flat Fees</Text>
-                                                                <Text strong style={{ display: 'block', fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
-                                                                    ${calculatedFees?.byCategory?.['flat']?.toFixed(2) || '0.00'}
-                                                                </Text>
-                                                            </div>
-                                                        </Col>
-                                                    </Row>
-                                                </div>
                                             </Col>
 
                                             {/* Second Location Fee Breakdown */}
@@ -1498,6 +1476,169 @@ const CustomLewisPortal = () => {
                                                 )}
                                             </Col>
                                         </Row>
+
+                                        {/* Comparison Summary Table */}
+                                        <div style={{
+                                            marginTop: '40px',
+                                            padding: '24px',
+                                            backgroundColor: theme.appearance === 'dark' ? '#1a3a52' : '#e6f4ff',
+                                            border: theme.appearance === 'dark' ? '2px solid #2d5a7b' : '2px solid #3b82f6',
+                                            borderRadius: '12px'
+                                        }}>
+                                            <Title level={4} style={{ marginBottom: '20px', color: theme.appearance === 'dark' ? '#91caff' : '#0958d9' }}>
+                                                📊 Comparison Summary
+                                            </Title>
+
+                                            <table style={{
+                                                width: '100%',
+                                                borderCollapse: 'collapse',
+                                                backgroundColor: theme.appearance === 'dark' ? '#141414' : '#ffffff',
+                                                borderRadius: '8px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <thead>
+                                                    <tr style={{ backgroundColor: theme.appearance === 'dark' ? '#1f1f1f' : '#f5f5f5' }}>
+                                                        <th style={{
+                                                            padding: '12px',
+                                                            textAlign: 'left',
+                                                            borderBottom: theme.appearance === 'dark' ? '2px solid #3b82f6' : '2px solid #3b82f6',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 600
+                                                        }}>Fee Type</th>
+                                                        <th style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '2px solid #3b82f6' : '2px solid #3b82f6',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 600
+                                                        }}>{selectedJurisdiction.jurisdiction_name}</th>
+                                                        <th style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '2px solid #3b82f6' : '2px solid #3b82f6',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 600
+                                                        }}>{selectedJurisdiction2.jurisdiction_name}</th>
+                                                        <th style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '2px solid #3b82f6' : '2px solid #3b82f6',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 600
+                                                        }}>Difference</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                        }}>One-Time Development Fees</td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                        }}>${calculatedFees?.oneTimeFees?.toLocaleString() || '0'}</td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                        }}>${calculatedFees2?.oneTimeFees?.toLocaleString() || '0'}</td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: (calculatedFees?.oneTimeFees || 0) < (calculatedFees2?.oneTimeFees || 0) ? '#059669' : '#dc2626',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            ${Math.abs((calculatedFees?.oneTimeFees || 0) - (calculatedFees2?.oneTimeFees || 0)).toLocaleString()}
+                                                            {(calculatedFees?.oneTimeFees || 0) < (calculatedFees2?.oneTimeFees || 0) ? ' cheaper' : ' more expensive'}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                        }}>Monthly Operating Costs</td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                        }}>${calculatedFees?.monthlyFees?.toLocaleString() || '0'}/mo</td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                        }}>${calculatedFees2?.monthlyFees?.toLocaleString() || '0'}/mo</td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            borderBottom: theme.appearance === 'dark' ? '1px solid #333' : '1px solid #ddd',
+                                                            color: (calculatedFees?.monthlyFees || 0) < (calculatedFees2?.monthlyFees || 0) ? '#059669' : '#dc2626',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            ${Math.abs((calculatedFees?.monthlyFees || 0) - (calculatedFees2?.monthlyFees || 0)).toLocaleString()}/mo
+                                                            {(calculatedFees?.monthlyFees || 0) < (calculatedFees2?.monthlyFees || 0) ? ' cheaper' : ' more expensive'}
+                                                        </td>
+                                                    </tr>
+                                                    <tr style={{ backgroundColor: theme.appearance === 'dark' ? '#1f1f1f' : '#f5f5f5' }}>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 700
+                                                        }}><strong>First Year Total</strong></td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            <strong>${calculatedFees?.firstYearTotal?.toLocaleString() || '0'}</strong>
+                                                        </td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            color: theme.appearance === 'dark' ? '#ffffff' : '#000000',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            <strong>${calculatedFees2?.firstYearTotal?.toLocaleString() || '0'}</strong>
+                                                        </td>
+                                                        <td style={{
+                                                            padding: '12px',
+                                                            textAlign: 'right',
+                                                            color: (calculatedFees?.firstYearTotal || 0) < (calculatedFees2?.firstYearTotal || 0) ? '#059669' : '#dc2626',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            <strong>${Math.abs((calculatedFees?.firstYearTotal || 0) - (calculatedFees2?.firstYearTotal || 0)).toLocaleString()}</strong>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <div style={{
+                                                marginTop: '20px',
+                                                padding: '16px',
+                                                backgroundColor: theme.appearance === 'dark' ? '#141414' : '#ffffff',
+                                                borderRadius: '8px'
+                                            }}>
+                                                <Text style={{
+                                                    fontSize: '16px',
+                                                    color: theme.appearance === 'dark' ? '#ffffff' : '#000000'
+                                                }}>
+                                                    💡 <strong>
+                                                        {(calculatedFees?.oneTimeFees || 0) < (calculatedFees2?.oneTimeFees || 0)
+                                                            ? selectedJurisdiction.jurisdiction_name
+                                                            : selectedJurisdiction2.jurisdiction_name}
+                                                    </strong> is ${Math.abs((calculatedFees?.oneTimeFees || 0) - (calculatedFees2?.oneTimeFees || 0)).toLocaleString()} cheaper in development fees
+                                                </Text>
+                                            </div>
+                                        </div>
                                     </>
                                 );
                             }
