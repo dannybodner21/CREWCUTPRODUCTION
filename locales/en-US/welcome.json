@@ -4,8 +4,8 @@
       "replaceBtn": "Replace Batch",
       "title": "New Assistant Recommendations:"
     },
-    "defaultMessage": "I am your personal construction fee assistant LEWIS. I can help you compare total fees across different locations and find the optimal location for your development project.",
-    "defaultMessageWithoutCreate": "I am your personal construction fee assistant LEWIS. I can help you compare total fees across different locations and find the optimal location for your development project.",
+    "defaultMessage": "Welcome! I'm LEWIS, your AI advisor for development fees and project feasibility.\n\n**What I can help with:**\n\n**Project Optimization** — I'll analyze your site and recommend optimal unit counts, density, and development approach\n*Example: \"I have 2 acres in Phoenix, what should I build?\"*\n\n**Fee Calculations** — Get detailed breakdowns of one-time development fees and monthly operating costs\n*Example: \"Calculate fees for 50 multifamily units in Austin\"*\n\n**Location Intelligence** — Find nearby amenities, transit, schools, and assess walkability\n*Example: \"What's near 500 Main St, Denver?\"*\n\n**Cost Reduction** — Identify strategies to minimize development fees\n*Example: \"How can I reduce fees for my 100-unit LA project?\"*\n\n**City Comparisons** — Compare fees and regulations across jurisdictions\n*Example: \"Compare Austin vs Phoenix for multifamily development\"*\n\nCurrently supporting: Phoenix (residential + commercial), Austin, Denver, Los Angeles, San Diego, and Portland (residential).\n\nWhat would you like to explore?",
+    "defaultMessageWithoutCreate": "Welcome! I'm LEWIS, your AI advisor for development fees and project feasibility.\n\n**What I can help with:**\n\n**Project Optimization** — I'll analyze your site and recommend optimal unit counts, density, and development approach\n*Example: \"I have 2 acres in Phoenix, what should I build?\"*\n\n**Fee Calculations** — Get detailed breakdowns of one-time development fees and monthly operating costs\n*Example: \"Calculate fees for 50 multifamily units in Austin\"*\n\n**Location Intelligence** — Find nearby amenities, transit, schools, and assess walkability\n*Example: \"What's near 500 Main St, Denver?\"*\n\n**Cost Reduction** — Identify strategies to minimize development fees\n*Example: \"How can I reduce fees for my 100-unit LA project?\"*\n\n**City Comparisons** — Compare fees and regulations across jurisdictions\n*Example: \"Compare Austin vs Phoenix for multifamily development\"*\n\nCurrently supporting: Phoenix (residential + commercial), Austin, Denver, Los Angeles, San Diego, and Portland (residential).\n\nWhat would you like to explore?",
     "qa": {
       "q01": "What is LobeHub?",
       "q02": "What is {{appName}}?",
@@ -29,7 +29,7 @@
     },
     "welcome": {
       "afternoon": "Good Afternoon",
-      "morning": "Good Morning Test",
+      "morning": "Good Morning",
       "night": "Good Evening",
       "noon": "Good Noon"
     }

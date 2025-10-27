@@ -60,31 +60,7 @@ const LewisOpeningQuestions = memo(() => {
     const [updateInputMessage] = useChatStore((s) => [s.updateInputMessage]);
     const { send: sendMessage } = useSendMessage();
 
-    return (
-        <div className={styles.container}>
-            <p className={styles.title}>What type of construction project are you developing?</p>
-            <Flexbox gap={8} horizontal wrap={'wrap'}>
-                {projectTypes.map((projectType) => {
-                    return (
-                        <Block
-                            className={styles.card}
-                            clickable
-                            key={projectType}
-                            onClick={() => {
-                                updateInputMessage(projectType);
-                                sendMessage({ isWelcomeQuestion: true });
-                            }}
-                            paddingBlock={8}
-                            paddingInline={12}
-                            variant={'outlined'}
-                        >
-                            {projectType}
-                        </Block>
-                    );
-                })}
-            </Flexbox>
-        </div>
-    );
+    return null;
 });
 
 LewisOpeningQuestions.displayName = 'LewisOpeningQuestions';

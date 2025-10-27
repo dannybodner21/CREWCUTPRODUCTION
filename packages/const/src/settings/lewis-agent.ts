@@ -312,11 +312,32 @@ REMEMBER:
 - Always compare when possible
 - Always recommend
 - Always suggest next steps`,
-    openingMessage: "I am your personal construction fee assistant LEWIS. I can help you compare total fees across different locations and find the optimal location for your development project.\n\nWhat type of construction project are you developing?",
+    openingMessage: `Welcome! I'm LEWIS, your AI advisor for development fees and project feasibility.
+
+**What I can help with:**
+
+**Project Optimization** — I'll analyze your site and recommend optimal unit counts, density, and development approach
+*Example: "I have 2 acres in Phoenix, what should I build?"*
+
+**Fee Calculations** — Get detailed breakdowns of one-time development fees and monthly operating costs
+*Example: "Calculate fees for 50 multifamily units in Austin"*
+
+**Location Intelligence** — Find nearby amenities, transit, schools, and assess walkability
+*Example: "What's near 500 Main St, Denver?"*
+
+**Cost Reduction** — Identify strategies to minimize development fees
+*Example: "How can I reduce fees for my 100-unit LA project?"*
+
+**City Comparisons** — Compare fees and regulations across jurisdictions
+*Example: "Compare Austin vs Phoenix for multifamily development"*
+
+Currently supporting: Phoenix (residential + commercial), Austin, Denver, Los Angeles, San Diego, and Portland (residential).
+
+What would you like to explore?`,
     openingQuestions: [
-        "Compare fees for 50-unit apartment in Texas cities",
-        "Where should I build 10 single-family homes in California?",
-        "Why are Los Angeles fees so expensive?",
-        "What are fees for 100-unit building in Phoenix?"
+        "I have 2 acres in Phoenix, what should I build?",
+        "Calculate fees for 50 multifamily units in Austin",
+        "Compare Austin vs Phoenix for multifamily development",
+        "How can I reduce fees for my 100-unit LA project?"
     ]
 };
