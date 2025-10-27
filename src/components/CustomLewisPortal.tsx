@@ -53,7 +53,6 @@ const CustomLewisPortal = () => {
     const [meterSize, setMeterSize] = useState('3/4"');
     const [projectType, setProjectType] = useState('Multi-Family Residential');
     const [useSubtype, setUseSubtype] = useState('Multifamily');
-    const [availableProjectTypes, setAvailableProjectTypes] = useState<string[]>([]);
     const [selectedServiceAreaIds, setSelectedServiceAreaIds] = useState<string[]>([]);
     const [selectedServiceAreaIds2, setSelectedServiceAreaIds2] = useState<string[]>([]);
     const [availableServiceAreas, setAvailableServiceAreas] = useState<any[]>([]);
