@@ -68,10 +68,13 @@ export class FeeCalculator {
      * Calculate all applicable fees for a project
      */
     async calculateFees(inputs: ProjectInputs): Promise<FeeBreakdown> {
-        const applicableFees = await this.getApplicableFees(inputs);
+        const result = await this.getApplicableFees(inputs);
+        const applicableFees = result.fees;
+        const totalFeesFetched = result.totalFeesFetched;
         const calculatedFees: CalculatedFee[] = [];
 
         console.log(`💰 Calculating amounts for ${applicableFees.length} fees...`);
+        console.log(`📊 Total fees fetched from DB: ${totalFeesFetched}`);
 
         for (const fee of applicableFees) {
             try {
@@ -122,7 +125,9 @@ export class FeeCalculator {
             fees: displayableFees,
             byCategory,
             byAgency,
-            project: inputs
+            project: inputs,
+            totalFeesFetched, // Total fees from DB for selected service area
+            applicableFeesCount: displayableFees.length // Fees that apply to this project
         };
     }
 
@@ -268,7 +273,7 @@ export class FeeCalculator {
         return null;
     }
 
-    private async getApplicableFees(inputs: ProjectInputs): Promise<any[]> {
+    private async getApplicableFees(inputs: ProjectInputs): Promise<{fees: any[], totalFeesFetched: number}> {
         // Step 1: Get jurisdiction ID
         const { data: jurisdiction, error: jurError } = await this.supabase
             .from('jurisdictions')
@@ -406,7 +411,6 @@ export class FeeCalculator {
         // Debug: Check if park fees are in the fetched results
         const parkFeesInFetch = allFees.filter((f: any) => (f.name || '').toLowerCase().includes('park fee'));
         console.log(`🌳 Park fees in fetch: ${parkFeesInFetch.length}`);
-        parkFeesInFetch.forEach((f: any) => console.log(`   - ${f.name} (service_area: ${f.service_area_id ? 'HAS_ID' : 'NULL'})`))
 
         // Log unique service areas in results
         const uniqueServiceAreas = [...new Set(allFees.map((f: any) => f.service_areas?.name || 'CITYWIDE'))];
@@ -421,6 +425,9 @@ export class FeeCalculator {
         console.log();
 
         console.log(`🔍 Filtering for projectType: "${inputs.projectType}", useSubtype: "${inputs.useSubtype || '(none)'}", meterSize: "${inputs.meterSize || '(none)'}"`);
+        console.log('='.repeat(80));
+        console.log(`📊 STARTING FEE FILTERING - Total fees fetched: ${allFees.length}`);
+        console.log('='.repeat(80));
 
         // Step 5: Select best calculation for each fee and filter by project type/subtype
         const feesWithSelectedCalc = allFees.map((fee: any) => {
@@ -538,11 +545,9 @@ export class FeeCalculator {
                 }
             }
 
-            // Check if fee applies to project type (with flexible matching)
-            const typeMatches = this.feeAppliesToProject(appliesTo, inputs.projectType);
-
-            // Check if fee applies to use subtype (with flexible matching)
-            const subtypeMatches = this.feeAppliesToSubtype(useSubtypes, inputs.useSubtype);
+            // Check if fee applies to project type AND subtype (STRICT matching on BOTH)
+            const typeMatches = this.feeAppliesToProject(appliesTo, useSubtypes, inputs.projectType, inputs.useSubtype, feeName, inputs.numUnits);
+            const subtypeMatches = true; // Now handled inside feeAppliesToProject
 
             // CRITICAL: Exclude Commercial/Multi-Residential fees for Single-Family projects (Denver pattern)
             // Fee names like "Sewer Permit Fee - Commercial/Multi-Residential" should not match Single Family
@@ -802,7 +807,12 @@ export class FeeCalculator {
                 if (match) {
                     const feeYear = parseInt(match[1]);
                     const currentYear = new Date().getFullYear();
-                    if (feeYear > currentYear) {
+
+                    // Allow monthly utility charges for next year (2026) since those are approved future rates
+                    const isMonthlyUtility = feeNameLower.includes('monthly utility charge');
+                    const maxAllowedYear = isMonthlyUtility ? currentYear + 1 : currentYear;
+
+                    if (feeYear > maxAllowedYear) {
                         return null;
                     }
                 }
@@ -1231,9 +1241,16 @@ export class FeeCalculator {
         // Step 9: Combine seasonal water volume charges into annual average
         const combinedSeasonalFees = this.combineSeasonalWaterCharges(withoutDuplicateQuimbyFees);
         console.log(`💧 After combining seasonal water charges: ${combinedSeasonalFees.length} fees`);
+        console.log('='.repeat(80));
+        console.log(`✅ FINAL APPLICABLE FEES: ${combinedSeasonalFees.length}`);
+        console.log('Fee names:');
+        combinedSeasonalFees.forEach((f: any, i: number) => {
+            console.log(`  ${i + 1}. ${f.name} [${f.service_areas?.name || 'Citywide'}]`);
+        });
+        console.log('='.repeat(80));
 
         // Map to the expected format using selectedCalculation
-        return combinedSeasonalFees.map((fee: any) => {
+        const mappedFees = combinedSeasonalFees.map((fee: any) => {
             const calc = fee.selectedCalculation;
             const mapped: any = {
                 feeId: fee.id,
@@ -1260,86 +1277,183 @@ export class FeeCalculator {
 
             return mapped;
         });
+
+        // Return both the fees and the total count fetched from DB (before filtering)
+        return {
+            fees: mappedFees,
+            totalFeesFetched: allFees.length // This is the raw count before filtering
+        };
     }
 
     /**
      * Flexible matching for fee applies_to field
      * Handles cases like "Single Family" in DB matching "Residential" projectType
      */
-    private feeAppliesToProject(appliesTo: string[], projectType: string): boolean {
-        // If fee has no applies_to filter, it applies to everything
-        if (!appliesTo || appliesTo.length === 0) {
-            return true;
-        }
+    private feeAppliesToProject(appliesTo: string[], useSubtypes: string[], projectType: string, useSubtype: string | undefined, feeName: string = '', numUnits: number = 0): boolean {
+        const feeNameLower = feeName.toLowerCase();
+        const selectedType = projectType.toLowerCase();
 
-        // Check for broad "all" categories (case-insensitive)
-        if (appliesTo.some(a => {
-            const lower = a.toLowerCase();
-            return lower === 'all users' || lower === 'all usage' || lower === 'all';
-        })) {
-            return true;
-        }
+        console.log(`\n🔍 ${feeName}`);
+        console.log(`   applies_to: ${JSON.stringify(appliesTo)}`);
+        console.log(`   use_subtypes: ${JSON.stringify(useSubtypes)}`);
+        console.log(`   numUnits: ${numUnits}`);
 
-        // Check if ANY of the applies_to values match the project
-        return appliesTo.some(applicableTo => {
-            // Normalize strings for case-insensitive comparison
-            const lowerAppliesTo = applicableTo.toLowerCase();
-            const lowerProjectType = projectType.toLowerCase();
-
-            // Exact match (case-insensitive)
-            if (lowerAppliesTo === lowerProjectType) {
-                return true;
-            }
-
-            // Normalize strings: lowercase and remove special characters for fuzzy matching
-            const normalizedAppliesTo = lowerAppliesTo.replace(/[^a-z]/g, '');
-            const normalizedProjectType = lowerProjectType.replace(/[^a-z]/g, '');
-
-            // Partial match (e.g., "Single Family" matches "Residential")
-            if (normalizedProjectType.includes(normalizedAppliesTo)) {
-                return true;
-            }
-            if (normalizedAppliesTo.includes(normalizedProjectType)) {
-                return true;
-            }
-
-            // Broad category match (case-insensitive)
-            // CRITICAL: "Multi-Residential" should NOT match plain "Residential" projectType
-            // Only match if both contain "residential" AND neither specifies conflicting subtypes
-            if (lowerProjectType.includes('residential') && lowerAppliesTo.includes('residential')) {
-                // If applies_to specifies "multi" or "commercial", don't match plain "Residential"
-                if (lowerAppliesTo.includes('multi') && !lowerProjectType.includes('multi')) {
-                    return false;
-                }
-                if (lowerAppliesTo.includes('commercial') && !lowerProjectType.includes('commercial')) {
-                    return false;
-                }
-                return true;
-            }
-            if (lowerProjectType.includes('single') && lowerAppliesTo.includes('single')) {
-                return true;
-            }
-            if (lowerProjectType.includes('multi') && lowerAppliesTo.includes('multi')) {
-                return true;
-            }
-            if (lowerProjectType.includes('commercial') && lowerAppliesTo.includes('commercial')) {
-                return true;
-            }
-            if (lowerProjectType.includes('industrial') && lowerAppliesTo.includes('industrial')) {
-                return true;
-            }
-
-            // CRITICAL: "Single Family" in DB should match "Residential" project type
-            // because Single Family IS a type of Residential (case-insensitive)
-            if (lowerAppliesTo.includes('single family') && lowerProjectType.includes('residential')) {
-                return true;
-            }
-            if (lowerAppliesTo.includes('multi-family') && lowerProjectType.includes('residential')) {
-                return true;
-            }
-
+        // EXCLUDE voluntary/optional
+        if (feeNameLower.includes('voluntary') || feeNameLower.includes('optional')) {
+            console.log(`   ❌ Voluntary/Optional`);
             return false;
-        });
+        }
+
+        // CHECK UNIT COUNT for specific subtypes (Austin Transportation Fees)
+        if (useSubtypes && useSubtypes.length > 0 && numUnits > 0) {
+            for (const subtype of useSubtypes) {
+                const sub = subtype.toLowerCase();
+
+                // Duplex = exactly 2 units
+                if (sub === 'duplex' && numUnits !== 2) {
+                    console.log(`   ❌ Duplex fee requires 2 units, project has ${numUnits}`);
+                    return false;
+                }
+
+                // Triplex = exactly 3 units
+                if (sub === 'triplex' && numUnits !== 3) {
+                    console.log(`   ❌ Triplex fee requires 3 units, project has ${numUnits}`);
+                    return false;
+                }
+
+                // Fourplex = exactly 4 units
+                if (sub === 'fourplex' && numUnits !== 4) {
+                    console.log(`   ❌ Fourplex fee requires 4 units, project has ${numUnits}`);
+                    return false;
+                }
+
+                // Single-family = 1 unit only
+                if (sub === 'single-family' && numUnits > 1) {
+                    console.log(`   ❌ Single-family fee requires 1 unit, project has ${numUnits}`);
+                    return false;
+                }
+
+                // Multifamily = 5+ units
+                if (sub === 'multifamily' && numUnits > 0 && numUnits < 5) {
+                    console.log(`   ❌ Multifamily fee requires 5+ units, project has ${numUnits}`);
+                    return false;
+                }
+            }
+        }
+
+        // Empty applies_to = universal (utility fees)
+        if (!appliesTo || appliesTo.length === 0) {
+            console.log(`   ✅ Universal fee`);
+            return true;
+        }
+
+        // Check category - look at BOTH projectType AND useSubtype
+        const useSubtypeLower = (useSubtype || '').toLowerCase();
+        const isMultiFamily = selectedType.includes('multi') || useSubtypeLower.includes('multi');
+        const isSingleFamily = (selectedType.includes('single') || useSubtypeLower.includes('single')) && !isMultiFamily;
+
+        let categoryMatches = false;
+        for (const category of appliesTo) {
+            const cat = category.toLowerCase();
+
+            if (cat === 'all' || cat === 'all users' || cat === 'all usage') {
+                categoryMatches = true;
+                break;
+            }
+
+            if ((isMultiFamily || isSingleFamily) && cat === 'residential') {
+                categoryMatches = true;
+                break;
+            }
+
+            if (selectedType.includes('commercial') && cat === 'commercial') {
+                categoryMatches = true;
+                break;
+            }
+
+            if (selectedType.includes('industrial') && cat === 'industrial') {
+                categoryMatches = true;
+                break;
+            }
+        }
+
+        if (!categoryMatches) {
+            console.log(`   ❌ Category mismatch`);
+            return false;
+        }
+
+        // CRITICAL: Check use_subtypes if present
+        if (useSubtypes && useSubtypes.length > 0) {
+            // Check for "All Users"
+            const hasAllUsers = useSubtypes.some(st => {
+                const lower = st.toLowerCase();
+                return lower === 'all users' || lower === 'all' || lower === 'all usage';
+            });
+
+            if (hasAllUsers) {
+                console.log(`   ✅ INCLUDED (All Users in use_subtypes)`);
+                return true;
+            }
+
+            let subtypeMatches = false;
+
+            for (const subtype of useSubtypes) {
+                const sub = subtype.toLowerCase();
+
+                // STRICT matching for multi vs single family
+                if (isMultiFamily) {
+                    // Match multifamily, duplex, triplex, fourplex for multi-family projects
+                    if (sub.includes('multi') || sub === 'duplex' || sub === 'triplex' || sub === 'fourplex') {
+                        subtypeMatches = true;
+                        break;
+                    }
+                    // EXCLUDE single-family specific
+                    if (sub.includes('single') || sub.includes('adu') || sub.includes('accessory')) {
+                        console.log(`   ❌ Wrong subtype: ${subtype}`);
+                        return false;
+                    }
+                }
+
+                if (isSingleFamily) {
+                    if (sub.includes('single')) {
+                        subtypeMatches = true;
+                        break;
+                    }
+                    // EXCLUDE multi-family specific
+                    if (sub.includes('multi')) {
+                        console.log(`   ❌ Wrong subtype: ${subtype}`);
+                        return false;
+                    }
+                }
+            }
+
+            if (!subtypeMatches) {
+                console.log(`   ❌ No subtype match`);
+                return false;
+            }
+        }
+
+        // ALSO check fee name for exclusions
+        if (isMultiFamily) {
+            if (feeNameLower.includes('single-family') ||
+                feeNameLower.includes('single family') ||
+                feeNameLower.includes('accessory dwelling') ||
+                feeNameLower.includes('adu')) {
+                console.log(`   ❌ Single-family in name`);
+                return false;
+            }
+        }
+
+        if (isSingleFamily) {
+            if (feeNameLower.includes('multi-family') ||
+                feeNameLower.includes('multifamily')) {
+                console.log(`   ❌ Multi-family in name`);
+                return false;
+            }
+        }
+
+        console.log(`   ✅ INCLUDED`);
+        return true;
     }
 
     /**

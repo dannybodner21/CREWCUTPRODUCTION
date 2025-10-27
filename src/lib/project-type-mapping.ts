@@ -20,7 +20,7 @@ export const PROJECT_TYPE_OPTIONS: ProjectTypeOption[] = [
     {
         label: 'Multi-Family Residential',
         projectType: 'Residential',
-        useSubtype: 'Multi Family', // Fixed to match database
+        useSubtype: 'Multifamily', // Fixed to match database (no space)
         description: 'Apartments, condos, townhomes'
     },
     {
