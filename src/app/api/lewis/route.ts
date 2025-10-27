@@ -470,16 +470,7 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Validate project type is supported for this jurisdiction
-        const requestedProjectType = params.projectType;
-        if (!isProjectTypeSupported(normalizedJurisdiction, requestedProjectType)) {
-          const availableTypes = getAvailableProjectTypes(normalizedJurisdiction);
-          console.error(`❌ Project type "${requestedProjectType}" not supported for ${normalizedJurisdiction}`);
-          result = {
-            success: false,
-            error: `${requestedProjectType} is not currently supported for ${normalizedJurisdiction}. Available types: ${availableTypes.join(', ')}`
-          };
-          break;
+        // Project type validation removed - allow all types
         }
 
         const calculator = new FeeCalculator(
@@ -822,14 +813,7 @@ export async function POST(request: NextRequest) {
             ? 'Single-Family Residential'
             : params.projectType;
 
-          if (!isProjectTypeSupported(normalizedJurisdiction, requestedProjectType)) {
-            const availableTypes = getAvailableProjectTypes(normalizedJurisdiction);
-            console.error(`❌ Project type "${requestedProjectType}" not supported for ${normalizedJurisdiction}`);
-            result = {
-              success: false,
-              error: `${requestedProjectType} is not currently supported for ${normalizedJurisdiction}. Available types: ${availableTypes.join(', ')}`
-            };
-            break;
+          // Project type validation removed - allow all types
           }
 
           const calculator = new FeeCalculator(
