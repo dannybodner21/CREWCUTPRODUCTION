@@ -1,67 +1,46 @@
-/**
- * Test to show one-time fees breakdown
- */
-
-import { config } from 'dotenv';
-import { FeeCalculator, ProjectInputs } from './src/lib/fee-calculator/index';
 import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
 
 config({ path: '.env.local' });
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-async function testImpactFees() {
-    const calculator = new FeeCalculator(SUPABASE_URL, SUPABASE_KEY);
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+async function test() {
+  const jurisdictionResult = await supabase
+    .from('jurisdictions')
+    .select('id')
+    .eq('jurisdiction_name', 'Salt Lake City')
+    .single();
 
-    const { data: jurisdictions } = await supabase
-        .from('jurisdictions')
-        .select('id')
-        .eq('jurisdiction_name', 'Phoenix city')
-        .eq('state_code', 'AZ')
-        .single();
+  if (!jurisdictionResult.data) {
+    console.log('❌ Salt Lake City not found');
+    return;
+  }
 
-    const { data: serviceAreas } = await supabase
-        .from('service_areas')
-        .select('id, name')
-        .eq('jurisdiction_id', jurisdictions!.id)
-        .in('name', ['Inside City', 'Northwest Deer Valley'])
-        .order('name');
+  console.log('✅ Found jurisdiction:', jurisdictionResult.data.id);
 
-    const insideCityId = serviceAreas?.find(sa => sa.name === 'Inside City')?.id;
-    const northwestDeerValleyId = serviceAreas?.find(sa => sa.name === 'Northwest Deer Valley')?.id;
+  console.log('\n🔍 Searching for impact fees...');
+  const { data: impactFees, error } = await supabase
+    .from('fees')
+    .select('id, name, category, applies_to, use_subtypes, fee_calculations(calc_type, rate, unit_label)')
+    .eq('jurisdiction_id', jurisdictionResult.data.id)
+    .ilike('name', '%impact%');
 
-    const projectInputs: ProjectInputs = {
-        jurisdictionName: 'Phoenix city',
-        stateCode: 'AZ',
-        selectedServiceAreaIds: [insideCityId!, northwestDeerValleyId!],
-        projectType: 'Residential',
-        useSubtype: 'Single Family',
-        numUnits: 10,
-        squareFeet: 25000,
-        projectValue: 5000000,
-        meterSize: '3/4"'
-    };
-
-    const breakdown = await calculator.calculateFees(projectInputs);
-
-    console.log('\n' + '═'.repeat(70));
-    console.log('ONE-TIME DEVELOPMENT FEES');
-    console.log('═'.repeat(70) + '\n');
-
-    const oneTimeFees = breakdown.fees.filter(f => !f.isRecurring);
-    oneTimeFees.forEach(fee => {
-        console.log(`${fee.feeName} • ${fee.serviceArea}`);
-        console.log(`  Category: ${fee.category}`);
-        console.log(`  Amount: $${fee.calculatedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`);
-        console.log();
-    });
-
-    console.log('─'.repeat(70));
-    console.log(`TOTAL ONE-TIME FEES: $${breakdown.oneTimeFees.toLocaleString(undefined, { minimumFractionDigits: 2 })}`);
-    console.log(`Total fees: ${oneTimeFees.length}`);
-    console.log('═'.repeat(70));
+  console.log(`\n📊 Found ${impactFees?.length || 0} fees with "impact" in name:`);
+  impactFees?.forEach((fee: any) => {
+    console.log(`\n   - ${fee.name}`);
+    console.log(`     Category: ${fee.category}`);
+    console.log(`     Applies to: ${JSON.stringify(fee.applies_to)}`);
+    console.log(`     Calculations: ${fee.fee_calculations?.length || 0}`);
+    if (fee.fee_calculations && fee.fee_calculations.length > 0) {
+      fee.fee_calculations.forEach((calc: any) => {
+        console.log(`       - ${calc.calc_type}: $${calc.rate} ${calc.unit_label || ''}`);
+      });
+    }
+  });
 }
 
-testImpactFees().catch(console.error);
+test();

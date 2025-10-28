@@ -470,8 +470,7 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Project type validation removed - allow all types
-        }
+        const requestedProjectType = params.projectType;
 
         const calculator = new FeeCalculator(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -812,9 +811,6 @@ export async function POST(request: NextRequest) {
             : params.projectType === 'Single-Family'
             ? 'Single-Family Residential'
             : params.projectType;
-
-          // Project type validation removed - allow all types
-          }
 
           const calculator = new FeeCalculator(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
