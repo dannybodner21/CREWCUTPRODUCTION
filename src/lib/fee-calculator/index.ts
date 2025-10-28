@@ -76,6 +76,21 @@ export class FeeCalculator {
         console.log(`💰 Calculating amounts for ${applicableFees.length} fees...`);
         console.log(`📊 Total fees fetched from DB: ${totalFeesFetched}`);
 
+        console.log('\n=== NASHVILLE DEBUG ===');
+        console.log('Total applicable fees:', applicableFees.length);
+        console.log('Fees with calc_type per_unit:', applicableFees.filter(f => f.calcType === 'per_unit').length);
+        console.log('Fees with calc_type flat_fee:', applicableFees.filter(f => f.calcType === 'flat_fee').length);
+
+        applicableFees.forEach(fee => {
+          if (fee.feeName.includes('Tap')) {
+            console.log(`\nFee: ${fee.feeName}`);
+            console.log(`  calcType: ${fee.calcType}`);
+            console.log(`  rate: ${fee.rate}`);
+            console.log(`  calculatedAmount: ${fee.calculatedAmount}`);
+            console.log(`  isRecurring: ${fee.isRecurring}`);
+          }
+        });
+
         for (const fee of applicableFees) {
             try {
                 const result = this.calculateSingleFee(fee, inputs);
@@ -326,6 +341,22 @@ export class FeeCalculator {
 
         const hasServiceAreasTable = serviceAreasCheck && serviceAreasCheck.length > 0;
         console.log('🔍 Service areas table check:', hasServiceAreasTable ? 'HAS service areas' : 'NO service areas table');
+
+        // Check for "Citywide" service area - some jurisdictions (like Nashville) have a named
+        // "Citywide" service area instead of using service_area_id = null
+        if (selectedServiceAreaIds.length > 0 && hasServiceAreasTable) {
+            const { data: citywideArea } = await this.supabase
+                .from('service_areas')
+                .select('id')
+                .eq('jurisdiction_id', jurisdiction.id)
+                .eq('name', 'Citywide')
+                .single();
+
+            if (citywideArea && !selectedServiceAreaIds.includes(citywideArea.id)) {
+                selectedServiceAreaIds.push(citywideArea.id);
+                console.log('🔍 Found "Citywide" service area - including in query:', citywideArea.id);
+            }
+        }
 
         if (selectedServiceAreaIds.length === 0) {
             if (hasServiceAreasTable) {
