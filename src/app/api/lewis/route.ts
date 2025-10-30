@@ -2,12 +2,62 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { FeeCalculator } from '@/lib/fee-calculator/index';
 
+// Configure timeout and caching for this API route
+export const maxDuration = 60; // Increase from default 10s to 60s for multi-city comparisons
+export const dynamic = 'force-dynamic'; // Prevent caching issues with real-time fee calculations
+
+/**
+ * Helper function to find jurisdiction with fuzzy matching
+ * Handles cases like "Phoenix" -> "Phoenix city"
+ */
+async function findJurisdiction(supabase: any, jurisdictionName: string, stateCode?: string) {
+  // Try exact match first
+  let query = supabase
+    .from('jurisdictions')
+    .select('state_code, id, jurisdiction_name')
+    .eq('jurisdiction_name', jurisdictionName);
+
+  if (stateCode) {
+    query = query.eq('state_code', stateCode);
+  }
+
+  const { data: exactMatch } = await query.single();
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // Try fuzzy match (e.g., "Phoenix" -> "Phoenix city")
+  console.log('🔍 Exact match failed, trying fuzzy match...');
+  let fuzzyQuery = supabase
+    .from('jurisdictions')
+    .select('state_code, id, jurisdiction_name')
+    .ilike('jurisdiction_name', `${jurisdictionName}%`);
+
+  if (stateCode) {
+    fuzzyQuery = fuzzyQuery.eq('state_code', stateCode);
+  }
+
+  const { data: fuzzyResults } = await fuzzyQuery;
+
+  if (fuzzyResults && fuzzyResults.length > 0) {
+    console.log(`✅ Fuzzy match found: "${jurisdictionName}" -> "${fuzzyResults[0].jurisdiction_name}"`);
+    return fuzzyResults[0];
+  }
+
+  return null;
+}
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let action: string | undefined;
   try {
     console.log('🧪 Lewis API route called');
 
-    const { action, params } = await request.json();
+    const body = await request.json();
+    action = body.action;
+    const params = body.params;
+    console.log(`⏱️  [LEWIS API] Action: ${action}, Starting execution...`);
 
     console.log('🧪 Action:', action, 'Params:', params);
 
@@ -246,16 +296,14 @@ export async function POST(request: NextRequest) {
       }
 
       case 'calculateFees': {
+        const calcStartTime = Date.now();
         console.log('🔧 LEWIS calculateFees (chatbot) called with params:', JSON.stringify(params, null, 2));
 
-        // Get jurisdiction state code first
-        const { data: jurisdictionData, error: jError } = await supabase
-          .from('jurisdictions')
-          .select('state_code, id')
-          .eq('jurisdiction_name', params.jurisdictionName)
-          .single();
+        // Get jurisdiction with fuzzy matching
+        const jurisdictionData = await findJurisdiction(supabase, params.jurisdictionName);
+        console.log(`⏱️  Jurisdiction lookup: ${Date.now() - calcStartTime}ms`);
 
-        if (jError || !jurisdictionData) {
+        if (!jurisdictionData) {
           console.error('❌ Jurisdiction not found:', params.jurisdictionName);
           result = { success: false, error: `Jurisdiction "${params.jurisdictionName}" not found` };
           break;
@@ -344,7 +392,9 @@ export async function POST(request: NextRequest) {
           };
 
           console.log('🔧 Calling FeeCalculator with projectInputs:', JSON.stringify(projectInputs, null, 2));
+          const feeCalcStartTime = Date.now();
           const breakdown = await calculator.calculateFees(projectInputs);
+          console.log(`⏱️  FeeCalculator.calculateFees: ${Date.now() - feeCalcStartTime}ms`);
           console.log('🔧 FeeCalculator returned:', {
             oneTimeFees: breakdown.oneTimeFees,
             monthlyFees: breakdown.monthlyFees,
@@ -457,14 +507,10 @@ export async function POST(request: NextRequest) {
         // Normalize jurisdiction name
         const normalizedJurisdiction = params.jurisdiction?.replace(/,\s*[A-Z]{2}\s*$/i, '').trim();
 
-        // Get jurisdiction state code
-        const { data: jurisdictionData, error: jError } = await supabase
-          .from('jurisdictions')
-          .select('state_code, id')
-          .eq('jurisdiction_name', normalizedJurisdiction)
-          .single();
+        // Get jurisdiction with fuzzy matching
+        const jurisdictionData = await findJurisdiction(supabase, normalizedJurisdiction);
 
-        if (jError || !jurisdictionData) {
+        if (!jurisdictionData) {
           console.error('❌ Jurisdiction not found:', normalizedJurisdiction);
           result = { success: false, error: `Jurisdiction "${normalizedJurisdiction}" not found` };
           break;
@@ -792,14 +838,10 @@ export async function POST(request: NextRequest) {
         try {
           const normalizedJurisdiction = params.jurisdiction?.replace(/,\s*[A-Z]{2}\s*$/i, '').trim();
 
-          // Get jurisdiction data
-          const { data: jurisdictionData, error: jError } = await supabase
-            .from('jurisdictions')
-            .select('state_code, id')
-            .eq('jurisdiction_name', normalizedJurisdiction)
-            .single();
+          // Get jurisdiction with fuzzy matching
+          const jurisdictionData = await findJurisdiction(supabase, normalizedJurisdiction);
 
-          if (jError || !jurisdictionData) {
+          if (!jurisdictionData) {
             console.error('❌ Jurisdiction not found:', normalizedJurisdiction);
             result = { success: false, error: `Jurisdiction "${normalizedJurisdiction}" not found` };
             break;
@@ -1052,10 +1094,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`✅ [LEWIS API] ${action} completed in ${duration}ms`);
     return NextResponse.json(result);
 
   } catch (error) {
-    console.error('💥 Lewis API route error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`💥 [LEWIS API] ${action || 'unknown'} failed after ${duration}ms:`, error);
     return NextResponse.json(
       {
         success: false,

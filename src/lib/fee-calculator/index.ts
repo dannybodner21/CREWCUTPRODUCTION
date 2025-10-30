@@ -68,7 +68,12 @@ export class FeeCalculator {
      * Calculate all applicable fees for a project
      */
     async calculateFees(inputs: ProjectInputs): Promise<FeeBreakdown> {
+        const startTime = Date.now();
+
+        const fetchStartTime = Date.now();
         const result = await this.getApplicableFees(inputs);
+        console.log(`⏱️  [FeeCalculator] getApplicableFees: ${Date.now() - fetchStartTime}ms`);
+
         const applicableFees = result.fees;
         const totalFeesFetched = result.totalFeesFetched;
         const calculatedFees: CalculatedFee[] = [];
@@ -131,6 +136,9 @@ export class FeeCalculator {
             acc[fee.agencyName] = (acc[fee.agencyName] || 0) + fee.calculatedAmount;
             return acc;
         }, {} as Record<string, number>);
+
+        const totalDuration = Date.now() - startTime;
+        console.log(`⏱️  [FeeCalculator] Total calculateFees duration: ${totalDuration}ms`);
 
         return {
             oneTimeFees,
@@ -289,15 +297,30 @@ export class FeeCalculator {
     }
 
     private async getApplicableFees(inputs: ProjectInputs): Promise<{fees: any[], totalFeesFetched: number}> {
-        // Step 1: Get jurisdiction ID
-        const { data: jurisdiction, error: jurError } = await this.supabase
+        // Step 1: Get jurisdiction ID - try exact match first
+        let { data: jurisdiction, error: jurError } = await this.supabase
             .from('jurisdictions')
-            .select('id')
+            .select('id, jurisdiction_name')
             .eq('jurisdiction_name', inputs.jurisdictionName)
             .eq('state_code', inputs.stateCode)
             .single();
 
+        // If exact match fails, try fuzzy match (e.g., "Phoenix" -> "Phoenix city")
         if (jurError || !jurisdiction) {
+            console.log(`🔍 Exact match failed for "${inputs.jurisdictionName}", trying fuzzy match...`);
+            const { data: fuzzyResults } = await this.supabase
+                .from('jurisdictions')
+                .select('id, jurisdiction_name')
+                .ilike('jurisdiction_name', `${inputs.jurisdictionName}%`)
+                .eq('state_code', inputs.stateCode);
+
+            if (fuzzyResults && fuzzyResults.length > 0) {
+                jurisdiction = fuzzyResults[0];
+                console.log(`✅ Fuzzy match found: "${inputs.jurisdictionName}" -> "${jurisdiction.jurisdiction_name}"`);
+            }
+        }
+
+        if (!jurisdiction) {
             throw new Error(`Jurisdiction not found: ${inputs.jurisdictionName}, ${inputs.stateCode}`);
         }
 

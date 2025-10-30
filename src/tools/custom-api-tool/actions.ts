@@ -642,7 +642,7 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                 units: params.units,
                 sqft: params.sqft,
                 cities: normalizedCities,
-                serviceArea: params.serviceArea || 'Inside',
+                serviceArea: params.serviceArea || null,
                 meterSize: params.meterSize || '3/4"',
                 projectValue: params.projectValue || null
             });
@@ -660,7 +660,7 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                             numUnits: params.units,
                             squareFeet: params.sqft,
                             projectValue: params.projectValue || null,
-                            serviceArea: params.serviceArea || 'Inside', // Default to "Inside" service area (matches "Inside Denver", "Inside City")
+                            serviceArea: params.serviceArea || null, // Let FeeCalculator handle service area selection automatically
                             meterSize: params.meterSize || '3/4"' // Default to 3/4" meter
                         }
                     };
@@ -718,8 +718,10 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                 })
             );
 
-            // Filter out errors and sort by total cost
+            // Separate valid results from errors
             const validResults = results.filter(r => !r.error);
+            const failedResults = results.filter(r => r.error);
+
             if (validResults.length === 0) {
                 return `I couldn't calculate fees for any of the requested cities. Please check the city names and try again.`;
             }
@@ -790,6 +792,16 @@ export const createCustomApiToolActions = (): CustomApiToolAction => ({
                 const percentSavings = ((savings / highest) * 100).toFixed(1);
                 const savingsFormatted = formatCurrency(savings);
                 responseMessage += `**Bottom Line:** ${cheapest.city} saves you ${savingsFormatted} vs ${validResults[validResults.length - 1].city} (${percentSavings}% lower).\n\n`;
+            }
+
+            // Report any failed cities
+            if (failedResults.length > 0) {
+                responseMessage += `⚠️ **Note:** Couldn't calculate fees for ${failedResults.map(r => r.city).join(', ')}. `;
+                if (failedResults.length === 1 && failedResults[0].error) {
+                    responseMessage += `Error: ${failedResults[0].error}.\n\n`;
+                } else {
+                    responseMessage += `These cities may not be in our database yet.\n\n`;
+                }
             }
 
             responseMessage += `\nWant me to break down any city's fees or analyze a different project size?`;
