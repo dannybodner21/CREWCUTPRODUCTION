@@ -52,14 +52,13 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let action: string | undefined;
   try {
-    console.log('🧪 Lewis API route called');
+    console.log(`[LEWIS API ${new Date().toISOString()}] Request received`);
 
     const body = await request.json();
     action = body.action;
     const params = body.params;
-    console.log(`⏱️  [LEWIS API] Action: ${action}, Starting execution...`);
-
-    console.log('🧪 Action:', action, 'Params:', params);
+    console.log(`[LEWIS API] Received action: ${action}`);
+    console.log(`[LEWIS API] Parameters:`, JSON.stringify(params || {}).slice(0, 200));
 
     // Create Supabase client
     const supabase = createClient(
@@ -67,7 +66,14 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    let result;
+    // Add 55-second timeout (under the 60s maxDuration)
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timeout after 55s for action: ${action}`)), 55000)
+    );
+
+    // Main operation promise
+    const operationPromise = (async () => {
+      let result;
 
     switch (action) {
       case 'getJurisdictions': {
@@ -537,7 +543,8 @@ export async function POST(request: NextRequest) {
               { name: 'Aggressive (4-story)', unitsPerAcre: 80, avgUnitSize: 800 }
             ];
 
-            for (const density of densities) {
+            // Calculate all scenarios in parallel for faster response
+            const scenarioPromises = densities.map(async (density) => {
               const units = Math.floor(buildableAcres * density.unitsPerAcre);
               const totalSqFt = units * density.avgUnitSize;
 
@@ -556,7 +563,7 @@ export async function POST(request: NextRequest) {
               const constructionCost = totalSqFt * 200;
               const totalDevCost = constructionCost + breakdown.oneTimeFees;
 
-              scenarios.push({
+              return {
                 name: density.name,
                 units,
                 squareFeet: totalSqFt,
@@ -565,8 +572,10 @@ export async function POST(request: NextRequest) {
                 totalDevCost,
                 costPerUnit: totalDevCost / units,
                 monthlyFees: breakdown.monthlyFees
-              });
-            }
+              };
+            });
+
+            scenarios.push(...await Promise.all(scenarioPromises));
           } else {
             // Single-Family
             const densities = [
@@ -575,7 +584,8 @@ export async function POST(request: NextRequest) {
               { name: 'High Density', unitsPerAcre: 8, avgHomeSize: 2000 }
             ];
 
-            for (const density of densities) {
+            // Calculate all scenarios in parallel for faster response
+            const scenarioPromises = densities.map(async (density) => {
               const units = Math.floor(buildableAcres * density.unitsPerAcre);
               const totalSqFt = units * density.avgHomeSize;
 
@@ -594,7 +604,7 @@ export async function POST(request: NextRequest) {
               const constructionCost = totalSqFt * 150;
               const totalDevCost = constructionCost + breakdown.oneTimeFees;
 
-              scenarios.push({
+              return {
                 name: density.name,
                 units,
                 squareFeet: totalSqFt,
@@ -603,8 +613,10 @@ export async function POST(request: NextRequest) {
                 totalDevCost,
                 costPerUnit: totalDevCost / units,
                 monthlyFees: breakdown.monthlyFees
-              });
-            }
+              };
+            });
+
+            scenarios.push(...await Promise.all(scenarioPromises));
           }
 
           result = {
@@ -1087,24 +1099,35 @@ export async function POST(request: NextRequest) {
       }
 
       default: {
-        return NextResponse.json(
-          { success: false, error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        result = { success: false, error: `Unknown action: ${action}` };
+        break;
       }
     }
 
+      return result;
+    })();
+
+    // Race between operation and timeout
+    const finalResult = await Promise.race([
+      operationPromise,
+      timeoutPromise
+    ]);
+
     const duration = Date.now() - startTime;
     console.log(`✅ [LEWIS API] ${action} completed in ${duration}ms`);
-    return NextResponse.json(result);
+    return NextResponse.json(finalResult);
 
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(`💥 [LEWIS API] ${action || 'unknown'} failed after ${duration}ms:`, error);
+    console.error(`[LEWIS API] Error details:`, error instanceof Error ? error.message : String(error));
+    console.error(`[LEWIS API] Stack:`, error instanceof Error ? error.stack : 'No stack trace');
+
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     );
