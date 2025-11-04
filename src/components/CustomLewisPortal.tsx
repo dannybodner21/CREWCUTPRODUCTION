@@ -235,10 +235,10 @@ const CustomLewisPortal = () => {
         } else {
             const searchTerm = searchJurisdiction.toLowerCase().trim();
             const filtered = jurisdictions.filter(jurisdiction =>
-                jurisdiction.jurisdiction_name.toLowerCase().includes(searchTerm) ||
-                jurisdiction.jurisdiction_type.toLowerCase().includes(searchTerm) ||
-                jurisdiction.state_name.toLowerCase().includes(searchTerm) ||
-                jurisdiction.state_code.includes(searchTerm)
+                jurisdiction.jurisdiction_name?.toLowerCase().includes(searchTerm) ||
+                jurisdiction.jurisdiction_type?.toLowerCase().includes(searchTerm) ||
+                jurisdiction.state_name?.toLowerCase().includes(searchTerm) ||
+                jurisdiction.state_code?.toLowerCase().includes(searchTerm)
             );
             setFilteredJurisdictions(filtered);
         }
@@ -251,10 +251,10 @@ const CustomLewisPortal = () => {
         } else {
             const searchTerm = searchJurisdiction2.toLowerCase().trim();
             const filtered = jurisdictions.filter(jurisdiction =>
-                jurisdiction.jurisdiction_name.toLowerCase().includes(searchTerm) ||
-                jurisdiction.jurisdiction_type.toLowerCase().includes(searchTerm) ||
-                jurisdiction.state_name.toLowerCase().includes(searchTerm) ||
-                jurisdiction.state_code.includes(searchTerm)
+                jurisdiction.jurisdiction_name?.toLowerCase().includes(searchTerm) ||
+                jurisdiction.jurisdiction_type?.toLowerCase().includes(searchTerm) ||
+                jurisdiction.state_name?.toLowerCase().includes(searchTerm) ||
+                jurisdiction.state_code?.toLowerCase().includes(searchTerm)
             );
             setFilteredJurisdictions2(filtered);
         }
@@ -842,8 +842,9 @@ const CustomLewisPortal = () => {
                             }}>Search Jurisdictions:</Text>
                             <AutoComplete
                                 value={searchJurisdiction}
-                                onChange={(value) => setSearchJurisdiction(value)}
+                                onChange={(value) => setSearchJurisdiction(value || '')}
                                 onSelect={(value) => {
+                                    if (!value) return;
                                     setSearchJurisdiction(value);
                                     // Find and select the jurisdiction
                                     const jurisdiction = jurisdictions.find(j =>
@@ -867,10 +868,7 @@ const CustomLewisPortal = () => {
                                         </div>
                                     )
                                 }))}
-                                filterOption={(inputValue, option) => {
-                                    if (!inputValue) return true;
-                                    return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
-                                }}
+                                filterOption={false}
                             />
                         </Col>
                         <Col span={12}>
@@ -1008,8 +1006,9 @@ const CustomLewisPortal = () => {
                                     }}>Search Jurisdictions:</Text>
                                     <AutoComplete
                                         value={searchJurisdiction2}
-                                        onChange={(value) => setSearchJurisdiction2(value)}
+                                        onChange={(value) => setSearchJurisdiction2(value || '')}
                                         onSelect={(value) => {
+                                            if (!value) return;
                                             setSearchJurisdiction2(value);
                                             // Find and select the jurisdiction
                                             const jurisdiction = jurisdictions.find(j =>
@@ -1033,10 +1032,7 @@ const CustomLewisPortal = () => {
                                                 </div>
                                             )
                                         }))}
-                                        filterOption={(inputValue, option) => {
-                                            if (!inputValue) return true;
-                                            return option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false;
-                                        }}
+                                        filterOption={false}
                                     />
                                 </Col>
                                 <Col span={12}>
@@ -1684,9 +1680,9 @@ const CustomLewisPortal = () => {
                                                         </div>
                                                     ))}
                                             </div>
-                                            <div style={{ marginTop: '8px', padding: '12px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#e6f7ff', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ marginTop: '8px', padding: '12px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#e8e8e8', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Text strong style={{ fontSize: '14px' }}>Subtotal</Text>
-                                                <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>
+                                                <Text strong style={{ fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                     ${calculatedFees?.oneTimeFees?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                                                 </Text>
                                             </div>
@@ -1724,16 +1720,16 @@ const CustomLewisPortal = () => {
                                                         </div>
                                                     ))}
                                             </div>
-                                            <div style={{ marginTop: '8px', padding: '12px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#fff7e6', borderRadius: '4px' }}>
+                                            <div style={{ marginTop: '8px', padding: '12px', backgroundColor: theme.appearance === 'dark' ? '#1a1a1a' : '#e8e8e8', borderRadius: '4px' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                                     <Text strong style={{ fontSize: '14px' }}>Monthly Subtotal</Text>
-                                                    <Text strong style={{ fontSize: '18px', color: '#fa8c16' }}>
+                                                    <Text strong style={{ fontSize: '18px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                         ${calculatedFees?.monthlyFees?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}/month
                                                     </Text>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <Text style={{ fontSize: '13px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Annual Subtotal (×12)</Text>
-                                                    <Text strong style={{ fontSize: '16px' }}>
+                                                    <Text strong style={{ fontSize: '16px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                         ${calculatedFees?.annualOperatingCosts?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}/year
                                                     </Text>
                                                 </div>
