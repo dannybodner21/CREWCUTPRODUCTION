@@ -65,10 +65,51 @@ export class FeeCalculator {
     }
 
     /**
+     * Select ONE appropriate meter size based on project characteristics
+     * Returns a single meter size to prevent showing fees for multiple meter sizes
+     */
+    private selectAppropriateMeterSize(projectType: string, units?: number, sqft?: number): string {
+        const projectTypeLower = projectType.toLowerCase();
+
+        // For residential projects, select based on unit count
+        if (projectTypeLower.includes('single-family') || projectTypeLower.includes('single family')) {
+            return '3/4"'; // Standard single-family meter
+        }
+
+        if (projectTypeLower.includes('multi-family') || projectTypeLower.includes('multifamily') || projectTypeLower.includes('multi family')) {
+            if (!units) return '2"'; // Default for multi-family
+            if (units <= 4) return '3/4"';
+            if (units <= 10) return '1"';
+            if (units <= 25) return '1.5"';
+            if (units <= 50) return '2"';
+            if (units <= 100) return '3"';
+            return '4"';
+        }
+
+        // For commercial/industrial, use square footage
+        if (!sqft) return '2"'; // Default
+        if (sqft <= 5000) return '1"';
+        if (sqft <= 10000) return '1.5"';
+        if (sqft <= 25000) return '2"';
+        if (sqft <= 50000) return '3"';
+        if (sqft <= 100000) return '4"';
+        return '6"';
+    }
+
+    /**
      * Calculate all applicable fees for a project
      */
     async calculateFees(inputs: ProjectInputs): Promise<FeeBreakdown> {
         const startTime = Date.now();
+
+        // Determine the single meter size to use
+        // If user specified a meter size, use that; otherwise intelligently select one
+        const effectiveMeterSize = inputs.meterSize || this.selectAppropriateMeterSize(
+            inputs.projectType,
+            inputs.numUnits,
+            inputs.squareFeet
+        );
+        console.log(`🔧 [FeeCalculator] Using meter size: ${effectiveMeterSize} (${inputs.meterSize ? 'user-specified' : 'auto-selected'}) for ${inputs.projectType} (${inputs.numUnits || 'N/A'} units, ${inputs.squareFeet || 'N/A'} sqft)`);
 
         const fetchStartTime = Date.now();
         const result = await this.getApplicableFees(inputs);
@@ -773,29 +814,46 @@ export class FeeCalculator {
                 }
             }
 
-            // CRITICAL: Water meter size filtering
-            // Water meter fees often have the meter size in the fee name
+            // CRITICAL: Water/Sewer meter size filtering
+            // Water/Sewer meter fees often have the meter size in the fee name
             // Patterns:
             //   - "Water Service and Meter Installation Fee - 3/4 inch"
             //   - "Water Meter Installation - 3/4-inch meter"
             //   - "System Development Charges by Meter Size - 3/4"" (Portland)
-            if (inputs.meterSize && (
-                (feeNameLower.includes('water') && (feeNameLower.includes('meter') || feeNameLower.includes('service'))) ||
-                feeNameLower.includes('by meter size')
-            )) {
+            //   - "Sewer Service Fee - 1 inch meter"
+            //   - "Monthly Water Service - 3/4""
+            if ((feeNameLower.includes('water') || feeNameLower.includes('sewer')) &&
+                (feeNameLower.includes('meter') || feeNameLower.includes('service') || feeNameLower.includes('by meter size') || feeNameLower.includes('meter size'))) {
+
                 // Check if fee name contains a meter size specification
-                // Pattern supports: "3/4 inch", "3/4-inch", "1 1/2 inch", "1 1/2-inch"
+                // Pattern supports: "3/4 inch", "3/4-inch", "1 1/2 inch", "1 1/2-inch", '3/4"'
                 const meterSizePattern = /(\d+(?:\s*\d+\/\d+|\s+\d+\/\d+|\/\d+)?)\s*-?\s*(?:inch|"|\')/i;
                 const feeMatch = feeName.match(meterSizePattern);
 
                 if (feeMatch) {
                     // This fee has a specific meter size in the name
-                    const feeMeterSize = feeMatch[1];
-                    const inputMeterSize = inputs.meterSize.replace(/["']/g, ''); // Remove quotes
+                    const feeMeterSize = feeMatch[1].trim();
 
-                    // Only include if meter sizes match
-                    if (feeMeterSize !== inputMeterSize) {
+                    // Get the single appropriate meter size
+                    const appropriateMeterSize = inputs.meterSize || this.selectAppropriateMeterSize(
+                        inputs.projectType,
+                        inputs.numUnits,
+                        inputs.squareFeet
+                    );
+
+                    // Normalize meter sizes for comparison (remove quotes, spaces)
+                    const normalizedFeeMeterSize = feeMeterSize.replace(/["'\s]/g, '');
+                    const normalizedAppropriateMeterSize = appropriateMeterSize.replace(/["'\s]/g, '');
+
+                    // Check if this fee's meter size matches the appropriate size
+                    const meterMatches = normalizedFeeMeterSize === normalizedAppropriateMeterSize;
+
+                    // Filter out fees that don't match the appropriate meter size
+                    if (!meterMatches) {
+                        console.log(`🚫 [MeterFilter] Filtered out "${fee.name}" - meter size ${feeMeterSize} does not match ${appropriateMeterSize}`);
                         return null;
+                    } else {
+                        console.log(`✅ [MeterFilter] Included "${fee.name}" - meter size ${feeMeterSize} matches ${appropriateMeterSize}`);
                     }
                 }
             }
@@ -809,17 +867,59 @@ export class FeeCalculator {
                 const feeMatch = feeName.match(tapSizePattern);
 
                 if (feeMatch) {
-                    // This fee has a specific tap size - only show if user provided one
-                    if (!inputs.meterSize && !inputs.tapSize) {
-                        return null; // Filter out tap-specific fees for general projects
+                    // This fee has a specific tap size
+                    const feeTapSize = feeMatch[1].trim();
+
+                    // Get the single appropriate meter size
+                    const appropriateMeterSize = inputs.meterSize || this.selectAppropriateMeterSize(
+                        inputs.projectType,
+                        inputs.numUnits,
+                        inputs.squareFeet
+                    );
+
+                    // Normalize tap sizes for comparison (remove quotes, spaces)
+                    const normalizedFeeTapSize = feeTapSize.replace(/["'\s]/g, '');
+                    const normalizedAppropriateMeterSize = appropriateMeterSize.replace(/["'\s]/g, '');
+
+                    // Check if this fee's tap size matches the appropriate size
+                    const tapMatches = normalizedFeeTapSize === normalizedAppropriateMeterSize;
+
+                    // Filter out fees that don't match the appropriate tap size
+                    if (!tapMatches) {
+                        console.log(`🚫 [TapFilter] Filtered out "${fee.name}" - tap size ${feeTapSize} does not match ${appropriateMeterSize}`);
+                        return null;
+                    } else {
+                        console.log(`✅ [TapFilter] Included "${fee.name}" - tap size ${feeTapSize} matches ${appropriateMeterSize}`);
                     }
-                    // If user provided size, match it
-                    if (inputs.meterSize || inputs.tapSize) {
-                        const inputSize = (inputs.tapSize || inputs.meterSize || '').replace(/["']/g, '');
-                        const feeTapSize = feeMatch[1];
-                        if (feeTapSize !== inputSize) {
-                            return null;
-                        }
+                }
+            }
+
+            // CRITICAL: Stormwater tier filtering for multi-family
+            // For multifamily >4 units, use only "Small Residential" tier
+            // Filter out all other tiers like "Single Family", "Medium Residential", "Large Residential"
+            if (feeNameLower.includes('stormwater')) {
+                const isMultiFamily = inputs.projectType.toLowerCase().includes('multi-family') ||
+                                     inputs.projectType.toLowerCase().includes('multifamily') ||
+                                     inputs.projectType.toLowerCase().includes('multi family');
+                const hasMultipleUnits = inputs.numUnits && inputs.numUnits > 4;
+
+                if (isMultiFamily && hasMultipleUnits) {
+                    // For multi-family >4 units, ONLY include "Small Residential" stormwater tier
+                    const isSmallResidential = feeNameLower.includes('small residential');
+                    const isSingleFamily = feeNameLower.includes('single family');
+                    const isMediumResidential = feeNameLower.includes('medium residential');
+                    const isLargeResidential = feeNameLower.includes('large residential');
+
+                    // Filter out all tiers except Small Residential
+                    if (isSingleFamily || isMediumResidential || isLargeResidential) {
+                        console.log(`🚫 [StormwaterFilter] Filtered out "${fee.name}" - wrong tier for multi-family ${inputs.numUnits} units (need Small Residential)`);
+                        return null;
+                    }
+
+                    // Only keep Small Residential
+                    if (!isSmallResidential && (feeNameLower.includes('tier') || feeNameLower.includes('residential'))) {
+                        console.log(`🚫 [StormwaterFilter] Filtered out "${fee.name}" - not Small Residential tier`);
+                        return null;
                     }
                 }
             }
