@@ -46,13 +46,13 @@ const CustomLewisPortal = () => {
     const [filteredJurisdictions2, setFilteredJurisdictions2] = useState<Jurisdiction[]>([]);
 
     // Project parameters
-    const [projectValue, setProjectValue] = useState('100000');
-    const [squareFootage, setSquareFootage] = useState('1000');
-    const [projectUnits, setProjectUnits] = useState('100');
-    const [projectAcreage, setProjectAcreage] = useState('5');
-    const [meterSize, setMeterSize] = useState('3/4"');
-    const [projectType, setProjectType] = useState('Multi-Family Residential');
-    const [useSubtype, setUseSubtype] = useState('Multifamily');
+    const [projectValue, setProjectValue] = useState('');
+    const [squareFootage, setSquareFootage] = useState('');
+    const [projectUnits, setProjectUnits] = useState('');
+    const [projectAcreage, setProjectAcreage] = useState('');
+    const [meterSize, setMeterSize] = useState('');
+    const [projectType, setProjectType] = useState('');
+    const [useSubtype, setUseSubtype] = useState('');
     const [selectedServiceAreaIds, setSelectedServiceAreaIds] = useState<string[]>([]);
     const [selectedServiceAreaIds2, setSelectedServiceAreaIds2] = useState<string[]>([]);
     const [availableServiceAreas, setAvailableServiceAreas] = useState<any[]>([]);
@@ -142,22 +142,12 @@ const CustomLewisPortal = () => {
             }
         };
 
-        const checkLocalStorage = () => {
-            try {
-                const stored = localStorage.getItem('lewis-portal-state');
-                if (stored) {
-                    const portalState = JSON.parse(stored);
-                    if (portalState?.lewisProjectData) {
-                        handlePortalUpdate({ detail: portalState } as CustomEvent);
-                    }
-                }
-            } catch (error) {
-                console.error('🔧 PORTAL ERROR: Failed to check localStorage:', error);
-            }
-        };
-
-        // Check localStorage immediately
-        checkLocalStorage();
+        // Clear localStorage to prevent pre-populating form fields with old data
+        try {
+            localStorage.removeItem('lewis-portal-state');
+        } catch (error) {
+            console.error('Failed to clear localStorage:', error);
+        }
 
         // Listen for custom events
         window.addEventListener('lewis-portal-update', handlePortalUpdate as EventListener);
@@ -1193,8 +1183,9 @@ const CustomLewisPortal = () => {
                                     onChange={setProjectType}
                                     style={{ width: '100%', borderRadius: '8px' }}
                                     disabled={!selectedJurisdiction}
-                                    placeholder={selectedJurisdiction ? "Select Project Type" : "Select jurisdiction first"}
+                                    placeholder="Choose project type"
                                 >
+                                    <Option value="" disabled>Choose project type</Option>
                                     <Option value="Single-Family Residential">Single-Family Residential</Option>
                                     <Option value="Multi-Family Residential">Multi-Family Residential</Option>
                                 </Select>
@@ -1244,7 +1235,9 @@ const CustomLewisPortal = () => {
                                     value={meterSize}
                                     onChange={setMeterSize}
                                     style={{ width: '100%', borderRadius: '8px' }}
+                                    placeholder="Choose meter size"
                                 >
+                                    <Option value="" disabled>Choose meter size</Option>
                                     <Option value='5/8"'>5/8"</Option>
                                     <Option value='3/4"'>3/4"</Option>
                                     <Option value='1"'>1"</Option>
@@ -1327,23 +1320,23 @@ const CustomLewisPortal = () => {
                                             </Text>
                                             <Row gutter={24}>
                                                 <Col span={6}>
-                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Total Fee Records</Text>
-                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees[0]?.totalFees || 0}</Text>
+                                                        <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees[0]?.totalFees || 0}</Text>
                                                     </div>
                                                 </Col>
                                                 <Col span={12}>
-                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
-                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                             ${calculatedFees?.firstYearTotal?.toLocaleString() || '0'}
                                                         </Text>
                                                     </div>
                                                 </Col>
                                                 <Col span={6}>
-                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Applicable Fees</Text>
-                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                             {jurisdictionFees[0]?.applicableFees || 0}
                                                         </Text>
                                                     </div>
@@ -1358,23 +1351,23 @@ const CustomLewisPortal = () => {
                                             </Text>
                                             <Row gutter={24}>
                                                 <Col span={6}>
-                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Total Fee Records</Text>
-                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees2[0]?.totalFees || 0}</Text>
+                                                        <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{jurisdictionFees2[0]?.totalFees || 0}</Text>
                                                     </div>
                                                 </Col>
                                                 <Col span={12}>
-                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Calculated Total Cost</Text>
-                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                             ${calculatedFees2?.firstYearTotal?.toLocaleString() || '0'}
                                                         </Text>
                                                     </div>
                                                 </Col>
                                                 <Col span={6}>
-                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                         <Text style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Applicable Fees</Text>
-                                                        <Text strong style={{ fontSize: '32px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                        <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                             {jurisdictionFees2[0]?.applicableFees || 0}
                                                         </Text>
                                                     </div>
@@ -1622,18 +1615,18 @@ const CustomLewisPortal = () => {
                                     {/* Summary Cards */}
                                     <Row gutter={16} style={{ marginBottom: '24px' }}>
                                         <Col span={6}>
-                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <Text style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Applicable Fees</Text>
-                                                <Text strong style={{ fontSize: '28px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{applicableFees.length}</Text>
+                                                <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>{applicableFees.length}</Text>
                                                 <Text style={{ display: 'block', fontSize: '11px', color: theme.appearance === 'dark' ? '#999999' : '#999999', marginTop: '4px' }}>
                                                     {oneTimeFees.length} one-time, {recurringFees.length} recurring
                                                 </Text>
                                             </div>
                                         </Col>
                                         <Col span={6}>
-                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#e6f7ff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <Text style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>One-Time Costs</Text>
-                                                <Text strong style={{ fontSize: '24px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                     ${calculatedFees?.oneTimeFees?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                                                 </Text>
                                                 <Text style={{ display: 'block', fontSize: '11px', color: theme.appearance === 'dark' ? '#999999' : '#999999', marginTop: '4px' }}>
@@ -1642,9 +1635,9 @@ const CustomLewisPortal = () => {
                                             </div>
                                         </Col>
                                         <Col span={6}>
-                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#fff7e6', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <Text style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>Monthly Costs</Text>
-                                                <Text strong style={{ fontSize: '24px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
+                                                <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                     ${calculatedFees?.monthlyFees?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                                                 </Text>
                                                 <Text style={{ display: 'block', fontSize: '11px', color: theme.appearance === 'dark' ? '#999999' : '#999999', marginTop: '4px' }}>
@@ -1653,9 +1646,9 @@ const CustomLewisPortal = () => {
                                             </div>
                                         </Col>
                                         <Col span={6}>
-                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#f6ffed', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+                                            <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme.appearance === 'dark' ? '#222222' : '#ffffff', borderRadius: '8px', boxShadow: theme.appearance === 'dark' ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <Text style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: theme.appearance === 'dark' ? '#cccccc' : '#666666' }}>First Year Total</Text>
-                                                <Text strong style={{ fontSize: '24px', color: '#52c41a' }}>
+                                                <Text strong style={{ fontSize: '20px', color: theme.appearance === 'dark' ? '#ffffff' : '#000000' }}>
                                                     ${calculatedFees?.firstYearTotal?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                                                 </Text>
                                                 <Text style={{ display: 'block', fontSize: '11px', color: theme.appearance === 'dark' ? '#999999' : '#999999', marginTop: '4px' }}>
