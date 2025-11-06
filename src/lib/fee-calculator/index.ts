@@ -374,27 +374,9 @@ export class FeeCalculator {
 
         // Step 3: Filter by service area IDs
         let selectedServiceAreaIds = inputs.selectedServiceAreaIds || [];
+        const userExplicitlySelectedServiceAreas = selectedServiceAreaIds.length > 0;
         console.log('🔍 Selected service area IDs:', selectedServiceAreaIds);
-
-        // CRITICAL: Portland-specific default service area
-        // Portland has geographic service areas (Central City vs Non-Central City)
-        // When no service area is selected, default to "Non-Central City" which covers most of Portland
-        if (selectedServiceAreaIds.length === 0 &&
-            inputs.jurisdictionName === 'Portland' &&
-            inputs.stateCode === 'OR') {
-
-            const { data: nonCentralCity } = await this.supabase
-                .from('service_areas')
-                .select('id')
-                .eq('jurisdiction_id', jurisdiction.id)
-                .eq('name', 'Non-Central City')
-                .single();
-
-            if (nonCentralCity) {
-                selectedServiceAreaIds = [nonCentralCity.id];
-                console.log('🔍 Portland: Auto-selected "Non-Central City" service area (default)');
-            }
-        }
+        console.log('🔍 User explicitly selected:', userExplicitlySelectedServiceAreas);
 
         // Check if this jurisdiction actually has service areas in the service_areas table
         const { data: serviceAreasCheck } = await this.supabase
@@ -406,19 +388,42 @@ export class FeeCalculator {
         const hasServiceAreasTable = serviceAreasCheck && serviceAreasCheck.length > 0;
         console.log('🔍 Service areas table check:', hasServiceAreasTable ? 'HAS service areas' : 'NO service areas table');
 
-        // Check for "Citywide" service area - some jurisdictions (like Nashville) have a named
-        // "Citywide" service area instead of using service_area_id = null
+        // CRITICAL: Default service area selection when user doesn't specify
+        // Most jurisdictions have "Inside City" or "Inside City Limits" as the primary service area
+        // When no service area is selected, auto-select the primary service area + Citywide
+        if (selectedServiceAreaIds.length === 0 && hasServiceAreasTable) {
+            // Try common inside city service area names
+            const insideCityNames = ['Inside City', 'Inside City Limits', 'Citywide', 'Non-Central City'];
+
+            for (const name of insideCityNames) {
+                const { data: serviceArea } = await this.supabase
+                    .from('service_areas')
+                    .select('id, name')
+                    .eq('jurisdiction_id', jurisdiction.id)
+                    .eq('name', name)
+                    .single();
+
+                if (serviceArea) {
+                    selectedServiceAreaIds.push(serviceArea.id);
+                    console.log(`🔍 Auto-selected "${serviceArea.name}" service area (default primary service area)`);
+                }
+            }
+        }
+
+        // CRITICAL: When user selects a specific service area, also include "Citywide" fees
+        // These apply everywhere and should always be included
+        // Some jurisdictions (like Nashville) have a named "Citywide" service area
         if (selectedServiceAreaIds.length > 0 && hasServiceAreasTable) {
             const { data: citywideArea } = await this.supabase
                 .from('service_areas')
-                .select('id')
+                .select('id, name')
                 .eq('jurisdiction_id', jurisdiction.id)
                 .eq('name', 'Citywide')
                 .single();
 
             if (citywideArea && !selectedServiceAreaIds.includes(citywideArea.id)) {
                 selectedServiceAreaIds.push(citywideArea.id);
-                console.log('🔍 Found "Citywide" service area - including in query:', citywideArea.id);
+                console.log(`🔍 Added "Citywide" service area to user's selection (applies everywhere)`);
             }
         }
 
@@ -517,9 +522,22 @@ export class FeeCalculator {
         insideCityFees.forEach((fee: any) => {
             console.log(`  - ${fee.name}: category="${fee.category}", calculations: ${fee.fee_calculations?.length || 0}`);
         });
+
+        // CRITICAL DEBUG: Look for Sewer Base Rate specifically
+        const sewerBaseRates = allFees.filter((f: any) => (f.name || '').includes('Sewer Base Rate'));
+        console.log(`\n💧 Sewer Base Rate fees found: ${sewerBaseRates.length}`);
+        sewerBaseRates.forEach((fee: any) => {
+            console.log(`  - ${fee.name}`);
+            console.log(`    service_area: ${fee.service_areas?.name || 'NULL'}`);
+            console.log(`    calc_type: ${fee.fee_calculations?.[0]?.calc_type}`);
+            console.log(`    rate: ${fee.fee_calculations?.[0]?.rate}`);
+            console.log(`    unit_label: ${fee.fee_calculations?.[0]?.unit_label}`);
+        });
         console.log();
 
         console.log(`🔍 Filtering for projectType: "${inputs.projectType}", useSubtype: "${inputs.useSubtype || '(none)'}", meterSize: "${inputs.meterSize || '(none)'}"`);
+        console.log(`🔍 User explicitly selected service areas: ${userExplicitlySelectedServiceAreas}`);
+        console.log(`🔍 Selected service area IDs (after auto-selection): [${selectedServiceAreaIds.join(', ')}]`);
         console.log('='.repeat(80));
         console.log(`📊 STARTING FEE FILTERING - Total fees fetched: ${allFees.length}`);
         console.log('='.repeat(80));
@@ -532,6 +550,53 @@ export class FeeCalculator {
             const feeNameLower = feeName.toLowerCase();
             const categoryLower = (fee.category || '').toLowerCase();
 
+            // CRITICAL DEBUG: Track Sewer Base Rate through filtering
+            const isSewerBaseRate = feeNameLower.includes('sewer base rate');
+            if (isSewerBaseRate) {
+                console.log(`\n🔍 TRACKING: ${feeName} - Starting filter checks...`);
+            }
+
+            // CRITICAL: GLOBAL EXCLUSIONS - Apply to ALL jurisdictions
+            // Filter out penalties, late fees, registration fees, and irrelevant charges
+            const globalExclusions = [
+                // Penalties and late fees
+                'late', 'penalty', 'penalties', 'delinquent', 'delinquency',
+                'nsf', 'charge-back', 'chargeback', 'missed', 'return trip',
+                // Disconnection and reconnection
+                'reconnection', 'reconnect', 'disconnect', 'turn on', 'turn-on',
+                'service activation', 'unauthorized', 'downsize',
+                // Registration and licensing
+                'registration', 'license', 'licensing', 'examination', 'renewal', 'renew',
+                'contractor registration', 'contractor license',
+                // Land use and zoning (not for new construction)
+                'rezoning', 'rezone', 'subdivision', 'plat', 'variance', 'appeal',
+                // Occupancy (operational, not construction)
+                'certificate of occupancy', 'temporary occupancy', 'change of occupancy',
+                'occupancy permit', 'occupancy fee',
+                // Demolition (unless project is demolition)
+                'demolition', 'wrecking',
+                // Remodeling and alterations (for new construction)
+                'remodel', 'remodeling', 'alteration', 'renovation',
+                // Signs (not needed for new residential)
+                'sign permit', 'temporary sign', 'banner', 'billboard',
+                // Temporary and miscellaneous
+                'moving permit', 'moving building', 'tent and temporary',
+                // Specialized facilities
+                'trailer park sewer', 'industrial waste pretreatment',
+                // Operational/maintenance (not construction)
+                'backflow prevention device inspection',
+                // Commercial/industrial equipment (not residential)
+                'water chiller', 'chiller', 'cooling tower', 'air blower', 'space heater'
+            ];
+
+            const isGlobalExclusion = globalExclusions.some(exclusion =>
+                feeNameLower.includes(exclusion) || categoryLower.includes(exclusion)
+            );
+
+            if (isGlobalExclusion) {
+                console.log(`🚫 [GlobalFilter] Excluded "${feeName}" - matches global exclusion`);
+                return null;
+            }
 
             // CRITICAL: LA-SPECIFIC Filter by name patterns for residential and commercial projects
             // Only apply this aggressive filtering for Los Angeles
@@ -654,7 +719,8 @@ export class FeeCalculator {
 
             // CRITICAL: Exclude specialty overlay district fees when user hasn't selected service areas
             // These are fees that only apply in specific overlay zones (North Burnet, University Neighborhood, etc.)
-            if (selectedServiceAreaIds.length === 0) {
+            // Use the flag from BEFORE auto-selection to determine if user explicitly selected
+            if (!userExplicitlySelectedServiceAreas) {
                 const isOverlayDistrictFee = feeNameLower.includes('north burnet') ||
                     feeNameLower.includes('university neighborhood overlay') ||
                     feeNameLower.includes('planned unit development') ||
@@ -663,19 +729,51 @@ export class FeeCalculator {
                     feeNameLower.includes('density bonus - fee in lieu');
 
                 if (isOverlayDistrictFee) {
+                    if (isSewerBaseRate) {
+                        console.log(`  🔍 TRACKING: Not an overlay district fee - continuing...`);
+                    }
                     return null;
                 }
 
                 // CRITICAL: Exclude community-specific development impact fees (San Diego pattern)
-                // When user hasn't selected a service area, only show citywide fees
+                // When user hasn't selected a service area, show citywide + inside city fees (primary service areas)
                 const serviceAreaName = fee.service_areas?.name?.toLowerCase() || '';
-                const isCommunitySpecificFee = feeNameLower.includes('community development impact fee') ||
-                    (serviceAreaName && serviceAreaName !== 'citywide' && serviceAreaName !== 'inside city');
 
-                // Only exclude if this is truly a community-specific fee (not citywide)
-                if (isCommunitySpecificFee && serviceAreaName && serviceAreaName !== 'citywide') {
+                if (isSewerBaseRate) {
+                    console.log(`  🔍 TRACKING: service_area = "${serviceAreaName}"`);
+                }
+
+                // Primary service areas that should always be included (apply to most users)
+                const isPrimaryServiceArea = !serviceAreaName ||
+                    serviceAreaName === 'citywide' ||
+                    serviceAreaName === 'inside city' ||
+                    serviceAreaName === 'inside city limits';
+
+                if (isSewerBaseRate) {
+                    console.log(`  🔍 TRACKING: isPrimaryServiceArea = ${isPrimaryServiceArea}`);
+                }
+
+                // Exclude community-specific fees that don't apply to primary service areas
+                const isCommunitySpecificFee = feeNameLower.includes('community development impact fee') ||
+                    (serviceAreaName && !isPrimaryServiceArea);
+
+                if (isSewerBaseRate) {
+                    console.log(`  🔍 TRACKING: isCommunitySpecificFee = ${isCommunitySpecificFee}`);
+                }
+
+                // Only exclude if this is truly a community-specific fee (not primary service area)
+                if (isCommunitySpecificFee && !isPrimaryServiceArea) {
+                    if (isSewerBaseRate) {
+                        console.log(`  ❌ TRACKING: Would be filtered out here!`);
+                    }
                     return null;
                 }
+
+                if (isSewerBaseRate) {
+                    console.log(`  ✅ TRACKING: Passed service area filter!`);
+                }
+            } else if (isSewerBaseRate) {
+                console.log(`  ⏭️  TRACKING: Skipping service area filter (user explicitly selected areas)`);
             }
 
             // CRITICAL: Exclude conditional/optional fees that don't apply to standard projects
@@ -814,6 +912,15 @@ export class FeeCalculator {
                 }
             }
 
+            // CRITICAL: METERED vs UNMETERED exclusion
+            // If user specifies a meter size, they have a metered connection
+            // Exclude "unmetered" fees - these are flat rates for properties WITHOUT meters
+            // You can't charge both metered AND unmetered rates!
+            if (inputs.meterSize && feeNameLower.includes('unmetered')) {
+                console.log(`🚫 [MeteredFilter] Excluded "${feeName}" - project has a meter (${inputs.meterSize}), unmetered rate doesn't apply`);
+                return null;
+            }
+
             // CRITICAL: Water/Sewer meter size filtering
             // Water/Sewer meter fees often have the meter size in the fee name
             // Patterns:
@@ -822,8 +929,13 @@ export class FeeCalculator {
             //   - "System Development Charges by Meter Size - 3/4"" (Portland)
             //   - "Sewer Service Fee - 1 inch meter"
             //   - "Monthly Water Service - 3/4""
-            if ((feeNameLower.includes('water') || feeNameLower.includes('sewer')) &&
-                (feeNameLower.includes('meter') || feeNameLower.includes('service') || feeNameLower.includes('by meter size') || feeNameLower.includes('meter size'))) {
+            //   - "Sewer Base Rate - 1 inch Meter"
+
+            // IMPORTANT: Only filter by meter size if user explicitly specified one
+            // Don't use auto-selection to filter out fees - that prevents users from seeing their chosen meter size
+            if (inputs.meterSize &&
+                (feeNameLower.includes('water') || feeNameLower.includes('sewer')) &&
+                (feeNameLower.includes('meter') || feeNameLower.includes('service') || feeNameLower.includes('by meter size') || feeNameLower.includes('meter size') || feeNameLower.includes('base rate'))) {
 
                 // Check if fee name contains a meter size specification
                 // Pattern supports: "3/4 inch", "3/4-inch", "1 1/2 inch", "1 1/2-inch", '3/4"'
@@ -834,26 +946,22 @@ export class FeeCalculator {
                     // This fee has a specific meter size in the name
                     const feeMeterSize = feeMatch[1].trim();
 
-                    // Get the single appropriate meter size
-                    const appropriateMeterSize = inputs.meterSize || this.selectAppropriateMeterSize(
-                        inputs.projectType,
-                        inputs.numUnits,
-                        inputs.squareFeet
-                    );
+                    // Use ONLY the user's explicitly specified meter size (no auto-selection)
+                    const userMeterSize = inputs.meterSize;
 
                     // Normalize meter sizes for comparison (remove quotes, spaces)
                     const normalizedFeeMeterSize = feeMeterSize.replace(/["'\s]/g, '');
-                    const normalizedAppropriateMeterSize = appropriateMeterSize.replace(/["'\s]/g, '');
+                    const normalizedUserMeterSize = userMeterSize.replace(/["'\s]/g, '');
 
-                    // Check if this fee's meter size matches the appropriate size
-                    const meterMatches = normalizedFeeMeterSize === normalizedAppropriateMeterSize;
+                    // Check if this fee's meter size matches the user's selection
+                    const meterMatches = normalizedFeeMeterSize === normalizedUserMeterSize;
 
-                    // Filter out fees that don't match the appropriate meter size
+                    // Filter out fees that don't match the user's selected meter size
                     if (!meterMatches) {
-                        console.log(`🚫 [MeterFilter] Filtered out "${fee.name}" - meter size ${feeMeterSize} does not match ${appropriateMeterSize}`);
+                        console.log(`🚫 [MeterFilter] Filtered out "${fee.name}" - meter size ${feeMeterSize} does not match user selection ${userMeterSize}`);
                         return null;
                     } else {
-                        console.log(`✅ [MeterFilter] Included "${fee.name}" - meter size ${feeMeterSize} matches ${appropriateMeterSize}`);
+                        console.log(`✅ [MeterFilter] Included "${fee.name}" - meter size ${feeMeterSize} matches user selection ${userMeterSize}`);
                     }
                 }
             }
@@ -1111,6 +1219,17 @@ export class FeeCalculator {
         const filtered = feesWithSelectedCalc;
 
         console.log(`✅ After filtering: ${filtered.length} applicable fees`);
+
+        // CRITICAL DEBUG: Check if Sewer Base Rate survived filtering
+        const sewerBaseRatesAfterFilter = filtered.filter((f: any) => (f?.name || '').includes('Sewer Base Rate'));
+        console.log(`\n💧 Sewer Base Rate fees AFTER FILTERING: ${sewerBaseRatesAfterFilter.length}`);
+        if (sewerBaseRatesAfterFilter.length === 0) {
+            console.error(`❌ SEWER BASE RATE WAS FILTERED OUT - this is the bug!`);
+        } else {
+            sewerBaseRatesAfterFilter.forEach((fee: any) => {
+                console.log(`  ✅ ${fee.name} - survived filtering`);
+            });
+        }
 
         // Debug: Check if park fees made it through
         const parkFeesFiltered = filtered.filter((f: any) => f?.name?.toLowerCase().includes('park fee'));
@@ -1674,6 +1793,37 @@ export class FeeCalculator {
     }
 
     private calculateSingleFee(fee: any, inputs: ProjectInputs): CalculatedFee | null {
+        const feeNameLower = (fee.feeName || '').toLowerCase();
+        const categoryLower = (fee.category || '').toLowerCase();
+        const unitLabelLower = (fee.unitLabel || '').toLowerCase();
+
+        // CRITICAL: IMMEDIATE EXCLUSION - Never calculate late fees, penalties, or administrative charges
+        if (feeNameLower.includes('late') || feeNameLower.includes('penalty') ||
+            feeNameLower.includes('delinquent') || feeNameLower.includes('reconnection') ||
+            categoryLower.includes('late') || categoryLower.includes('penalty')) {
+            console.log(`🚫 [CalcFilter] BLOCKED: "${fee.feeName}" - administrative/penalty fee`);
+            return null;
+        }
+
+        // CRITICAL: CONSUMPTION-BASED RATE EXCLUSION
+        // Exclude fees with consumption-based unit labels (per CCF, per gallon, per kgal)
+        // These are VARIABLE rates based on actual water/sewer usage - we can't calculate them without consumption data
+        // Examples: "Water Usage - $2.72 per CCF" - this is NOT a $2.72/month charge!
+        const isConsumptionBased = unitLabelLower.includes('per ccf') ||
+                                   unitLabelLower.includes('per 100 cubic feet') ||
+                                   unitLabelLower.includes('/ccf') ||
+                                   unitLabelLower.includes('per gallon') ||
+                                   unitLabelLower.includes('/gallon') ||
+                                   unitLabelLower.includes('per kgal') ||
+                                   unitLabelLower.includes('/kgal') ||
+                                   unitLabelLower.includes('per 1,000 gallons') ||
+                                   unitLabelLower.includes('per 1000 gallons');
+
+        if (isConsumptionBased) {
+            console.log(`🚫 [ConsumptionFilter] BLOCKED: "${fee.feeName}" - consumption-based rate (${fee.unitLabel}), requires usage data`);
+            return null;
+        }
+
         let amount = 0;
         let calculation = '';
         let isRecurring = false;
@@ -1714,9 +1864,7 @@ export class FeeCalculator {
         }
 
         // Determine if this is a recurring fee
-        const unitLabelLower = fee.unitLabel?.toLowerCase() || '';
-        const categoryLower = fee.category?.toLowerCase() || '';
-        const feeNameLower = fee.feeName?.toLowerCase() || '';
+        // unitLabelLower, categoryLower, and feeNameLower already defined above for exclusion checks
 
         // CRITICAL: Connection/capacity fees are ONE-TIME, not recurring
         const isConnectionFee = feeNameLower.includes('connection fee') ||
@@ -1740,12 +1888,85 @@ export class FeeCalculator {
         switch (fee.calcType) {
             case 'flat':
             case 'flat_fee':
-                // Flat fees are NOT multiplied by units - they're one-time charges
-                amount = fee.rate || 0;
-                if (isRecurring) {
-                    calculation = `$${amount.toFixed(2)} per month`;
+                // CRITICAL: Special handling for plumbing fixtures - estimate ~10 fixtures per unit
+                // Match patterns like: "Each Fixture", "Each Fixture or Trap", "Per Fixture"
+                if (inputs.numUnits && feeNameLower.includes('fixture') &&
+                    (feeNameLower.includes('each') || feeNameLower.includes('per'))) {
+                    const fixturesPerUnit = 10; // Typical residential: 2 sinks, toilet, shower/tub, washer, etc.
+                    const totalFixtures = inputs.numUnits * fixturesPerUnit;
+                    amount = (fee.rate || 0) * totalFixtures;
+                    calculation = `$${fee.rate} per fixture × ${totalFixtures} fixtures (${fixturesPerUnit} per unit × ${inputs.numUnits} units) = $${amount.toFixed(2)}`;
+                    console.log(`💰 [PlumbingFixtures] ${fee.feeName}: $${fee.rate} × ${totalFixtures} fixtures = $${amount.toFixed(2)}`);
+                    break;
+                }
+
+                // CRITICAL: HVAC consolidation - Only include primary heating/cooling systems
+                // Typical residential needs: 1 furnace + 1 AC per unit = 2 systems max
+                if (inputs.numUnits && (feeNameLower.includes('hvac') || feeNameLower.includes('mechanical') || feeNameLower.includes('heating') || feeNameLower.includes('cooling'))) {
+                    // Only allow these primary HVAC systems for residential
+                    const isPrimaryHVAC =
+                        feeNameLower.includes('furnace') ||
+                        (feeNameLower.includes('air condition') || feeNameLower.includes('a/c') || feeNameLower.includes('ac unit')) ||
+                        feeNameLower.includes('heat pump');
+
+                    if (!isPrimaryHVAC) {
+                        // Exclude all other HVAC types
+                        console.log(`🚫 [HVACFilter] Excluded non-primary HVAC: "${fee.feeName}"`);
+                        return null;
+                    }
+
+                    // For primary HVAC (furnace, AC, heat pump), charge per unit
+                    amount = (fee.rate || 0) * inputs.numUnits;
+                    calculation = `$${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}`;
+                    console.log(`💰 [HVAC] ${fee.feeName}: $${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}`);
+                    break;
+                }
+
+                // CRITICAL: Water/sewer taps, permits, and monthly fees are PER UNIT even if marked as flat_fee
+                const isWaterSewerTapFlat = inputs.numUnits && (
+                    (feeNameLower.includes('water') || feeNameLower.includes('sewer')) &&
+                    (feeNameLower.includes('tap') || feeNameLower.includes('connection') || feeNameLower.includes('permit'))
+                );
+
+                const isPermitFlat = inputs.numUnits && (
+                    feeNameLower.includes('plumbing permit') ||
+                    feeNameLower.includes('electrical permit') ||
+                    feeNameLower.includes('water heater') ||
+                    (feeNameLower.includes('permit') && fee.unitLabel?.toLowerCase().includes('unit'))
+                );
+
+                const isMonthlyPerUnit = inputs.numUnits && isRecurring && (
+                    feeNameLower.includes('base charge') ||
+                    feeNameLower.includes('service fee') ||
+                    feeNameLower.includes('monthly') ||
+                    feeNameLower.includes('storm') ||
+                    feeNameLower.includes('stormwater') ||
+                    feeNameLower.includes('sewer') ||
+                    feeNameLower.includes('water fund') ||
+                    feeNameLower.includes('uap') ||
+                    feeNameLower.includes('inspection') ||
+                    categoryLower.includes('monthly')
+                );
+
+                // Multiply by units for taps, permits, and monthly fees
+                if (isWaterSewerTapFlat || isPermitFlat || isMonthlyPerUnit) {
+                    amount = (fee.rate || 0) * inputs.numUnits;
+                    const feeType = isMonthlyPerUnit ? 'per month' : '';
+                    calculation = `$${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)} ${feeType}`.trim();
+                    console.log(`💰 [FlatFee->PerUnit] ${fee.feeName}: $${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)} ${feeType}`);
+
+                    if (isMonthlyPerUnit) {
+                        isRecurring = true;
+                        recurringPeriod = 'month';
+                    }
                 } else {
-                    calculation = `Flat fee: $${amount.toFixed(2)}`;
+                    // True flat fees are NOT multiplied by units - they're one-time charges
+                    amount = fee.rate || 0;
+                    if (isRecurring) {
+                        calculation = `$${amount.toFixed(2)} per month`;
+                    } else {
+                        calculation = `Flat fee: $${amount.toFixed(2)}`;
+                    }
                 }
                 break;
 
@@ -1753,6 +1974,13 @@ export class FeeCalculator {
                 // CRITICAL: Check what the "unit" actually means in the unit_label
                 const unitLabel = fee.unitLabel || '';
                 const unitLabelLowerCase = unitLabel.toLowerCase();
+
+                // CRITICAL: Water and sewer tap fees are PER UNIT, not per project
+                // Examples: "Water Tap Fee", "Sewer Tap Fee", "Sewer Connection Fee"
+                // These need to be multiplied by number of units
+                const isWaterSewerTap = (feeNameLower.includes('water') || feeNameLower.includes('sewer')) &&
+                                        (feeNameLower.includes('tap') || feeNameLower.includes('connection') ||
+                                         feeNameLower.includes('permit'));
 
                 // Check if this is truly per dwelling unit
                 // IMPORTANT: Also treat park fees and fees with null/empty unit_label as per-unit
@@ -1768,7 +1996,8 @@ export class FeeCalculator {
                     unitLabelLowerCase.includes('multifamily unit') ||   // Austin pattern: "per multifamily unit"
                     (unitLabelLowerCase.includes('per') && unitLabelLowerCase.includes('unit')) ||  // Generic "per X unit" patterns
                     (isParkFee && !unitLabel) ||  // Park fees with null unit_label are per-unit
-                    (!unitLabel && inputs.projectType === 'Residential');  // Residential fees with null unit_label default to per-unit
+                    (!unitLabel && inputs.projectType === 'Residential') ||  // Residential fees with null unit_label default to per-unit
+                    isWaterSewerTap;  // Water/sewer taps are per unit
 
                 // CRITICAL: Check if it's per square foot (Denver Affordable Housing pattern)
                 if (unitLabelLowerCase.includes('per square foot') || unitLabelLowerCase.includes('per sq ft')) {
@@ -1790,13 +2019,8 @@ export class FeeCalculator {
                         isRecurring = true;
                         recurringPeriod = 'month';
                     }
-                }
-                // Check if it's per connection (typically 1 per project)
-                else if (unitLabelLowerCase.includes('connection') ||
-                         unitLabelLowerCase.includes('per service')) {
-                    // One connection per project, regardless of units
-                    amount = fee.rate || 0;
-                    calculation = `$${amount.toFixed(2)} (per connection)`;
+
+                    console.log(`💰 [PerUnit] ${fee.feeName}: $${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}`);
                 }
                 // Check if it's per fixture, appliance, or "each" (don't multiply)
                 else if (unitLabelLowerCase.includes('fixture') ||
@@ -1902,16 +2126,74 @@ export class FeeCalculator {
                 }
                 break;
 
+            case 'tiered':
+                // CRITICAL: Tiered fees like "Sewer Base Rate - X inch Meter"
+                // These are typically monthly fees that vary by meter size
+                // Rate is stored directly in fee.rate, no tier lookup needed for single-rate tiers
+                if (!fee.rate) return null;
+
+                // Check if this is a monthly fee
+                const isTieredMonthly = unitLabelLower.includes('month') ||
+                                       unitLabelLower.includes('per month') ||
+                                       feeNameLower.includes('monthly') ||
+                                       feeNameLower.includes('base rate') ||
+                                       categoryLower.includes('monthly');
+
+                if (isTieredMonthly && inputs.numUnits) {
+                    // Multiply by units for total monthly cost
+                    amount = (fee.rate || 0) * inputs.numUnits;
+                    calculation = `$${fee.rate}/month × ${inputs.numUnits} units = $${amount.toFixed(2)}/month`;
+                    isRecurring = true;
+                    recurringPeriod = 'month';
+                    console.log(`💰 [Tiered] ${fee.feeName}: $${fee.rate} × ${inputs.numUnits} units = $${amount.toFixed(2)}/month`);
+                } else {
+                    // One-time tiered fee
+                    amount = fee.rate || 0;
+                    calculation = `Tiered rate: $${amount.toFixed(2)}`;
+                }
+                break;
+
             case 'percentage':
+                // CRITICAL: Percentage fees should NOT be used for late fees or penalties
+                // These have already been filtered out by global exclusions above
                 if (!inputs.projectValue) return null;
+
+                // Only apply to building-related fees, not to penalties
+                if (feeNameLower.includes('late') || feeNameLower.includes('penalty')) {
+                    console.warn(`⚠️  [Percentage] Skipping penalty fee: ${fee.feeName}`);
+                    return null;
+                }
+
                 amount = (inputs.projectValue * (fee.rate || 0)) / 100;
                 calculation = `${fee.rate}% of $${inputs.projectValue.toLocaleString()} = $${amount.toFixed(2)}`;
                 break;
 
             case 'formula':
+                // CRITICAL: ICC VALUATION FORMULA - Building permit calculation
+                // Formula: CSF (cost per sqft) × TSF (total sqft) × LVF (local variable factor)
+                // Example: 170.80 × 50,000 × 0.00098 = $8,369
+                if (fee.formulaType === 'icc_valuation' && fee.formulaConfig && inputs.squareFeet) {
+                    const config = fee.formulaConfig as any;
+                    const costPerSqft = config.icc_cost_per_sqft_r3_vb || config.icc_cost_per_sqft || 0;
+                    const localVariableFactor = config.local_variable_factor || 0;
+
+                    if (costPerSqft > 0 && localVariableFactor > 0) {
+                        amount = costPerSqft * inputs.squareFeet * localVariableFactor;
+                        calculation = `ICC Valuation: $${costPerSqft} × ${inputs.squareFeet.toLocaleString()} sq ft × ${localVariableFactor} = $${amount.toFixed(2)}`;
+
+                        // Multiply by units if this is per-unit
+                        if (inputs.numUnits && fee.unitLabel?.toLowerCase().includes('unit')) {
+                            amount = amount * inputs.numUnits;
+                            calculation = `($${costPerSqft} × ${inputs.squareFeet.toLocaleString()} sq ft × ${localVariableFactor}) × ${inputs.numUnits} units = $${amount.toFixed(2)}`;
+                        }
+
+                        console.log(`💰 [ICC Formula] ${fee.feeName}: ${calculation}`);
+                    }
+                }
+
                 // CRITICAL: Handle valuation-based building permit fees (LA + Portland pattern)
                 // Parse tiered formula from description field
-                if ((fee.feeName?.toLowerCase().includes('building permit') ||
+                if (amount === 0 && (fee.feeName?.toLowerCase().includes('building permit') ||
                      fee.feeName?.toLowerCase().includes('development services')) &&
                     inputs.projectValue &&
                     fee.feeDescription?.match(/\$[\d,]+.*:\s*.*\$[\d,]+/)) {
